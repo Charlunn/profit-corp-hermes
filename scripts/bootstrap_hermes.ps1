@@ -90,6 +90,68 @@ function Setup-DefaultConfig {
   }
 }
 
+function Merge-ProfileTemplatePreserveModel([string]$TemplatePath, [string]$TargetPath) {
+  try {
+    & $script:PythonBin -c @'
+import sys
+from pathlib import Path
+
+template_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
+
+def extract_model_block(lines):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[start:end]
+
+def replace_model_block(lines, block):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return block + [""] + lines
+
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[:start] + block + lines[end:]
+
+template_lines = template_path.read_text(encoding="utf-8").splitlines()
+if not target_path.exists():
+    target_path.write_text("\n".join(template_lines).rstrip() + "\n", encoding="utf-8")
+    sys.exit(0)
+
+existing_lines = target_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(existing_lines)
+if model_block:
+    merged = replace_model_block(template_lines, model_block)
+else:
+    merged = template_lines
+
+target_path.write_text("\n".join(merged).rstrip() + "\n", encoding="utf-8")
+'@ $TemplatePath $TargetPath
+    return $LASTEXITCODE -eq 0
+  } catch {
+    return $false
+  }
+}
+
 function Sync-Profile([string]$Profile) {
   $profileHome = Join-Path $HermesHome "profiles/$Profile"
   $profileTemplate = Join-Path $RootDir "profiles/$Profile/config.yaml.example"
@@ -110,16 +172,28 @@ function Sync-Profile([string]$Profile) {
     if ($ans -notmatch '^(?i)y(es)?$') {
       Log "Keeping existing profile config: $Profile"
     } else {
+      if (Merge-ProfileTemplatePreserveModel -TemplatePath $profileTemplate -TargetPath $profileConfigPath) {
+        $script:ProfileConfigOverwritten = $true
+        $script:ChangedProfiles += $Profile
+        Log "Overwrote profile config (model preserved): $Profile"
+      } else {
+        Copy-Item -Path $profileTemplate -Destination $profileConfigPath -Force
+        $script:ProfileConfigOverwritten = $true
+        $script:ChangedProfiles += $Profile
+        Warn "Merged overwrite failed, used direct copy for profile config: $Profile"
+      }
+    }
+  } else {
+    if (Merge-ProfileTemplatePreserveModel -TemplatePath $profileTemplate -TargetPath $profileConfigPath) {
+      $script:ProfileConfigOverwritten = $true
+      $script:ChangedProfiles += $Profile
+      Log "Created profile config (from template): $Profile"
+    } else {
       Copy-Item -Path $profileTemplate -Destination $profileConfigPath -Force
       $script:ProfileConfigOverwritten = $true
       $script:ChangedProfiles += $Profile
-      Log "Overwrote profile config: $Profile"
+      Warn "Template merge failed, created profile config via direct copy: $Profile"
     }
-  } else {
-    Copy-Item -Path $profileTemplate -Destination $profileConfigPath -Force
-    $script:ProfileConfigOverwritten = $true
-    $script:ChangedProfiles += $Profile
-    Log "Created profile config: $Profile"
   }
 
   Copy-Item -Path $soulSrc -Destination (Join-Path $profileHome 'SOUL.md') -Force
@@ -346,8 +420,8 @@ function Configure-ModelsInteractive {
     Warn 'Skipped global model setup'
   }
 
-  $ans = Read-Host 'Apply current global provider/model to all role profiles now? [Y/n]'
-  if ($ans -notmatch '^(?i)n(o)?$') {
+  $ans = Read-Host 'Apply current global provider/model to all role profiles now? [y/N]'
+  if ($ans -match '^(?i)y(es)?$') {
     Apply-GlobalModelToAllProfiles
   } else {
     Log 'Skipped applying global model/provider to all profiles'

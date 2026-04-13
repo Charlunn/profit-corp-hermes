@@ -108,6 +108,66 @@ setup_default_config() {
   esac
 }
 
+merge_profile_template_preserve_model() {
+  local template_path="$1"
+  local target_path="$2"
+
+  "$PYTHON_BIN" - "$template_path" "$target_path" <<'PY' || return 1
+import sys
+from pathlib import Path
+
+template_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
+
+def extract_model_block(lines):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[start:end]
+
+def replace_model_block(lines, model_block):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return model_block + [""] + lines
+
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[:start] + model_block + lines[end:]
+
+template_lines = template_path.read_text(encoding="utf-8").splitlines()
+if not target_path.exists():
+    target_path.write_text("\n".join(template_lines).rstrip() + "\n", encoding="utf-8")
+    sys.exit(0)
+
+existing_lines = target_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(existing_lines)
+if model_block:
+    merged = replace_model_block(template_lines, model_block)
+else:
+    merged = template_lines
+
+target_path.write_text("\n".join(merged).rstrip() + "\n", encoding="utf-8")
+PY
+}
+
 create_or_update_profile() {
   local profile="$1"
   local profile_home="$HERMES_HOME_DEFAULT/profiles/$profile"
@@ -127,20 +187,20 @@ create_or_update_profile() {
     read -r -p "Profile '$profile' config exists. Overwrite with project template? [y/N] " ans
     case "${ans:-N}" in
       [yY]|[yY][eE][sS])
-        cp "$profile_template" "$profile_home/config.yaml"
+        merge_profile_template_preserve_model "$profile_template" "$profile_home/config.yaml" || cp "$profile_template" "$profile_home/config.yaml"
         PROFILE_CONFIG_OVERWRITTEN=1
         CHANGED_PROFILES+=("$profile")
-        log "Overwrote profile config: $profile"
+        log "Overwrote profile config (model preserved): $profile"
         ;;
       *)
         log "Keeping existing profile config: $profile"
         ;;
     esac
   else
-    cp "$profile_template" "$profile_home/config.yaml"
+    merge_profile_template_preserve_model "$profile_template" "$profile_home/config.yaml" || cp "$profile_template" "$profile_home/config.yaml"
     PROFILE_CONFIG_OVERWRITTEN=1
     CHANGED_PROFILES+=("$profile")
-    log "Created profile config: $profile"
+    log "Created profile config (from template): $profile"
   fi
 
   cp "$soul_src" "$profile_home/SOUL.md"
@@ -334,13 +394,13 @@ configure_models_interactive() {
       ;;
   esac
 
-  read -r -p "Apply current global provider/model to all role profiles now? [Y/n] " ans
-  case "${ans:-Y}" in
-    [nN]|[nN][oO])
-      log "Skipped applying global model/provider to all profiles"
+  read -r -p "Apply current global provider/model to all role profiles now? [y/N] " ans
+  case "${ans:-N}" in
+    [yY]|[yY][eE][sS])
+      apply_global_model_to_all_profiles
       ;;
     *)
-      apply_global_model_to_all_profiles
+      log "Skipped applying global model/provider to all profiles"
       ;;
   esac
 
