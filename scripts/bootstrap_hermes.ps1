@@ -332,14 +332,7 @@ function Run-SmokeTest {
 }
 
 function Resolve-ModelSourceFile {
-  $defaultProfileConfig = Join-Path $HermesHome 'profiles/default/config.yaml'
-
-  if (Test-Path $defaultProfileConfig) {
-    $script:ModelSourceFile = $defaultProfileConfig
-  } else {
-    $script:ModelSourceFile = $HermesConfig
-  }
-
+  $script:ModelSourceFile = $HermesConfig
   Log "Model apply source: $script:ModelSourceFile"
 }
 

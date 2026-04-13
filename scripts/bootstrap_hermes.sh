@@ -368,14 +368,7 @@ PY
 }
 
 resolve_model_source_file() {
-  local default_profile_cfg="$HERMES_HOME_DEFAULT/profiles/default/config.yaml"
-
-  if [ -f "$default_profile_cfg" ]; then
-    MODEL_SOURCE_FILE="$default_profile_cfg"
-  else
-    MODEL_SOURCE_FILE="$HERMES_CONFIG_FILE"
-  fi
-
+  MODEL_SOURCE_FILE="$HERMES_CONFIG_FILE"
   log "Model apply source: $MODEL_SOURCE_FILE"
 }
 
