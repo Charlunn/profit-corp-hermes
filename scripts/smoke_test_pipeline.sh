@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FAILED=0
+PYTHON_BIN=""
+
+ok() { printf '[smoke] PASS: %s\n' "$*"; }
+fail() { printf '[smoke] FAIL: %s\n' "$*"; FAILED=1; }
+
+require_cmd() {
+  if command -v "$1" >/dev/null 2>&1; then
+    ok "command found: $1"
+  else
+    fail "missing command: $1"
+  fi
+}
+
+resolve_python() {
+  if command -v python3 >/dev/null 2>&1 && python3 -V >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+    ok "command found: python3"
+  elif command -v python >/dev/null 2>&1 && python -V >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+    ok "command found: python"
+  else
+    fail "missing usable command: python3/python"
+  fi
+}
+
+check_file_nonempty() {
+  local f="$1"
+  if [ -s "$f" ]; then
+    ok "file exists and non-empty: $f"
+  else
+    fail "file missing or empty: $f"
+  fi
+}
+
+run_check() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    ok "$label"
+  else
+    fail "$label"
+  fi
+}
+
+main() {
+  require_cmd hermes
+  resolve_python
+  require_cmd bash
+
+  check_file_nonempty "$ROOT_DIR/assets/shared/LEDGER.json"
+  check_file_nonempty "$ROOT_DIR/assets/shared/manage_finance.py"
+  check_file_nonempty "$ROOT_DIR/orchestration/cron/daily_pipeline.prompt.md"
+  check_file_nonempty "$ROOT_DIR/orchestration/cron/health_check.prompt.md"
+  check_file_nonempty "$ROOT_DIR/orchestration/cron/commands.sh"
+
+  for p in ceo scout cmo arch accountant; do
+    check_file_nonempty "$ROOT_DIR/profiles/$p/config.yaml.example"
+    check_file_nonempty "$ROOT_DIR/profiles/$p/SOUL.md"
+  done
+
+  if [ -n "$PYTHON_BIN" ]; then
+    run_check "finance script syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/assets/shared/manage_finance.py"
+  fi
+  run_check "cron helper list action" bash "$ROOT_DIR/orchestration/cron/commands.sh" list
+  run_check "ceo cron list command" hermes -p ceo cron list
+  run_check "profile list command" hermes profile list
+
+  if [ "$FAILED" -eq 0 ]; then
+    printf '\n[smoke] OVERALL: PASS\n'
+  else
+    printf '\n[smoke] OVERALL: FAIL\n'
+    exit 1
+  fi
+}
+
+main "$@"

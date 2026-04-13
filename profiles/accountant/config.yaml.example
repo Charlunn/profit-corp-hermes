@@ -1,0 +1,22 @@
+model:
+  default: "anthropic/claude-opus-4.6"
+  provider: "auto"
+
+terminal:
+  backend: "local"
+  cwd: "."
+  timeout: 180
+  lifetime_seconds: 300
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+
+delegation:
+  max_iterations: 35
+  default_toolsets: ["terminal", "file"]
+
+cron:
+  wrap_response: true
+
+timezone: "Asia/Shanghai"
