@@ -17,6 +17,7 @@ $GlobalConfigOverwritten = $false
 $ProfileConfigOverwritten = $false
 $ChangedProfiles = @()
 $OverwriteSyncedSkills = $false
+$ModelSourceFile = ''
 
 function Log([string]$Message) {
   Write-Host "[bootstrap-ps] $Message"
@@ -330,11 +331,23 @@ function Run-SmokeTest {
   }
 }
 
+function Resolve-ModelSourceFile {
+  $defaultProfileConfig = Join-Path $HermesHome 'profiles/default/config.yaml'
+
+  if (Test-Path $defaultProfileConfig) {
+    $script:ModelSourceFile = $defaultProfileConfig
+  } else {
+    $script:ModelSourceFile = $HermesConfig
+  }
+
+  Log "Model apply source: $script:ModelSourceFile"
+}
+
 function Apply-GlobalModelToProfile([string]$Profile) {
-  $globalPath = $HermesConfig
+  $globalPath = $script:ModelSourceFile
   $profilePath = Join-Path $HermesHome "profiles/$Profile/config.yaml"
 
-  if (-not (Test-Path $globalPath) -or -not (Test-Path $profilePath)) {
+  if (-not $globalPath -or -not (Test-Path $globalPath) -or -not (Test-Path $profilePath)) {
     return $false
   }
 
@@ -420,6 +433,8 @@ function Configure-ModelsInteractive {
     Warn 'Skipped global model setup'
   }
 
+  Resolve-ModelSourceFile
+
   $ans = Read-Host 'Apply current global provider/model to all role profiles now? [y/N]'
   if ($ans -match '^(?i)y(es)?$') {
     Apply-GlobalModelToAllProfiles
@@ -490,8 +505,8 @@ Log "Project root: $RootDir"
 Install-HermesIfMissing
 Setup-DefaultConfig
 Setup-Profiles
-Ensure-CeoDefaultProfile
 Configure-ModelsInteractive
+Ensure-CeoDefaultProfile
 
 Log "Tip: run 'ceo gateway setup' as primary messaging entrypoint"
 

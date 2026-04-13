@@ -16,6 +16,7 @@ GLOBAL_CONFIG_OVERWRITTEN=0
 PROFILE_CONFIG_OVERWRITTEN=0
 CHANGED_PROFILES=()
 OVERWRITE_SYNCED_SKILLS=0
+MODEL_SOURCE_FILE=""
 
 log() { printf '[bootstrap] %s\n' "$*"; }
 warn() { printf '[bootstrap] WARN: %s\n' "$*"; }
@@ -312,10 +313,11 @@ apply_global_model_to_profile() {
   local profile="$1"
   local profile_cfg="$HERMES_HOME_DEFAULT/profiles/$profile/config.yaml"
 
-  [ -f "$HERMES_CONFIG_FILE" ] || return 0
+  [ -n "$MODEL_SOURCE_FILE" ] || return 0
+  [ -f "$MODEL_SOURCE_FILE" ] || return 0
   [ -f "$profile_cfg" ] || return 0
 
-  "$PYTHON_BIN" - "$HERMES_CONFIG_FILE" "$profile_cfg" <<'PY' || return 1
+  "$PYTHON_BIN" - "$MODEL_SOURCE_FILE" "$profile_cfg" <<'PY' || return 1
 import sys
 from pathlib import Path
 
@@ -365,6 +367,18 @@ profile_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
 PY
 }
 
+resolve_model_source_file() {
+  local default_profile_cfg="$HERMES_HOME_DEFAULT/profiles/default/config.yaml"
+
+  if [ -f "$default_profile_cfg" ]; then
+    MODEL_SOURCE_FILE="$default_profile_cfg"
+  else
+    MODEL_SOURCE_FILE="$HERMES_CONFIG_FILE"
+  fi
+
+  log "Model apply source: $MODEL_SOURCE_FILE"
+}
+
 apply_global_model_to_all_profiles() {
   local p
   for p in "${PROFILES[@]}"; do
@@ -393,6 +407,8 @@ configure_models_interactive() {
       hermes model || warn "Global model setup did not complete"
       ;;
   esac
+
+  resolve_model_source_file
 
   read -r -p "Apply current global provider/model to all role profiles now? [y/N] " ans
   case "${ans:-N}" in
@@ -435,8 +451,8 @@ main() {
   install_hermes_if_missing
   setup_default_config
   setup_profiles
-  ensure_ceo_default_profile
   configure_models_interactive
+  ensure_ceo_default_profile
 
   log "Tip: run 'ceo gateway setup' as primary messaging entrypoint"
 
