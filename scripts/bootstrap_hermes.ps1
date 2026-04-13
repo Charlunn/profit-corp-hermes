@@ -256,29 +256,112 @@ function Run-SmokeTest {
   }
 }
 
+function Apply-GlobalModelToProfile([string]$Profile) {
+  $globalPath = $HermesConfig
+  $profilePath = Join-Path $HermesHome "profiles/$Profile/config.yaml"
+
+  if (-not (Test-Path $globalPath) -or -not (Test-Path $profilePath)) {
+    return $false
+  }
+
+  try {
+    & $script:PythonBin -c @'
+import sys
+from pathlib import Path
+
+global_path = Path(sys.argv[1])
+profile_path = Path(sys.argv[2])
+
+def extract_model_block(lines):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[start:end]
+
+def replace_model_block(lines, block):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return block + [""] + lines
+
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and ":" in s:
+            end = j
+            break
+    return lines[:start] + block + lines[end:]
+
+global_lines = global_path.read_text(encoding="utf-8").splitlines()
+profile_lines = profile_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(global_lines)
+if not model_block:
+    sys.exit(1)
+new_lines = replace_model_block(profile_lines, model_block)
+profile_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
+'@ $globalPath $profilePath
+    return $LASTEXITCODE -eq 0
+  } catch {
+    return $false
+  }
+}
+
+function Apply-GlobalModelToAllProfiles {
+  foreach ($p in $Profiles) {
+    if (Apply-GlobalModelToProfile -Profile $p) {
+      Log "Applied global provider/model to profile: $p"
+    } else {
+      Warn "Failed to apply global provider/model to profile: $p"
+    }
+  }
+}
+
 function Configure-ModelsInteractive {
   if (-not (Get-Command hermes -ErrorAction SilentlyContinue)) {
     Warn 'Hermes not found; skipping interactive model configuration'
     return
   }
 
-  if ($GlobalConfigOverwritten) {
-    $ans = Read-Host 'Global Hermes config changed. Configure default provider/model now? [Y/n]'
-    if ($ans -notmatch '^(?i)n(o)?$') {
-      try {
-        & hermes model
-      } catch {
-        Warn 'Default model setup did not complete'
-      }
-    } else {
-      Warn "Skipped default model setup; run 'hermes model' later"
+  $ans = Read-Host 'Configure global provider/model now (one-time baseline for all roles)? [Y/n]'
+  if ($ans -notmatch '^(?i)n(o)?$') {
+    try {
+      & hermes model
+    } catch {
+      Warn 'Global model setup did not complete'
     }
+  } else {
+    Warn 'Skipped global model setup'
   }
 
-  foreach ($p in $ChangedProfiles) {
-    $ans = Read-Host "Profile '$p' config changed. Configure provider/model for this profile now? [Y/n]"
-    if ($ans -match '^(?i)n(o)?$') {
-      Warn "Skipped model setup for $p; run '$p model' later"
+  $ans = Read-Host 'Apply current global provider/model to all role profiles now? [Y/n]'
+  if ($ans -notmatch '^(?i)n(o)?$') {
+    Apply-GlobalModelToAllProfiles
+  } else {
+    Log 'Skipped applying global model/provider to all profiles'
+  }
+
+  $ans = Read-Host 'Do you want per-role model overrides now? [y/N]'
+  if ($ans -notmatch '^(?i)y(es)?$') {
+    return
+  }
+
+  foreach ($p in $Profiles) {
+    $ans = Read-Host "Configure model override for profile '$p'? [y/N]"
+    if ($ans -notmatch '^(?i)y(es)?$') {
+      Log "Kept inherited/global model for profile: $p"
       continue
     }
 
@@ -315,6 +398,7 @@ function Print-Sanity([string]$PythonBin) {
 Require-Command -Name git
 Require-Command -Name curl
 $pythonBin = Resolve-Python
+$script:PythonBin = $pythonBin
 
 $needsBash = (-not $SkipCron) -or (-not $SkipSmoke)
 if ($needsBash -and -not (Get-Command bash -ErrorAction SilentlyContinue)) {

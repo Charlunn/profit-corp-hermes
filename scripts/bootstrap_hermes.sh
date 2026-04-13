@@ -248,6 +248,74 @@ smoke_test() {
   hermes -p ceo cron list || true
 }
 
+apply_global_model_to_profile() {
+  local profile="$1"
+  local profile_cfg="$HERMES_HOME_DEFAULT/profiles/$profile/config.yaml"
+
+  [ -f "$HERMES_CONFIG_FILE" ] || return 0
+  [ -f "$profile_cfg" ] || return 0
+
+  "$PYTHON_BIN" - "$HERMES_CONFIG_FILE" "$profile_cfg" <<'PY' || return 1
+import sys
+from pathlib import Path
+
+global_path = Path(sys.argv[1])
+profile_path = Path(sys.argv[2])
+
+def extract_model_block(lines):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and s.split(":", 1)[0].strip() and ":" in s:
+            end = j
+            break
+    return lines[start:end]
+
+def replace_model_block(lines, block):
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith("model:"):
+            start = i
+            break
+    if start is None:
+        return block + [""] + lines
+
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        s = lines[j]
+        if s and not s.startswith((" ", "\t")) and s.split(":", 1)[0].strip() and ":" in s:
+            end = j
+            break
+    return lines[:start] + block + lines[end:]
+
+global_lines = global_path.read_text(encoding="utf-8").splitlines()
+profile_lines = profile_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(global_lines)
+if not model_block:
+    sys.exit(1)
+new_lines = replace_model_block(profile_lines, model_block)
+profile_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
+PY
+}
+
+apply_global_model_to_all_profiles() {
+  local p
+  for p in "${PROFILES[@]}"; do
+    if apply_global_model_to_profile "$p"; then
+      log "Applied global provider/model to profile: $p"
+    else
+      warn "Failed to apply global provider/model to profile: $p"
+    fi
+  done
+}
+
 configure_models_interactive() {
   local ans p
 
@@ -256,30 +324,40 @@ configure_models_interactive() {
     return 0
   fi
 
-  if [ "$GLOBAL_CONFIG_OVERWRITTEN" -eq 1 ]; then
-    read -r -p "Global Hermes config changed. Configure default provider/model now? [Y/n] " ans
-    case "${ans:-Y}" in
-      [nN]|[nN][oO])
-        warn "Skipped default model setup; configure later with 'hermes model'"
-        ;;
-      *)
-        hermes model || warn "Default model setup did not complete"
-        ;;
-    esac
-  fi
+  read -r -p "Configure global provider/model now (one-time baseline for all roles)? [Y/n] " ans
+  case "${ans:-Y}" in
+    [nN]|[nN][oO])
+      warn "Skipped global model setup"
+      ;;
+    *)
+      hermes model || warn "Global model setup did not complete"
+      ;;
+  esac
 
-  if [ "${#CHANGED_PROFILES[@]}" -eq 0 ]; then
-    return 0
-  fi
+  read -r -p "Apply current global provider/model to all role profiles now? [Y/n] " ans
+  case "${ans:-Y}" in
+    [nN]|[nN][oO])
+      log "Skipped applying global model/provider to all profiles"
+      ;;
+    *)
+      apply_global_model_to_all_profiles
+      ;;
+  esac
 
-  for p in "${CHANGED_PROFILES[@]}"; do
-    read -r -p "Profile '$p' config changed. Configure provider/model for this profile now? [Y/n] " ans
-    case "${ans:-Y}" in
-      [nN]|[nN][oO])
-        warn "Skipped model setup for $p; run '$p model' later"
-        ;;
-      *)
+  read -r -p "Do you want per-role model overrides now? [y/N] " ans
+  case "${ans:-N}" in
+    [yY]|[yY][eE][sS]) ;;
+    *) return 0 ;;
+  esac
+
+  for p in "${PROFILES[@]}"; do
+    read -r -p "Configure model override for profile '$p'? [y/N] " ans
+    case "${ans:-N}" in
+      [yY]|[yY][eE][sS])
         "$p" model || hermes -p "$p" model || warn "Model setup failed for profile: $p"
+        ;;
+      *)
+        log "Kept inherited/global model for profile: $p"
         ;;
     esac
   done
