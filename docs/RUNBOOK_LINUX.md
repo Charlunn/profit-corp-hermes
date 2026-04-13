@@ -22,6 +22,7 @@ Optional flags:
 - `--skip-cron` skip cron job ensure
 - `--skip-smoke` skip `scripts/smoke_test_pipeline.sh`
 - `--skip-migration` skip `hermes claw migrate --dry-run` prompt
+- `--skip-doctor` skip `hermes doctor` and sanity checks
 
 Bootstrap does:
 1. Verify prerequisites (`bash`, `git`, `curl`, `python3` or `python`)

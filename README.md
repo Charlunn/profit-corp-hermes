@@ -23,7 +23,7 @@ bash scripts/bootstrap_hermes.sh
 
 Skip optional stages when needed:
 ```bash
-bash scripts/bootstrap_hermes.sh --skip-cron --skip-smoke --skip-migration
+bash scripts/bootstrap_hermes.sh --skip-cron --skip-smoke --skip-migration --skip-doctor
 ```
 
 ## Quick start (Windows PowerShell)

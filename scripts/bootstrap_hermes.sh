@@ -10,6 +10,7 @@ SKIP_CRON=0
 SKIP_PROFILES=0
 SKIP_SMOKE=0
 SKIP_MIGRATION=0
+SKIP_DOCTOR=0
 PYTHON_BIN=""
 GLOBAL_CONFIG_OVERWRITTEN=0
 PROFILE_CONFIG_OVERWRITTEN=0
@@ -22,13 +23,14 @@ err() { printf '[bootstrap] ERROR: %s\n' "$*" >&2; exit 1; }
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/bootstrap_hermes.sh [--skip-cron] [--skip-profiles] [--skip-smoke] [--skip-migration]
+Usage: bash scripts/bootstrap_hermes.sh [--skip-cron] [--skip-profiles] [--skip-smoke] [--skip-migration] [--skip-doctor]
 
 Options:
   --skip-cron      Do not create/update cron jobs
   --skip-profiles  Do not create/update ceo/scout/cmo/arch/accountant profiles
   --skip-smoke     Do not run scripts/smoke_test_pipeline.sh at the end
   --skip-migration Do not prompt for hermes claw migrate --dry-run
+  --skip-doctor    Skip hermes doctor and sanity checks
 EOF
 }
 
@@ -39,6 +41,7 @@ parse_args() {
       --skip-profiles) SKIP_PROFILES=1 ;;
       --skip-smoke) SKIP_SMOKE=1 ;;
       --skip-migration) SKIP_MIGRATION=1 ;;
+      --skip-doctor) SKIP_DOCTOR=1 ;;
       -h|--help) usage; exit 0 ;;
       *) err "Unknown option: $1" ;;
     esac
@@ -302,7 +305,16 @@ main() {
   run_migration_dry_run
   setup_cron_jobs
   run_smoke_test
-  smoke_test
+
+  if [ "$SKIP_DOCTOR" -eq 1 ]; then
+    log "Skipping Hermes doctor and sanity checks"
+  else
+    smoke_test
+  fi
+
+  if [ "$GLOBAL_CONFIG_OVERWRITTEN" -eq 1 ] || [ "$PROFILE_CONFIG_OVERWRITTEN" -eq 1 ]; then
+    log "Model/provider interactive setup completed for overwritten configs where approved."
+  fi
 
   log "Bootstrap complete"
 }
