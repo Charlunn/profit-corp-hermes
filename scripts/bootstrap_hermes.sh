@@ -309,20 +309,19 @@ smoke_test() {
   hermes -p ceo cron list || true
 }
 
-apply_global_model_to_profile() {
-  local profile="$1"
-  local profile_cfg="$HERMES_HOME_DEFAULT/profiles/$profile/config.yaml"
+copy_model_block_between_files() {
+  local source_path="$1"
+  local target_path="$2"
 
-  [ -n "$MODEL_SOURCE_FILE" ] || return 0
-  [ -f "$MODEL_SOURCE_FILE" ] || return 0
-  [ -f "$profile_cfg" ] || return 0
+  [ -f "$source_path" ] || return 1
+  [ -f "$target_path" ] || return 1
 
-  "$PYTHON_BIN" - "$MODEL_SOURCE_FILE" "$profile_cfg" <<'PY' || return 1
+  "$PYTHON_BIN" - "$source_path" "$target_path" <<'PY' || return 1
 import sys
 from pathlib import Path
 
-global_path = Path(sys.argv[1])
-profile_path = Path(sys.argv[2])
+source_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
 
 def extract_model_block(lines):
     start = None
@@ -357,18 +356,71 @@ def replace_model_block(lines, block):
             break
     return lines[:start] + block + lines[end:]
 
-global_lines = global_path.read_text(encoding="utf-8").splitlines()
-profile_lines = profile_path.read_text(encoding="utf-8").splitlines()
-model_block = extract_model_block(global_lines)
+source_lines = source_path.read_text(encoding="utf-8").splitlines()
+target_lines = target_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(source_lines)
 if not model_block:
     sys.exit(1)
-new_lines = replace_model_block(profile_lines, model_block)
-profile_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
+new_lines = replace_model_block(target_lines, model_block)
+target_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
 PY
 }
 
+resolve_effective_hermes_home() {
+  local profile_output effective_home
+
+  effective_home=""
+  if command -v hermes >/dev/null 2>&1; then
+    profile_output="$(hermes profile 2>/dev/null || true)"
+    effective_home="$(printf '%s\n' "$profile_output" | sed -n 's/^[[:space:]]*Home:[[:space:]]*//p' | head -n 1)"
+  fi
+
+  if [ -z "$effective_home" ]; then
+    effective_home="${HERMES_HOME:-$HERMES_HOME_DEFAULT}"
+  fi
+
+  case "$effective_home" in
+    "~")
+      effective_home="$HOME"
+      ;;
+    "~/"*)
+      effective_home="$HOME/${effective_home#~/}"
+      ;;
+  esac
+
+  printf '%s\n' "$effective_home"
+}
+
+apply_global_model_to_profile() {
+  local profile="$1"
+  local profile_cfg="$HERMES_HOME_DEFAULT/profiles/$profile/config.yaml"
+
+  [ -n "$MODEL_SOURCE_FILE" ] || return 0
+  [ -f "$MODEL_SOURCE_FILE" ] || return 0
+  [ -f "$profile_cfg" ] || return 0
+
+  copy_model_block_between_files "$MODEL_SOURCE_FILE" "$profile_cfg"
+}
+
 resolve_model_source_file() {
-  MODEL_SOURCE_FILE="$HERMES_CONFIG_FILE"
+  local effective_home effective_cfg
+
+  effective_home="$(resolve_effective_hermes_home)"
+  effective_cfg="$effective_home/config.yaml"
+  MODEL_SOURCE_FILE="$effective_cfg"
+
+  if [ "$MODEL_SOURCE_FILE" != "$HERMES_CONFIG_FILE" ]; then
+    log "Model apply source: $MODEL_SOURCE_FILE (resolved from current Hermes profile context)"
+    if [ -f "$MODEL_SOURCE_FILE" ] && [ -f "$HERMES_CONFIG_FILE" ]; then
+      if copy_model_block_between_files "$MODEL_SOURCE_FILE" "$HERMES_CONFIG_FILE"; then
+        log "Synced resolved model/provider back to $HERMES_CONFIG_FILE"
+      else
+        warn "Could not sync resolved model/provider back to $HERMES_CONFIG_FILE"
+      fi
+    fi
+    return 0
+  fi
+
   log "Model apply source: $MODEL_SOURCE_FILE"
 }
 

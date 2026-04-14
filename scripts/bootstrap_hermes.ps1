@@ -331,16 +331,8 @@ function Run-SmokeTest {
   }
 }
 
-function Resolve-ModelSourceFile {
-  $script:ModelSourceFile = $HermesConfig
-  Log "Model apply source: $script:ModelSourceFile"
-}
-
-function Apply-GlobalModelToProfile([string]$Profile) {
-  $globalPath = $script:ModelSourceFile
-  $profilePath = Join-Path $HermesHome "profiles/$Profile/config.yaml"
-
-  if (-not $globalPath -or -not (Test-Path $globalPath) -or -not (Test-Path $profilePath)) {
+function Copy-ModelBlockBetweenFiles([string]$SourcePath, [string]$TargetPath) {
+  if (-not (Test-Path $SourcePath) -or -not (Test-Path $TargetPath)) {
     return $false
   }
 
@@ -349,8 +341,8 @@ function Apply-GlobalModelToProfile([string]$Profile) {
 import sys
 from pathlib import Path
 
-global_path = Path(sys.argv[1])
-profile_path = Path(sys.argv[2])
+source_path = Path(sys.argv[1])
+target_path = Path(sys.argv[2])
 
 def extract_model_block(lines):
     start = None
@@ -363,7 +355,7 @@ def extract_model_block(lines):
     end = len(lines)
     for j in range(start + 1, len(lines)):
         s = lines[j]
-        if s and not s.startswith((" ", "\t")) and ":" in s:
+        if s and not s.startswith((" ", "\t")) and s.split(":", 1)[0].strip() and ":" in s:
             end = j
             break
     return lines[start:end]
@@ -380,23 +372,87 @@ def replace_model_block(lines, block):
     end = len(lines)
     for j in range(start + 1, len(lines)):
         s = lines[j]
-        if s and not s.startswith((" ", "\t")) and ":" in s:
+        if s and not s.startswith((" ", "\t")) and s.split(":", 1)[0].strip() and ":" in s:
             end = j
             break
     return lines[:start] + block + lines[end:]
 
-global_lines = global_path.read_text(encoding="utf-8").splitlines()
-profile_lines = profile_path.read_text(encoding="utf-8").splitlines()
-model_block = extract_model_block(global_lines)
+source_lines = source_path.read_text(encoding="utf-8").splitlines()
+target_lines = target_path.read_text(encoding="utf-8").splitlines()
+model_block = extract_model_block(source_lines)
 if not model_block:
     sys.exit(1)
-new_lines = replace_model_block(profile_lines, model_block)
-profile_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
-'@ $globalPath $profilePath
+new_lines = replace_model_block(target_lines, model_block)
+target_path.write_text("\n".join(new_lines).rstrip() + "\n", encoding="utf-8")
+'@ $SourcePath $TargetPath
     return $LASTEXITCODE -eq 0
   } catch {
     return $false
   }
+}
+
+function Resolve-EffectiveHermesHome {
+  $effectiveHome = $null
+
+  if (Get-Command hermes -ErrorAction SilentlyContinue) {
+    try {
+      $profileOutput = & hermes profile 2>$null
+      foreach ($line in $profileOutput) {
+        if ($line -match '^\s*Home:\s*(.+?)\s*$') {
+          $effectiveHome = $Matches[1].Trim()
+          break
+        }
+      }
+    } catch {
+    }
+  }
+
+  if (-not $effectiveHome) {
+    if ($env:HERMES_HOME) {
+      $effectiveHome = $env:HERMES_HOME
+    } else {
+      $effectiveHome = $HermesHome
+    }
+  }
+
+  if ($effectiveHome -eq '~') {
+    return $env:USERPROFILE
+  }
+  if ($effectiveHome -like '~/*') {
+    return Join-Path $env:USERPROFILE (($effectiveHome.Substring(2)) -replace '/', '\')
+  }
+
+  return $effectiveHome
+}
+
+function Resolve-ModelSourceFile {
+  $effectiveHome = Resolve-EffectiveHermesHome
+  $script:ModelSourceFile = Join-Path $effectiveHome 'config.yaml'
+
+  if ($script:ModelSourceFile -ne $HermesConfig) {
+    Log "Model apply source: $script:ModelSourceFile (resolved from current Hermes profile context)"
+    if ((Test-Path $script:ModelSourceFile) -and (Test-Path $HermesConfig)) {
+      if (Copy-ModelBlockBetweenFiles -SourcePath $script:ModelSourceFile -TargetPath $HermesConfig) {
+        Log "Synced resolved model/provider back to $HermesConfig"
+      } else {
+        Warn "Could not sync resolved model/provider back to $HermesConfig"
+      }
+    }
+    return
+  }
+
+  Log "Model apply source: $script:ModelSourceFile"
+}
+
+function Apply-GlobalModelToProfile([string]$Profile) {
+  $globalPath = $script:ModelSourceFile
+  $profilePath = Join-Path $HermesHome "profiles/$Profile/config.yaml"
+
+  if (-not $globalPath -or -not (Test-Path $globalPath) -or -not (Test-Path $profilePath)) {
+    return $false
+  }
+
+  return Copy-ModelBlockBetweenFiles -SourcePath $globalPath -TargetPath $profilePath
 }
 
 function Apply-GlobalModelToAllProfiles {
