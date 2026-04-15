@@ -71,6 +71,7 @@
 
 ## Self-learning operations policy
 - Follow `docs/SELF_LEARNING_GUARDRAILS.md` as the source of truth.
+- Follow `docs/skill-governance/README.md` for standardized skill governance and templates.
 - Only promote stable, repeatedly successful workflows into skills.
 - Do not persist transient failures, one-off tasks, or sensitive information into memory/skills.
 - Prefer patch-style updates and keep rollback path for critical skills.

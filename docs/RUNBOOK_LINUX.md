@@ -47,6 +47,9 @@ Project skill source:
 - `skills/common/` -> sync to all profiles
 - `skills/ceo/` -> sync to CEO profile
 
+Governance reference:
+- `docs/skill-governance/README.md`
+
 Check synced skills:
 ```bash
 ls ~/.hermes/profiles/ceo/skills

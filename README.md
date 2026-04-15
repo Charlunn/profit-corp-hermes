@@ -15,6 +15,7 @@ This repo keeps original `profit-corp` unchanged, and runs the system with:
 - `orchestration/cron/` — cron prompts and command helpers
 - `scripts/` — bootstrap, smoke test, and recovery scripts
 - `docs/` — migration, runbook, coordination, state contract, guardrails, operations
+- `docs/skill-governance/` — skill 标准化治理文档（playbook/routing/release/templates）
 
 ## Quick start (Linux)
 ```bash
@@ -71,3 +72,4 @@ bash orchestration/cron/commands.sh ensure
 - `docs/STATE_CONTRACT.md`
 - `docs/SELF_LEARNING_GUARDRAILS.md`
 - `docs/OPERATIONS.md`
+- `docs/skill-governance/README.md`
