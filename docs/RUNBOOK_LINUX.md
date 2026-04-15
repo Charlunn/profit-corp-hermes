@@ -47,6 +47,20 @@ Project skill source:
 - `skills/common/` -> sync to all profiles
 - `skills/ceo/` -> sync to CEO profile
 
+Runtime core standards in `skills/common/`:
+- `feature_planning`
+- `bugfix_safety`
+- `observability_check`
+- `migration_safety`
+- `release_readiness`
+- `test_strategy_planner`
+- `regression_planner`
+- `release_verification`
+- `rollback_decision_policy`
+
+Full standards library (for staged promotion):
+- `skills/library/normalized/`
+
 Governance reference:
 - `docs/skill-governance/README.md`
 

@@ -42,6 +42,19 @@ Project skill source:
 - `skills/common/` (available to all profiles)
 - `skills/ceo/` (CEO-specific directives)
 
+核心运行时规范技能（已激活到 `skills/common/`）：
+- `feature_planning`
+- `bugfix_safety`
+- `observability_check`
+- `migration_safety`
+- `release_readiness`
+- `test_strategy_planner`
+- `regression_planner`
+- `release_verification`
+- `rollback_decision_policy`
+
+完整规范库请查看：`skills/library/normalized/`。
+
 Bootstrap now syncs these into `~/.hermes/profiles/<role>/skills/` with overwrite confirmation.
 
 ## One-pass test flow

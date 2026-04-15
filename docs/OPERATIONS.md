@@ -80,6 +80,17 @@
 - Project skill source-of-truth:
   - `skills/common/` (all profiles)
   - `skills/ceo/` (CEO directives)
+- Runtime core standards already activated in `skills/common/`:
+  - `feature_planning`
+  - `bugfix_safety`
+  - `observability_check`
+  - `migration_safety`
+  - `release_readiness`
+  - `test_strategy_planner`
+  - `regression_planner`
+  - `release_verification`
+  - `rollback_decision_policy`
+- Full standards library remains in `skills/library/normalized/` for staged promotion.
 - Bootstrap syncs skills into `~/.hermes/profiles/<role>/skills/`.
 - During sync, overwrite requires explicit confirmation.
 - After synced config overwrite, bootstrap runs interactive provider/model setup in-place.
