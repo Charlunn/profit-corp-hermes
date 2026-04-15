@@ -58,7 +58,7 @@
 
 ## 11. 与总手册对齐
 - 对齐条目：
-- 引用：`docs/standards/engineering-playbook-v0.2.md`
+- 引用：`docs/skill-governance/standards/engineering-playbook-v0.2.md`
 
 ## 12. 示例（可选）
 - 输入示例：

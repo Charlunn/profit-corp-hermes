@@ -4,7 +4,7 @@
 
 ## 快速导航（按任务）
 - 首次进入或切换任务：先看 [START HERE](START-HERE.md)
-- 全流程统一入口：看 [Orchestrator Workflow](../skills/normalized/orchestrator-workflow.md)
+- 全流程统一入口：看 [Orchestrator Workflow](../../skills/library/normalized/orchestrator-workflow.md)
 - 一屏执行卡：看 [Orchestrator Quick Run](quick-run/orchestrator-workflow-card.md)
 - 我在做新功能：先看 [feature-to-pr](skills/feature-to-pr.md)
 - 我在修线上/测试 bug：先看 [bugfix-safety](skills/bugfix-safety.md)
@@ -33,7 +33,7 @@
 7. [术语表](glossary.md)
 
 ## 规范技能入口
-- [中立化 skills 目录](../skills/normalized/)
+- [中立化 skills 目录](../../skills/library/normalized/)
 
 ## Orchestrator 模板入口
 - [Orchestrator 输入模板](templates/orchestrator-input-template-v0.2.md)

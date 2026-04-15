@@ -53,4 +53,4 @@
 
 ## 9. 与总手册对齐
 - 对齐条目：测试门禁、日志规范、发布回滚
-- 引用：`docs/standards/engineering-playbook-v0.2.md`
+- 引用：`docs/skill-governance/standards/engineering-playbook-v0.2.md`

@@ -33,4 +33,4 @@
 - 提交记录（含中文结构化 message）
 - 发布建议与回滚路径
 
-主文档：`../../skills/normalized/orchestrator-workflow.md`
+主文档：`../../../skills/library/normalized/orchestrator-workflow.md`

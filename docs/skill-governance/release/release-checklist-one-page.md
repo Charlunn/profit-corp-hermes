@@ -24,4 +24,4 @@
 - 若硬门禁失败：停止合并/发布，回到修复流程
 - 若发布后异常：优先止血（回滚/熔断/降级），再做根因修复
 
-参考：`docs/standards/engineering-playbook-v0.2.md`
+参考：`docs/skill-governance/standards/engineering-playbook-v0.2.md`

@@ -53,4 +53,4 @@
 
 ## 9. 与总手册对齐
 - 对齐条目：日志字段、等级语义、安全要求
-- 引用：`docs/standards/engineering-playbook-v0.2.md`
+- 引用：`docs/skill-governance/standards/engineering-playbook-v0.2.md`

@@ -11,7 +11,7 @@
 - `payment/auth/migration`（高风险）
 
 ## 2) 先读哪些文档（最多 3 个）
-- 全流程优先：先看 [Orchestrator Workflow](../skills/normalized/orchestrator-workflow.md)
+- 全流程优先：先看 [Orchestrator Workflow](../../skills/library/normalized/orchestrator-workflow.md)
 - 一屏执行：看 [Orchestrator Quick Run](quick-run/orchestrator-workflow-card.md)
 - 模板快捷入口：
   - [Orchestrator 输入模板](templates/orchestrator-input-template-v0.2.md)
