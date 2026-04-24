@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DAILY_PROMPT_FILE="$ROOT_DIR/orchestration/cron/daily_pipeline.prompt.md"
 HEALTH_PROMPT_FILE="$ROOT_DIR/orchestration/cron/health_check.prompt.md"
+EXTERNAL_INTELLIGENCE_PROMPT_FILE="$ROOT_DIR/orchestration/cron/external_intelligence.prompt.md"
 
 DAILY_NAME="ProfitCorp Daily Pipeline"
 HEALTH_NAME="ProfitCorp Health Check"
@@ -106,6 +107,10 @@ run_daily() {
   hermes -p ceo cron run "$id"
 }
 
+run_intelligence() {
+  bash "$ROOT_DIR/scripts/run_external_intelligence.sh"
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -124,9 +129,10 @@ case "$ACTION" in
   list) list_jobs ;;
   status) status_jobs ;;
   run-daily) run_daily ;;
+  run-intelligence) run_intelligence ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|pause-all]"
     exit 1
     ;;
 esac

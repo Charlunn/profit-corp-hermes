@@ -3,6 +3,10 @@
 你是 CEO profile 的定时调度器。目标：执行完整 Profit-Corp 日常流水线并给出最终决策摘要。
 
 执行顺序：
+0. External Intelligence 阶段
+   - 运行 `bash scripts/run_external_intelligence.sh`
+   - 读取 `assets/shared/external_intelligence/LATEST_SUMMARY.md`
+   - 如果失败来源大于 0，先输出失败 source_id 与修复建议，再继续后续阶段
 1. Scout 阶段
    - 读取 `assets/shared/TEMPLATES.md`
    - 产出/更新 `assets/shared/PAIN_POINTS.md`
