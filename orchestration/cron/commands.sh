@@ -8,6 +8,7 @@ EXTERNAL_INTELLIGENCE_PROMPT_FILE="$ROOT_DIR/orchestration/cron/external_intelli
 
 DAILY_NAME="ProfitCorp Daily Pipeline"
 HEALTH_NAME="ProfitCorp Health Check"
+ANALYSIS_LOOP_NAME="ProfitCorp Analysis Loop"
 ACTION="${1:-list}"
 
 log() { printf '[cron] %s\n' "$*"; }
@@ -111,6 +112,10 @@ run_intelligence() {
   bash "$ROOT_DIR/scripts/run_external_intelligence.sh"
 }
 
+run_analysis_loop() {
+  bash "$ROOT_DIR/scripts/run_signal_analysis_loop.sh"
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -130,9 +135,10 @@ case "$ACTION" in
   status) status_jobs ;;
   run-daily) run_daily ;;
   run-intelligence) run_intelligence ;;
+  run-analysis-loop) run_analysis_loop ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|pause-all]"
     exit 1
     ;;
 esac
