@@ -1,15 +1,14 @@
 # Requirements: Profit-Corp Hermes
 
 **Defined:** 2026-04-24
-**Core Value:** Turn noisy external signals into a clear, actionable daily operating view: what is happening, what matters, what is risky, and what the company should do next.
+**Core Value:** Turn noisy web-wide user pain signals into a clear, actionable daily operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build and launch next.
 
 ## v1 Requirements
 
 ### External Signals
 
-- [ ] **SIGN-01**: Operator can ingest industry trend signals from public external sources into the system
-- [ ] **SIGN-02**: Operator can ingest competitor movement signals from public external sources into the system
-- [ ] **SIGN-03**: Operator can ingest user complaint and pain-point signals from forums or public communities into the system
+- [ ] **SIGN-01**: Operator can discover user complaint and pain-point signals from across the public web instead of depending on one fixed source list
+- [ ] **SIGN-02**: System can enrich promising pain-point opportunities with optional competitor or trend research for pricing, positioning, or marketing when needed
 
 ### Analysis Pipeline
 
@@ -59,7 +58,7 @@
 | Feature | Reason |
 |---------|--------|
 | Full autonomy without operator approval | Conflicts with the project’s governance and trust requirements |
-| Internal telemetry as the primary v1 input | v1 is intentionally biased toward external signals |
+| Internal telemetry as the primary v1 input | v1 is intentionally biased toward external pain signals |
 | Real-time dashboard as the first implementation focus | Visibility should be built after the daily operating core is trustworthy |
 | Expanding beyond the current five core roles in v1 | Extra roles would add coordination complexity before the core loop is stable |
 | End-user customer-facing SaaS product features | This repo is the internal AI management core, not the external product |
@@ -68,12 +67,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIGN-01 | Phase 1 | Pending |
-| SIGN-02 | Phase 1 | Pending |
-| SIGN-03 | Phase 1 | Pending |
-| ANLY-01 | Phase 1 | Pending |
-| ANLY-02 | Phase 2 | Pending |
-| ANLY-03 | Phase 2 | Pending |
+| SIGN-01 | Phase 1 | Completed |
+| SIGN-02 | Phase 1 | Completed |
+| ANLY-01 | Phase 1 | Completed |
+| ANLY-02 | Phase 2 | Completed |
+| ANLY-03 | Phase 2 | Completed |
 | DECI-01 | Phase 3 | Pending |
 | DECI-02 | Phase 6 | Pending |
 | DECI-03 | Phase 6 | Pending |
@@ -82,10 +80,10 @@
 | VIZ-01 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 12 total
-- Mapped to phases: 12
+- v1 requirements: 11 total
+- Mapped to phases: 11
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-24*
-*Last updated: 2026-04-24 after roadmap creation*
+*Last updated: 2026-04-25 after web-wide discovery refocus*

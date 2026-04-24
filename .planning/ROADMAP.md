@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap evolves the existing Hermes-based company substrate into a reliable AI operating core. The sequence starts by making external intelligence intake trustworthy, then turns those signals into role-based analysis, raises the quality of recurring management outputs, wraps that loop in executable governance, makes the operating picture visible at a glance, and finally extends the system toward execution handoff and team readiness.
+This roadmap evolves the existing Hermes-based company substrate into a reliable AI operating core for finding user pain points across the web, validating which opportunities are worth pursuing, and rapidly launching paid mini-SaaS products. The sequence starts by making web-wide pain-signal discovery trustworthy, then turns those signals into role-based analysis, raises the quality of recurring management outputs, wraps that loop in executable governance, makes the operating picture visible at a glance, and finally extends the system toward execution handoff and team readiness.
 
 ## Phases
 
@@ -12,8 +12,8 @@ This roadmap evolves the existing Hermes-based company substrate into a reliable
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: External Intelligence Foundation** - Build repeatable external-signal collection and normalization
-- [ ] **Phase 2: Signal Triage and Role Analysis Loop** - Convert noisy inputs into prioritized multi-role intelligence
+- [x] **Phase 1: Pain-Signal Discovery Foundation** - Build repeatable web-wide pain-point discovery and normalization
+- [x] **Phase 2: Signal Triage and Role Analysis Loop** - Convert pain signals into prioritized multi-role intelligence
 - [ ] **Phase 3: Decision Package Quality** - Produce professional management-grade outputs from trusted evidence
 - [ ] **Phase 4: Governance and Control Layer** - Turn documented controls into executable approvals and audit flow
 - [ ] **Phase 5: Operating Visibility Surface** - Make state, risk, opportunity, and next actions visible at a glance
@@ -21,20 +21,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ## Phase Details
 
-### Phase 1: External Intelligence Foundation
-**Goal**: Establish reliable external-source intake for trend, competitor, and complaint signals, with structured normalization and source history.
+### Phase 1: Pain-Signal Discovery Foundation
+**Goal**: Establish reliable web-wide discovery of user complaint and pain-point signals, with structured normalization and source history, while leaving room for optional trend and competitor enrichment later.
 **Depends on**: Nothing (first phase)
-**Requirements**: SIGN-01, SIGN-02, SIGN-03, ANLY-01
+**Requirements**: SIGN-01, SIGN-02, ANLY-01
 **Success Criteria** (what must be TRUE):
-  1. Operator can run a repeatable collection flow that ingests trend, competitor, and complaint signals from approved public sources
+  1. Operator can run a repeatable collection flow that discovers user complaint and pain-point signals from across the public web instead of relying on one fixed canonical source list
   2. Newly collected signals are normalized into one consistent structure instead of remaining raw free-form notes
   3. Signal history is persisted so later phases can compare new signals against previously seen inputs
-**Plans**: 3 plans
+  4. Optional trend or competitor sources can be added without changing the normalized contract, but they are not required to prove Phase 1 complete
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Define source model, signal schema, and storage locations for external intelligence
-- [ ] 01-02: Implement collection adapters or scripts for initial trend, competitor, and complaint sources
+- [ ] 01-01: Define discovery model, signal schema, and storage locations for web-wide pain-signal intake
+- [ ] 01-02: Implement collection adapters or scripts for flexible public pain-point discovery
 - [ ] 01-03: Persist normalized signal history and integrate the intake flow into the operating rhythm
+- [ ] 01-04: Prove live web-wide pain-signal discovery and normalization
 
 ### Phase 2: Signal Triage and Role Analysis Loop
 **Goal**: Prioritize collected signals and route them through the existing management roles to produce distinct analytical outputs.
@@ -117,8 +119,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. External Intelligence Foundation | 0/3 | Not started | - |
-| 2. Signal Triage and Role Analysis Loop | 0/3 | Not started | - |
+| 1. Pain-Signal Discovery Foundation | 4/4 | Complete | 2026-04-25 |
+| 2. Signal Triage and Role Analysis Loop | 3/3 | Complete | 2026-04-25 |
 | 3. Decision Package Quality | 0/3 | Not started | - |
 | 4. Governance and Control Layer | 0/3 | Not started | - |
 | 5. Operating Visibility Surface | 0/2 | Not started | - |
