@@ -68,24 +68,24 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIGN-01 | TBD | Pending |
-| SIGN-02 | TBD | Pending |
-| SIGN-03 | TBD | Pending |
-| ANLY-01 | TBD | Pending |
-| ANLY-02 | TBD | Pending |
-| ANLY-03 | TBD | Pending |
-| DECI-01 | TBD | Pending |
-| DECI-02 | TBD | Pending |
-| DECI-03 | TBD | Pending |
-| GOV-01 | TBD | Pending |
-| GOV-02 | TBD | Pending |
-| VIZ-01 | TBD | Pending |
+| SIGN-01 | Phase 1 | Pending |
+| SIGN-02 | Phase 1 | Pending |
+| SIGN-03 | Phase 1 | Pending |
+| ANLY-01 | Phase 1 | Pending |
+| ANLY-02 | Phase 2 | Pending |
+| ANLY-03 | Phase 2 | Pending |
+| DECI-01 | Phase 3 | Pending |
+| DECI-02 | Phase 6 | Pending |
+| DECI-03 | Phase 6 | Pending |
+| GOV-01 | Phase 4 | Pending |
+| GOV-02 | Phase 4 | Pending |
+| VIZ-01 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-24*
-*Last updated: 2026-04-24 after initial definition*
+*Last updated: 2026-04-24 after roadmap creation*
