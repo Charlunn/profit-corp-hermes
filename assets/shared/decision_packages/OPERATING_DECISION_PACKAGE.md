@@ -1,5 +1,5 @@
 # Operating Decision Package - 2026-04-25
-- **Generated At**: 2026-04-25T14:59:06Z
+- **Generated At**: 2026-04-25T15:04:07Z
 - **Run ID**: decision-package-20260425
 - **Shared Shortlist Source**: `assets/shared/external_intelligence/triage/prioritized_signals.json`
 - **CEO Synthesis Source**: `assets/shared/CEO_RANKING.md`
@@ -11,8 +11,8 @@
 - Only 2 validated opportunities were available in the current shortlist, so this run keeps the Top 3 frame while rendering all validated rows.
 | Rank | idea_id | Opportunity | Why now | Evidence signal | Recommended motion |
 |---|---|---|---|---|---|
-| 1 | IDEA-001 | Active Recent Comments Search Login Login 19 Hire based on the conversation abou | Monetization 10/10、Urgency 5.5/10，适合先做轻量验证再决定是否深入。 | 28 条证据，最近证据距今 0.07 小时，来源集中在 web-discovery-default-1。 | Validate IDEA-001 before expanding scope. |
-| 2 | IDEA-002 | Martin Galway's music source files from 's Commodore games ( github.com/martinga | Monetization 5/10、Urgency 7/10，适合先做轻量验证再决定是否深入。 | 10 条证据，最近证据距今 0.06 小时，来源集中在 web-discovery-default-2。 | Validate IDEA-002 before expanding scope. |
+| 1 | IDEA-001 | Active Recent Comments Search Login Login 19 Hire based on the conversation abou | Monetization 10/10、Urgency 5.5/10，适合先做轻量验证再决定是否深入。 | 28 条证据，最近证据距今 0.39 小时，来源集中在 web-discovery-default-1。 | Validate IDEA-001 before expanding scope. |
+| 2 | IDEA-002 | Martin Galway's music source files from 's Commodore games ( github.com/martinga | Monetization 5/10、Urgency 7/10，适合先做轻量验证再决定是否深入。 | 11 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-2。 | Validate IDEA-002 before expanding scope. |
 
 ## Operating Framing
 - **Goal**: 验证 IDEA-001 是否值得作为下一阶段 mini-SaaS 切入点，并确认用户是否愿意为该痛点付费。
@@ -23,7 +23,7 @@
 ## 关键机会
 ### IDEA-001 — Active Recent Comments Search Login Login 19 Hire based on the conversation abou
 - **Judgment ID**: opp-idea-001
-- **Summary**: Active Recent Comments Search Login Login 19 Hire based on the conversation about code, not the code itself practices dbarabashh.com authored by brbash 7 hours ago | caches | 27 comments Archive.org | Ghostarchive 27 33 Sloppy Copies rant vibecoding markround.com authored by mdr  28 条证据，最近证据距今 0.07 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 10/10。
+- **Summary**: Active Recent Comments Search Login Login 19 Hire based on the conversation about code, not the code itself practices dbarabashh.com authored by brbash 7 hours ago | caches | 27 comments Archive.org | Ghostarchive 27 33 Sloppy Copies rant vibecoding markround.com authored by mdr  28 条证据，最近证据距今 0.39 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 10/10。
 - **Backlinks**:
   - `assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001`
   - `assets/shared/PAIN_POINTS.md`
@@ -31,7 +31,7 @@
 
 ### IDEA-002 — Martin Galway's music source files from 's Commodore games ( github.com/martinga
 - **Judgment ID**: opp-idea-002
-- **Summary**: Martin Galway's music source files from 's Commodore games ( github.com/martingalway ) points by ingve hide . 10 条证据，最近证据距今 0.06 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 10/10。
+- **Summary**: Martin Galway's music source files from 's Commodore games ( github.com/martingalway ) points by ingve hide . 11 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 10/10。
 - **Backlinks**:
   - `assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-002`
   - `assets/shared/PAIN_POINTS.md`
@@ -57,7 +57,7 @@
   - `assets/shared/CEO_RANKING.md`
 
 ## 推荐下一步
-- 围绕 IDEA-001 组织 3-5 个目标用户验证访谈 — evidence: Active Recent Comments Search Login Login 19 Hire based on the conversation about code, not the code itself practices dbarabashh.com authored by brbash 7 hours ago | caches | 27 comments Archive.org | Ghostarchive 27 33 Sloppy Copies rant vibecoding markround.com authored by mdr  28 条证据，最近证据距今 0.07 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 10/10。 — trace: `judgment_id=action-idea-001-interviews`
+- 围绕 IDEA-001 组织 3-5 个目标用户验证访谈 — evidence: Active Recent Comments Search Login Login 19 Hire based on the conversation about code, not the code itself practices dbarabashh.com authored by brbash 7 hours ago | caches | 27 comments Archive.org | Ghostarchive 27 33 Sloppy Copies rant vibecoding markround.com authored by mdr  28 条证据，最近证据距今 0.39 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 10/10。 — trace: `judgment_id=action-idea-001-interviews`
 - 定义一个只覆盖核心痛点的 MVP framing，并压缩到单一 workflow 原型 — evidence: MARKET_PLAN.md 标记风险等级为 medium，同时该机会预计 MVP 需 68 小时，说明直接进入完整构建的执行风险偏高。 — trace: `judgment_id=action-idea-001-prototype`
 
 ## 证据回链

@@ -241,9 +241,19 @@ def build_status_and_alerts(governance_content: str, latest_metadata: dict[str, 
     blocked_items = parse_governance_section(governance_content, "## Active Blocks")
     override_items = parse_governance_section(governance_content, "## Recent Overrides")
 
-    completed_at = parse_iso_datetime(latest_metadata["completed_at"])
+    try:
+        completed_at = parse_iso_datetime(latest_metadata["completed_at"])
+    except ValueError as exc:
+        raise OperatingVisibilityError(f"invalid latest summary completed_at: {latest_metadata['completed_at']}") from exc
+
     stale = now - completed_at > EXPECTED_DAILY_CYCLE
-    failed_source_count = int(latest_metadata["failed_source_count"])
+
+    try:
+        failed_source_count = int(latest_metadata["failed_source_count"])
+    except ValueError as exc:
+        raise OperatingVisibilityError(
+            f"invalid latest summary failed_source_count: {latest_metadata['failed_source_count']}"
+        ) from exc
     failed_sources = latest_metadata["failed_sources"]
 
     alerts: list[str] = []
