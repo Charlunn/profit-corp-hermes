@@ -73,16 +73,18 @@ class GenerateOperatingVisibilityTests(unittest.TestCase):
 
     def create_fixture(self, *, healthy: bool, stale: bool, failed_sources: bool) -> tuple[Path, Path, Path, Path, Path, Path, Path, Path, str]:
         temp_dir = Path(tempfile.mkdtemp(prefix="visibility-fixture-"))
+        output_root = ROOT_DIR / "assets" / "shared" / "visibility"
+        output_root.mkdir(parents=True, exist_ok=True)
+        history_root = output_root / "history"
+        history_root.mkdir(parents=True, exist_ok=True)
         operating_path = temp_dir / "OPERATING_DECISION_PACKAGE.md"
         trace_path = temp_dir / "decision_package_trace.json"
         governance_path = temp_dir / "GOVERNANCE_STATUS.md"
         latest_path = temp_dir / "LATEST_SUMMARY.md"
         execution_path = temp_dir / "EXECUTION_PACKAGE.md"
         board_path = temp_dir / "BOARD_BRIEFING.md"
-        latest_output = temp_dir / "OPERATING_VISIBILITY.md"
-        history_dir = temp_dir / "history"
-        history_path = history_dir / "2026-04-25-operating-visibility.md"
-        history_dir.mkdir(parents=True, exist_ok=True)
+        latest_output = output_root / "OPERATING_VISIBILITY.md"
+        history_path = history_root / "2026-04-25-operating-visibility.md"
 
         operating_path.write_text(OPERATING_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
         trace_path.write_text(TRACE_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
@@ -145,6 +147,20 @@ This latest view is derived from the append-only governance JSONL stream.
             "--now", now_value,
         ]
 
+    def write_mode_args_for_fixture(self, fixture: tuple[Path, Path, Path, Path, Path, Path, Path, Path, str]) -> list[str]:
+        operating_path, trace_path, governance_path, latest_path, execution_path, board_path, latest_output, history_path, now_value = fixture
+        return [
+            "--operating-package-path", str(operating_path),
+            "--trace-path", str(trace_path),
+            "--governance-status-path", str(governance_path),
+            "--latest-summary-path", str(latest_path),
+            "--execution-package-path", str(execution_path),
+            "--board-briefing-path", str(board_path),
+            "--output-path", str(latest_output),
+            "--history-path", str(history_path),
+            "--now", now_value,
+        ]
+
     def test_d07_d08_d09_dry_run_contains_exact_provenance_header(self) -> None:
         fixture = self.create_fixture(healthy=True, stale=False, failed_sources=False)
         result = self.run_script(*self.script_args_for_fixture(fixture), "--dry-run")
@@ -203,14 +219,16 @@ This latest view is derived from the append-only governance JSONL stream.
 
     def test_write_mode_creates_latest_and_history_with_identical_content(self) -> None:
         fixture = self.create_fixture(healthy=False, stale=True, failed_sources=True)
-        args = self.script_args_for_fixture(fixture)
+        args = self.write_mode_args_for_fixture(fixture)
         result = self.run_script(*args, "--date", "2026-04-25")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertTrue(VISIBILITY_PATH.exists(), "latest visibility artifact missing")
-        self.assertTrue(VISIBILITY_HISTORY_PATH.exists(), "visibility history snapshot missing")
 
-        latest_text = VISIBILITY_PATH.read_text(encoding="utf-8")
-        history_text = VISIBILITY_HISTORY_PATH.read_text(encoding="utf-8")
+        _, _, _, _, _, _, latest_output, history_output, _ = fixture
+        self.assertTrue(latest_output.exists(), "latest visibility artifact missing")
+        self.assertTrue(history_output.exists(), "visibility history snapshot missing")
+
+        latest_text = latest_output.read_text(encoding="utf-8")
+        history_text = history_output.read_text(encoding="utf-8")
         self.assertTrue(latest_text.strip(), "latest visibility artifact is empty")
         self.assertEqual(latest_text, history_text)
         self.assert_section_order(latest_text)

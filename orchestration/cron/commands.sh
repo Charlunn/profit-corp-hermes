@@ -117,7 +117,10 @@ run_analysis_loop() {
 }
 
 run_decision_packages() {
-  bash "$ROOT_DIR/scripts/run_signal_analysis_loop.sh"
+  python "$ROOT_DIR/scripts/generate_decision_package.py"
+  python "$ROOT_DIR/scripts/derive_execution_package.py"
+  python "$ROOT_DIR/scripts/derive_board_briefing.py"
+  python "$ROOT_DIR/scripts/generate_operating_visibility.py"
 }
 
 run_visibility() {
