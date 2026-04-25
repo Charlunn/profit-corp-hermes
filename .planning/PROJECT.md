@@ -2,13 +2,13 @@
 
 ## What This Is
 
-Profit-Corp Hermes is an AI-operated company management core built on a multi-profile Hermes runtime. It is designed to continuously collect external market intelligence, competitor movement, and user complaint signals from forums and public discussions, then turn that information into management-grade outputs for a founder/operator.
+Profit-Corp Hermes is an AI-operated company management core built on a multi-profile Hermes runtime. It is designed to continuously discover user pain points from public discussions across the web, evaluate whether those signals are viable mini-SaaS opportunities, and turn that information into management-grade outputs for a founder/operator.
 
-The system is not just a prompt collection: it aims to function like a real small company's management layer, with distinct roles, daily operating rhythm, shared state, governance rules, and auditable decision flow. The primary output is a recurring operating decision package, with supporting project execution packages and board-style briefings.
+The system is not just a prompt collection: it aims to function like a real small company's management layer, with distinct roles, daily operating rhythm, shared state, governance rules, and auditable decision flow. The primary output is a recurring operating decision package that helps the operator choose which pain point to pursue, what to build quickly, and how to launch a paid mini-SaaS with supporting pricing, marketing, and execution guidance.
 
 ## Core Value
 
-Turn noisy external signals into a clear, actionable daily operating view: what is happening, what matters, what is risky, and what the company should do next.
+Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build and launch next.
 
 ## Requirements
 
@@ -19,30 +19,30 @@ Turn noisy external signals into a clear, actionable daily operating view: what 
 - ✓ Shared state governance already exists through `docs/STATE_CONTRACT.md` and `assets/shared/manage_finance.py` — existing
 - ✓ Skill sync and profile bootstrap flow already exists via `scripts/bootstrap_hermes.sh`, `scripts/bootstrap_hermes.ps1`, and `skills/` — existing
 - ✓ Brownfield codebase documentation now exists under `.planning/codebase/` — existing
+- ✓ Stable daily operating loop now produces a reliable operating decision package — Validated in Phase 3: Decision Package Quality
+- ✓ Final outputs now provide management-grade conclusions, evidence links, and downstream derived artifacts — Validated in Phase 3: Decision Package Quality
 
 ### Active
 
-- [ ] Build a stable daily operating loop that collects external intelligence and produces a reliable operating decision package
-- [ ] Improve the professionalism and usefulness of final outputs so they read like management consulting + CEO decision materials
 - [ ] Strengthen governance so approvals, budgets, state transitions, audit trails, and review loops are operational rather than merely documented
 - [ ] Make company state visible at a glance for a solo operator now and a future team later
-- [ ] Prioritize external inputs: industry trends, competitor intelligence, and user complaint signals from public forums and communities
+- [ ] Prioritize external inputs from user complaints, pain-point discussions, and public communities across the web, with competitor/trend research used as optional support for pricing and marketing
 
 ### Out of Scope
 
 - Real customer-facing product delivery platform — this repo is the internal AI management core, not the end-user SaaS product
 - Full autonomous execution without human approval — the system should support semi-autonomous operation, but founder/operator oversight remains required
-- Internal-project-only planning as the main driver — internal project state matters, but phase 1 is driven primarily by external signals
+- Internal-project-only planning as the main driver — external pain signals should still drive idea selection and launch decisions
 
 ## Context
 
 This repository is a Hermes-native migration target for an existing profit-corp operating model. The current codebase already contains role definitions, skill libraries, cron orchestration helpers, recovery scripts, state contracts, and a finance ledger with restricted mutation rules.
 
-The user's goal is not to build a single tool, but to evolve this brownfield foundation into a genuine AI operating company structure. The desired organizational model resembles a management team: Scout gathers information, CMO interprets commercial implications, Arch assesses technical feasibility, CEO integrates decisions, and Accountant enforces audit/cost discipline.
+The user's goal is not to build a single tool, but to evolve this brownfield foundation into a genuine AI operating company structure. The desired organizational model resembles a management team: Scout gathers pain signals and market evidence, CMO interprets commercial implications and launch positioning, Arch assesses technical feasibility and speed-to-ship, CEO integrates decisions, and Accountant enforces audit/cost discipline.
 
-The first-stage success condition is not “full autonomy,” but management visibility: the operator should be able to see the current situation, risks, opportunities, and next actions through a daily rhythm. Over time, the system should become strong enough to support a small team and generate high-quality recurring decision outputs.
+The first-stage success condition is not “full autonomy,” but management visibility: the operator should be able to see the current opportunity set, risks, viability, and next actions through a daily rhythm. Over time, the system should become strong enough to support a small team and generate high-quality recurring decision outputs.
 
-The most important information inputs in the near term are external: industry trend shifts, competitor moves, and especially user complaints and pain signals from forums and public discussion spaces.
+The most important information inputs in the near term are user complaints and pain signals from public discussions across the web. There is no single source of truth for this work; people can express the same pain in many places. Competitor and trend research can still matter, but mainly as secondary enrichment for pricing, positioning, and marketing once a promising idea is identified.
 
 ## Constraints
 
@@ -51,7 +51,7 @@ The most important information inputs in the near term are external: industry tr
 - **Governance**: Shared-state writes must respect `docs/STATE_CONTRACT.md` and the `assets/shared/manage_finance.py` write path
 - **Operator workflow**: The system must be useful for a solo operator now, but should not block later team use
 - **Primary cadence**: Daily loop is the core operating rhythm for v1
-- **Input bias**: Phase 1 should emphasize external intelligence over internal telemetry
+- **Input bias**: Phase 1 should emphasize flexible web-wide pain-point discovery rather than a fixed approved source list
 - **Output quality**: Deliverables should balance analysis depth with strong decision recommendations, not just dump collected information
 
 ## Key Decisions
@@ -59,11 +59,11 @@ The most important information inputs in the near term are external: industry tr
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Make the system an AI company management core, not a single-purpose planner | The user wants a structure that can work efficiently like a real company | — Pending |
-| Use operating decision package as the primary output | The user wants a management layer that turns signals into decisions | — Pending |
-| Support project execution packs and board-style briefings as secondary outputs | Management decisions need downstream execution and communication artifacts | — Pending |
-| Prioritize improving output quality and governance together | The user explicitly wants both more professional outputs and stronger company-like controls | — Pending |
+| Use operating decision package as the primary output | The user wants a management layer that turns signals into decisions | Validated in Phase 3 |
+| Support project execution packs and board-style briefings as secondary outputs | Management decisions need downstream execution and communication artifacts | Validated in Phase 3 |
+| Prioritize improving output quality and governance together | The user explicitly wants both more professional outputs and stronger company-like controls | Output quality validated in Phase 3; governance remains pending |
 | Use daily operating rhythm as the main cycle | The user wants the system to function as an ongoing operating mechanism, not just on-demand analysis | — Pending |
-| Focus initial intelligence gathering on external signals | The user said phase 1 should mainly use industry trends, competitor intelligence, and forum/user complaints | — Pending |
+| Focus initial intelligence gathering on web-wide user pain signals, with competitor/trend research as optional support | The user wants flexible whole-web discovery rather than a fixed list of canonical sources | — Pending |
 | Optimize for solo operator visibility first, then team expansion | The system should be immediately useful now while remaining extensible later | — Pending |
 
 ## Evolution
@@ -84,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 after initialization*
+*Last updated: 2026-04-25 after Phase 3 completion*
