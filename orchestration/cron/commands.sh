@@ -120,6 +120,17 @@ run_decision_packages() {
   bash "$ROOT_DIR/scripts/run_signal_analysis_loop.sh"
 }
 
+run_visibility() {
+  python "$ROOT_DIR/scripts/generate_operating_visibility.py"
+}
+
+run_governed_action() {
+  [ "$#" -ge 2 ] || { echo "Usage: bash orchestration/cron/commands.sh run-governed-action <action-id> <command...>"; return 1; }
+  local action_id="$1"
+  shift
+  python "$ROOT_DIR/scripts/enforce_governed_action.py" --action-id "$action_id" --command "$@"
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -141,9 +152,14 @@ case "$ACTION" in
   run-intelligence) run_intelligence ;;
   run-analysis-loop) run_analysis_loop ;;
   run-decision-packages) run_decision_packages ;;
+  run-visibility) run_visibility ;;
+  run-governed-action)
+    shift
+    run_governed_action "$@"
+    ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|pause-all]"
     exit 1
     ;;
 esac

@@ -64,7 +64,10 @@ main() {
   check_file_nonempty "$ROOT_DIR/assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/execution_packages/EXECUTION_PACKAGE.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/board_briefings/BOARD_BRIEFING.md"
+  check_file_nonempty "$ROOT_DIR/assets/shared/visibility/OPERATING_VISIBILITY.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/trace/decision_package_trace.json"
+  check_file_nonempty "$ROOT_DIR/assets/shared/governance/governance_events.jsonl"
+  check_file_nonempty "$ROOT_DIR/assets/shared/governance/GOVERNANCE_STATUS.md"
   check_file_nonempty "$ROOT_DIR/scripts/collect_external_signals.py"
   check_file_nonempty "$ROOT_DIR/scripts/triage_external_signals.py"
   check_file_nonempty "$ROOT_DIR/scripts/generate_role_handoffs.py"
@@ -91,16 +94,25 @@ main() {
     run_check "decision package generator syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/generate_decision_package.py"
     run_check "execution package generator syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/derive_execution_package.py"
     run_check "board briefing generator syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/derive_board_briefing.py"
+    run_check "operating visibility generator syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/generate_operating_visibility.py"
+    run_check "governance common syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/governance_common.py"
+    run_check "governance approval syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/request_governance_approval.py"
+    run_check "governed action syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/enforce_governed_action.py"
+    run_check "governance status renderer syntax" "$PYTHON_BIN" -m py_compile "$ROOT_DIR/scripts/render_governance_status.py"
   fi
   run_check "external intelligence dry run" bash "$ROOT_DIR/scripts/run_external_intelligence.sh" --dry-run
   run_check "signal analysis loop run" bash "$ROOT_DIR/scripts/run_signal_analysis_loop.sh" --window-hours 48 --limit 3 --date 2026-04-25
   check_file_nonempty "$ROOT_DIR/assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/execution_packages/EXECUTION_PACKAGE.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/board_briefings/BOARD_BRIEFING.md"
+  check_file_nonempty "$ROOT_DIR/assets/shared/visibility/OPERATING_VISIBILITY.md"
   check_file_nonempty "$ROOT_DIR/assets/shared/trace/decision_package_trace.json"
+  check_file_nonempty "$ROOT_DIR/assets/shared/governance/governance_events.jsonl"
+  check_file_nonempty "$ROOT_DIR/assets/shared/governance/GOVERNANCE_STATUS.md"
   run_check "cron helper run-intelligence action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-intelligence
   run_check "cron helper run-analysis-loop action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-analysis-loop
   run_check "cron helper run-decision-packages action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-decision-packages
+  run_check "cron helper run-visibility action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-visibility
   run_check "cron helper list action" bash "$ROOT_DIR/orchestration/cron/commands.sh" list
   run_check "ceo cron list command" hermes -p ceo cron list
   run_check "profile list command" hermes profile list
