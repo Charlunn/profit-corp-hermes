@@ -94,8 +94,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Design the visibility read model and summary artifact structure
-- [ ] 05-02: Generate and update the operator-facing visibility surface from trusted workflow outputs
+- [x] 05-01: Design the visibility read model and summary artifact structure
+- [x] 05-02: Generate and update the operator-facing visibility surface from trusted workflow outputs
 
 ### Phase 6: Execution Handoff and Team Readiness
 **Goal**: Extend the operating core into downstream execution support and future multi-user/team workflows.
