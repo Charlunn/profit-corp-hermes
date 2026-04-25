@@ -64,8 +64,9 @@ Each task was committed atomically:
 
 1. **Task 1: 烟雾验证与 cron 入口接线** - `1516a23` (feat)
 2. **Task 2: 日常流程与运营文档接线** - `1516a23` (feat)
+3. **Review fix: 决策产物命令接线与测试隔离** - `61dbe39` (fix)
 
-**Plan metadata:** `1516a23` (feat: 接入经营可见性流程)
+**Plan metadata:** `61dbe39` (fix: 修正可见性流程与测试隔离)
 
 ## Files Created/Modified
 - `scripts/smoke_test_pipeline.sh` - 增加 visibility artifact 与 generator 的 smoke coverage

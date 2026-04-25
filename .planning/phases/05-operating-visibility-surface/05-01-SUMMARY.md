@@ -64,8 +64,9 @@ completed: 2026-04-25
 Each task was committed atomically:
 
 1. **Task 1+2: 可见性契约测试与生成器实现** - `a18862d` (feat)
+2. **Review fix: 元数据异常受控报错** - `96df030` (fix)
 
-**Plan metadata:** `a18862d` (feat: 生成经营可见性视图)
+**Plan metadata:** `96df030` (fix: 加固可见性元数据校验)
 
 ## Files Created/Modified
 - `scripts/generate_operating_visibility.py` - 生成只读经营可见性 markdown 视图
