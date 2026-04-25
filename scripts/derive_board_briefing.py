@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,14 +11,14 @@ SHARED_DIR = ROOT_DIR / "assets" / "shared"
 DECISION_PACKAGES_DIR = SHARED_DIR / "decision_packages"
 BOARD_BRIEFINGS_DIR = SHARED_DIR / "board_briefings"
 BOARD_HISTORY_DIR = BOARD_BRIEFINGS_DIR / "history"
+TRACE_DIR = SHARED_DIR / "trace"
 OPERATING_DECISION_PACKAGE_PATH = DECISION_PACKAGES_DIR / "OPERATING_DECISION_PACKAGE.md"
+DECISION_TRACE_PATH = TRACE_DIR / "decision_package_trace.json"
 BOARD_BRIEFING_PATH = BOARD_BRIEFINGS_DIR / "BOARD_BRIEFING.md"
 BOARD_BRIEFING_HISTORY_TEMPLATE = "{date}-board-briefing.md"
-TRACE_DIR = SHARED_DIR / "trace"
 ALLOWED_WRITE_DIRS = (
     BOARD_BRIEFINGS_DIR,
     BOARD_HISTORY_DIR,
-    TRACE_DIR,
 )
 
 
@@ -28,7 +29,7 @@ class BoardBriefingError(Exception):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Derive the board briefing from the operating decision package.")
     parser.add_argument("--date", default="", help="Override the report date (YYYY-MM-DD).")
-    parser.add_argument("--dry-run", action="store_true", help="Render output contract details without writing files.")
+    parser.add_argument("--dry-run", action="store_true", help="Render output without writing files.")
     return parser.parse_args()
 
 
@@ -39,54 +40,144 @@ def today_iso() -> str:
 def ensure_dirs() -> None:
     BOARD_BRIEFINGS_DIR.mkdir(parents=True, exist_ok=True)
     BOARD_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    TRACE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_allowed_write_path(path: Path) -> None:
+    resolved = path.resolve()
+    for directory in ALLOWED_WRITE_DIRS:
+        try:
+            resolved.relative_to(directory.resolve())
+            return
+        except ValueError:
+            continue
+    raise BoardBriefingError(f"refusing to write outside allowed directories: {path}")
 
 
 def write_output(path: Path, content: str) -> None:
-    resolved = path.resolve()
-    if not any(parent.resolve() == resolved.parent for parent in ALLOWED_WRITE_DIRS):
-        raise BoardBriefingError(f"refusing to write outside allowed directories: {path}")
+    ensure_allowed_write_path(path)
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
 
 
-def load_operating_package(path: Path) -> str:
+def load_text(path: Path, label: str) -> str:
     if not path.exists():
-        raise BoardBriefingError(f"operating decision package not found: {path}")
+        raise BoardBriefingError(f"{label} not found: {path}")
     content = path.read_text(encoding="utf-8").strip()
     if not content:
-        raise BoardBriefingError(f"operating decision package is empty: {path}")
+        raise BoardBriefingError(f"{label} is empty: {path}")
     return content
+
+
+def relative(path: Path) -> str:
+    return path.relative_to(ROOT_DIR).as_posix()
+
+
+def require_section(content: str, heading: str) -> None:
+    if heading not in content:
+        raise BoardBriefingError(f"operating package missing required section: {heading}")
+
+
+def assert_derived_only_inputs() -> None:
+    if OPERATING_DECISION_PACKAGE_PATH.name != "OPERATING_DECISION_PACKAGE.md":
+        raise BoardBriefingError("unexpected operating decision package path")
+    if DECISION_TRACE_PATH.name != "decision_package_trace.json":
+        raise BoardBriefingError("unexpected decision trace path")
+
+
+def extract_line_after_heading(content: str, heading: str) -> str:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() == heading:
+            for candidate in lines[index + 1 :]:
+                stripped = candidate.strip()
+                if stripped:
+                    return stripped
+            break
+    raise BoardBriefingError(f"content missing value after heading: {heading}")
+
+
+def extract_top_rows(content: str) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    for line in content.splitlines():
+        if line.startswith("| ") and not line.startswith("| Rank ") and not line.startswith("|---"):
+            parts = [part.strip() for part in line.strip("|").split("|")]
+            if len(parts) >= 6:
+                rows.append((parts[0], parts[1], parts[3]))
+    if not rows:
+        raise BoardBriefingError("Top 3 rows not found in operating package")
+    return rows
+
+
+def extract_bullets(content: str, heading: str) -> list[str]:
+    section_start = content.find(heading)
+    if section_start == -1:
+        raise BoardBriefingError(f"heading not found: {heading}")
+    section = content[section_start:].split("\n## ", 1)[0]
+    bullets = [line.strip()[2:] for line in section.splitlines() if line.strip().startswith("- ")]
+    if not bullets:
+        raise BoardBriefingError(f"no bullets found under heading: {heading}")
+    return bullets
+
+
+def extract_labeled_bullet_value(content: str, label: str) -> str:
+    pattern = re.compile(rf"^- \*\*{re.escape(label)}\*\*: (.+)$", re.MULTILINE)
+    match = pattern.search(content)
+    if not match:
+        raise BoardBriefingError(f"missing required labeled bullet in operating package: {label}")
+    return match.group(1).strip()
+
+
+def extract_first_risk_summary(content: str) -> str:
+    section_start = content.find("## 主要风险")
+    if section_start == -1:
+        raise BoardBriefingError("heading not found: ## 主要风险")
+    section = content[section_start:].split("\n## ", 1)[0]
+    return extract_labeled_bullet_value(section, "Summary")
 
 
 def history_output_path(date_value: str) -> Path:
     return BOARD_HISTORY_DIR / BOARD_BRIEFING_HISTORY_TEMPLATE.format(date=date_value)
 
 
-def render_board_briefing(date_value: str) -> str:
+def render_board_briefing(date_value: str, operating_package: str, trace_content: str) -> str:
+    require_section(operating_package, "## Overall Conclusion / 一句话总判断")
+    require_section(operating_package, "## Top 3 Ranked Opportunities")
+    require_section(operating_package, "## 主要风险")
+    require_section(operating_package, "## 推荐下一步")
+    if '"judgment_links"' not in trace_content:
+        raise BoardBriefingError("decision trace missing judgment_links")
+
+    conclusion = extract_line_after_heading(operating_package, "## Overall Conclusion / 一句话总判断")
+    top_rows = extract_top_rows(operating_package)
+    major_risk = extract_first_risk_summary(operating_package)
+    action_bullets = extract_bullets(operating_package, "## 推荐下一步")
+
+    top_lines = [f"{rank}. {idea_id} — {why_now}" for rank, idea_id, why_now in top_rows]
+    key_signal_lines = [f"- {idea_id}: {why_now}" for _, idea_id, why_now in top_rows[:2]]
+
     return (
         f"# Board Briefing - {date_value}\n"
-        f"- **Derived From**: `{OPERATING_DECISION_PACKAGE_PATH.relative_to(ROOT_DIR).as_posix()}`\n"
-        "- **Conclusion**: {{one_line_conclusion}}\n\n"
-        "## Top 3\n"
-        "1. {{idea_id_1}} — {{short_reason_1}}\n"
-        "2. {{idea_id_2}} — {{short_reason_2}}\n"
-        "3. {{idea_id_3}} — {{short_reason_3}}\n\n"
-        "## Key Numbers / Signals\n"
-        "- {{number_or_signal_1}}\n"
-        "- {{number_or_signal_2}}\n\n"
-        "## Major Risk\n"
-        "- {{major_risk}}\n\n"
-        "## Required Attention\n"
-        "- {{required_attention_item}}\n"
+        f"- **Derived From**: `{relative(OPERATING_DECISION_PACKAGE_PATH)}`\n"
+        f"- **Source Trace**: `{relative(DECISION_TRACE_PATH)}`\n"
+        f"- **Conclusion**: {conclusion}\n\n"
+        f"## Top 3\n"
+        + "\n".join(top_lines)
+        + "\n\n## Key Numbers / Signals\n"
+        + "\n".join(key_signal_lines)
+        + "\n\n## Major Risk\n"
+        + f"- {major_risk}\n\n"
+        + "## Required Attention\n"
+        + f"- {action_bullets[0]}\n"
     )
 
 
 def main() -> int:
     args = parse_args()
     try:
+        assert_derived_only_inputs()
         date_value = args.date or today_iso()
-        load_operating_package(OPERATING_DECISION_PACKAGE_PATH)
-        latest_output = render_board_briefing(date_value)
+        operating_package = load_text(OPERATING_DECISION_PACKAGE_PATH, "operating decision package")
+        trace_content = load_text(DECISION_TRACE_PATH, "decision trace")
+        latest_output = render_board_briefing(date_value, operating_package, trace_content)
         history_path = history_output_path(date_value)
         if args.dry_run:
             print("=== BOARD_BRIEFING.md ===")
@@ -97,8 +188,8 @@ def main() -> int:
         ensure_dirs()
         write_output(BOARD_BRIEFING_PATH, latest_output)
         write_output(history_path, latest_output)
-        print(f"Wrote {BOARD_BRIEFING_PATH.relative_to(ROOT_DIR)}")
-        print(f"Wrote {history_path.relative_to(ROOT_DIR)}")
+        print(f"Wrote {relative(BOARD_BRIEFING_PATH)}")
+        print(f"Wrote {relative(history_path)}")
         return 0
     except BoardBriefingError as exc:
         print(f"board briefing error: {exc}", file=sys.stderr)
