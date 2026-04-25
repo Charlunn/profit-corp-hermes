@@ -24,12 +24,19 @@
 5. CEO 决策阶段
    - 读取 `assets/shared/LEDGER.json`、`assets/shared/MARKET_PLAN.md`、`assets/shared/TECH_SPEC.md`、`assets/shared/CEO_RANKING.md`
    - 基于 CEO ranking 做 GO/NO-GO，并写入 `assets/shared/CORP_CULTURE.md`
-6. Accountant 审计阶段
+6. Decision Package 产物层
+   - 读取 `assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md`
+   - 读取 `assets/shared/execution_packages/EXECUTION_PACKAGE.md`
+   - 读取 `assets/shared/board_briefings/BOARD_BRIEFING.md`
+   - 确认三类产物都来自同一天主包派生，且保留到 prioritized shortlist、role outputs、CEO synthesis 的证据回链
+7. Accountant 审计阶段
    - 运行 `python3 assets/shared/manage_finance.py audit`
    - 输出 treasury、关键风险、下一步建议
 
 约束：
 - 默认中文输出。
 - 任何风险结论必须带证据（文件或数字）。
+- 主决策包、执行包、董事会简报必须来自同一天主包派生，不得各自回读 raw signals。
+- 关键风险、机会、下一步必须保留 evidence backlink，能沿着主包回链到上游证据链。
 - 如果所有指标健康，摘要第一行写“Daily pipeline completed: HEALTHY”。
 - 如果存在重大风险，摘要第一行写“Daily pipeline completed: ACTION REQUIRED”。
