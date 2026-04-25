@@ -1,12 +1,13 @@
 # Latest External Intelligence Summary
 
 ## Run Metadata
-- **run_id**: {{run_id}}
-- **started_at**: {{started_at}}
-- **completed_at**: {{completed_at}}
-- **new_signal_count**: {{new_signal_count}}
-- **duplicate_signal_count**: {{duplicate_signal_count}}
-- **failed_source_count**: {{failed_source_count}}
+- **run_id**: run-20260425T151341Z
+- **started_at**: 2026-04-25T15:13:41Z
+- **completed_at**: 2026-04-25T15:13:46Z
+- **new_signal_count**: 3
+- **duplicate_signal_count**: 6
+- **failed_source_count**: 0
+- **failed_sources**: none
 
 ## Normalized Signal Schema
 - `signal_id`
@@ -26,10 +27,18 @@
 - `normalization_version`
 
 ## Trend Signals
-- No run yet.
+- No new signals this run.
 
 ## Competitor Signals
-- No run yet.
+- No new signals this run.
 
 ## Complaint Signals
-- No run yet.
+- **What are you doing this weekend?** (2026-04-25T15:13:41Z) — https://lobste.rs/
+  - source_id: `web-discovery-default-1`
+  - summary: What are you doing this weekend?
+- **Aks What are the best developer tools built around Markdown?** (2026-04-25T15:13:41Z) — https://lobste.rs/
+  - source_id: `web-discovery-default-1`
+  - summary: Aks What are the best developer tools built around Markdown?
+- **☶ ask programming caius Why I’m Done Making Desktop Applications ( ) programming** (2026-04-25T15:13:41Z) — https://lobste.rs/
+  - source_id: `web-discovery-default-1`
+  - summary: ☶ ask programming caius Why I’m Done Making Desktop Applications ( ) programming kalzumeus

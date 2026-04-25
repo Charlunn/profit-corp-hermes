@@ -1,52 +1,27 @@
 {
-  "generated_at": "2026-04-24T18:29:42.587949Z",
+  "generated_at": "2026-04-25T15:13:47.674621Z",
   "window_hours": 48,
   "source_history": "assets/shared/external_intelligence/history/signals.jsonl",
   "cluster_count": 2,
   "clusters": [
     {
       "cluster_id": "cluster-001",
-      "lead_signal_id": "c45c466986863649",
-      "representative_title": "I Cancelled Claude: Token Issues, Declining Quality, and Poor Support ( nickyrei",
-      "problem_summary": "I Cancelled Claude: Token Issues, Declining Quality, and Poor Support ( nickyreinert",
-      "member_signal_ids": [
-        "c45c466986863649",
-        "f870a62cddf09fff"
-      ],
-      "member_count": 2,
-      "evidence_count": 2,
-      "evidence_links": [
-        "https://news.ycombinator.com/",
-        "https://news.ycombinator.com/"
-      ],
-      "source_ids": [
-        "web-discovery-default-2"
-      ],
-      "latest_signal_at": "2026-04-24T18:29:39Z",
-      "oldest_signal_at": "2026-04-24T18:29:39Z",
-      "keywords": [
-        "cambra",
-        "cancelled",
-        "claude",
-        "composition",
-        "declining",
-        "issues",
-        "nickyrei",
-        "nickyreinert",
-        "poor",
-        "quality",
-        "shouldn",
-        "support"
-      ],
-      "confidence": 4.5,
-      "generated_at": "2026-04-24T18:29:42.587949Z"
-    },
-    {
-      "cluster_id": "cluster-002",
       "lead_signal_id": "622e57c9cea9b41e",
       "representative_title": "Active Recent Comments Search Login Login 19 Hire based on the conversation abou",
       "problem_summary": "Active Recent Comments Search Login Login 19 Hire based on the conversation about code, not the code itself practices dbarabashh.com authored by brbash 7 hours ago | caches | 27 comments Archive.org | Ghostarchive 27 33 Sloppy Copies rant vibecoding markround.com authored by mdr ",
       "member_signal_ids": [
+        "7b942cc5ce19acb1",
+        "97114219821a46c0",
+        "24d6d150768234ee",
+        "064ed52064cd2d7c",
+        "b05fd61513bcf053",
+        "a8f30e7c2adb7371",
+        "2b4276a1f90ac673",
+        "771551cc6f1a7aa2",
+        "64b81bb73e3495dd",
+        "01468aa55642f97b",
+        "f0c637408e32fc6d",
+        "519f4f5438db237d",
         "8abd6a3e7ff9a8ec",
         "c46ce449945ccf6e",
         "7295a3af8a1865a5",
@@ -67,9 +42,21 @@
         "bf1cbeace3da3bc2",
         "877dc2d24de672d4"
       ],
-      "member_count": 19,
-      "evidence_count": 19,
+      "member_count": 31,
+      "evidence_count": 31,
       "evidence_links": [
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
+        "https://lobste.rs/",
         "https://lobste.rs/",
         "https://lobste.rs/",
         "https://lobste.rs/",
@@ -93,24 +80,79 @@
       "source_ids": [
         "web-discovery-default-1"
       ],
-      "latest_signal_at": "2026-04-24T18:29:38Z",
+      "latest_signal_at": "2026-04-25T15:13:41Z",
       "oldest_signal_at": "2026-04-24T17:40:02Z",
       "keywords": [
         "abou",
         "about",
         "active",
+        "anymore",
         "anyway",
+        "applications",
         "archive",
         "around",
         "authored",
         "based",
-        "best",
-        "bitwarden",
-        "blog",
-        "borrow"
+        "belong",
+        "best"
       ],
-      "confidence": 5.21,
-      "generated_at": "2026-04-24T18:29:42.587949Z"
+      "confidence": 5.52,
+      "generated_at": "2026-04-25T15:13:47.674621Z"
+    },
+    {
+      "cluster_id": "cluster-002",
+      "lead_signal_id": "2c68c86d92ce0f2b",
+      "representative_title": "Martin Galway's music source files from 's Commodore games ( github.com/martinga",
+      "problem_summary": "Martin Galway's music source files from 's Commodore games ( github.com/martingalway ) points by ingve hide .",
+      "member_signal_ids": [
+        "fd85428430c6fa0e",
+        "7e6bf9bceed05184",
+        "2c68c86d92ce0f2b",
+        "43e829982b121090",
+        "851854a12f2cf598",
+        "60ffb28d828f0895",
+        "03bdf21eb1de011c",
+        "74a44d699f3eb4a6",
+        "9d04ad6f79bfe596",
+        "c45c466986863649",
+        "f870a62cddf09fff"
+      ],
+      "member_count": 11,
+      "evidence_count": 11,
+      "evidence_links": [
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/",
+        "https://news.ycombinator.com/"
+      ],
+      "source_ids": [
+        "web-discovery-default-2"
+      ],
+      "latest_signal_at": "2026-04-25T15:04:02Z",
+      "oldest_signal_at": "2026-04-24T18:29:39Z",
+      "keywords": [
+        "adapters",
+        "anthropic",
+        "ariarule",
+        "arkadiu",
+        "arkadiuss",
+        "benchmark",
+        "bloomberg",
+        "body",
+        "calcifer",
+        "calculus",
+        "cambra",
+        "cancelled"
+      ],
+      "confidence": 3.27,
+      "generated_at": "2026-04-25T15:13:47.674621Z"
     }
   ]
 }

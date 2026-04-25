@@ -158,7 +158,7 @@ def validate_source(source):
         raise ValueError(f"Source {source.get('id', '<unknown>')} missing keys: {', '.join(missing)}")
     if source["category"] not in {"trend", "competitor", "complaint"}:
         raise ValueError(f"Source {source['id']} has invalid category: {source['category']}")
-    if source["kind"] not in {"rss", "page"}:
+    if source["kind"] not in {"rss", "page", "search"}:
         raise ValueError(f"Source {source['id']} has unsupported kind: {source['kind']}")
     if not isinstance(source["dedupe_key_fields"], list) or not source["dedupe_key_fields"]:
         raise ValueError(f"Source {source['id']} must define dedupe_key_fields as a non-empty list")
@@ -231,24 +231,67 @@ def parse_rss_items(body, fallback_url):
     return items
 
 
-def parse_page_item(body_text, final_url, display_name):
+def parse_search_results(body_text, final_url, display_name):
     parser = VisibleTextParser()
     parser.feed(body_text)
+    evidence_text = parser.evidence_text(limit=4000)
     title = parser.title or display_name or final_url
-    canonical = parser.canonical_url or final_url
-    evidence_text = parser.evidence_text()
-    summary = parser.meta_description or evidence_text[:280] or title
-    return {
-        "title": title.strip(),
-        "url": canonical.strip(),
-        "published_at": "",
-        "summary": summary.strip(),
-        "evidence_text": evidence_text.strip() or summary.strip(),
-        "entities": [],
-        "tags": ["page"],
-        "language": "unknown",
-        "confidence": "low",
-    }
+    normalized = re.sub(r"\s+", " ", evidence_text).strip()
+
+    def clean_candidate(text):
+        cleaned = re.sub(r"\b(?:authored by|via|hours ago|hour ago|minutes ago|minute ago|days ago|day ago|comments?|caches|archive\.org|ghostarchive|login|search|active|recent)\b", " ", text, flags=re.I)
+        cleaned = re.sub(r"\|+", " ", cleaned)
+        cleaned = re.sub(r"\b\d+\b", " ", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" -|")
+        return cleaned[:180].strip()
+
+    candidates = []
+    seen = set()
+
+    question_matches = re.findall(r"([A-Z0-9☶][^?]{8,160}\?)", normalized)
+    keyword_matches = re.findall(
+        r"([A-Z0-9☶][^.?!]{8,180}\b(?:problem|problems|issue|issues|hard|difficult|slow|broken|hate|pain|struggle|wish|need|friction|why)\b[^.?!]{0,80})",
+        normalized,
+        flags=re.I,
+    )
+
+    for raw in question_matches + keyword_matches:
+        candidate = clean_candidate(raw)
+        key = candidate.lower()
+        if len(candidate) < 20 or key in seen:
+            continue
+        seen.add(key)
+        candidates.append(candidate)
+
+    if not candidates:
+        chunks = [chunk.strip() for chunk in re.split(r"(?<=[.!?。！？])\s+", normalized) if chunk.strip()]
+        for chunk in chunks:
+            candidate = clean_candidate(chunk)
+            key = candidate.lower()
+            if len(candidate) < 20 or key in seen:
+                continue
+            seen.add(key)
+            candidates.append(candidate)
+            if len(candidates) >= 5:
+                break
+
+    if not candidates:
+        candidates = [title]
+
+    items = []
+    for index, candidate in enumerate(candidates[:5], start=1):
+        items.append({
+            "title": candidate[:80],
+            "url": final_url,
+            "published_at": "",
+            "summary": candidate[:280],
+            "evidence_text": candidate,
+            "entities": [],
+            "tags": ["search", "pain-signal"],
+            "language": "unknown",
+            "confidence": "medium" if "?" in candidate or re.search(r"\b(problem|issue|hard|difficult|pain|struggle|wish|need|why)\b", candidate, re.I) else "low",
+        })
+    return items
 
 
 def ensure_dirs():
@@ -279,6 +322,64 @@ def write_jsonl(path, rows):
     with path.open("a", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def write_latest_summary(run_meta, rows):
+    sections = {
+        "trend": [],
+        "competitor": [],
+        "complaint": [],
+    }
+    for row in rows:
+        sections.setdefault(row["source_category"], []).append(row)
+
+    def render_section(title, category):
+        items = sections.get(category, [])
+        if not items:
+            return f"## {title}\n- No new signals this run."
+        lines = [f"## {title}"]
+        for item in items[:10]:
+            published = item.get("published_at") or item.get("collected_at") or "unknown"
+            lines.append(
+                f"- **{item['title']}** ({published}) — {item['url']}\n"
+                f"  - source_id: `{item['source_id']}`\n"
+                f"  - summary: {item['summary'] or item['evidence_text'][:200] or 'No summary'}"
+            )
+        return "\n".join(lines)
+
+    failed_sources = run_meta.get("failed_sources", [])
+    failed_source_text = ", ".join(failed_sources) if failed_sources else "none"
+    content = "\n\n".join([
+        "# Latest External Intelligence Summary",
+        "## Run Metadata\n"
+        f"- **run_id**: {run_meta['run_id']}\n"
+        f"- **started_at**: {run_meta['started_at']}\n"
+        f"- **completed_at**: {run_meta['completed_at']}\n"
+        f"- **new_signal_count**: {run_meta['new_signal_count']}\n"
+        f"- **duplicate_signal_count**: {run_meta['duplicate_signal_count']}\n"
+        f"- **failed_source_count**: {run_meta['failed_source_count']}\n"
+        f"- **failed_sources**: {failed_source_text}",
+        "## Normalized Signal Schema\n"
+        "- `signal_id`\n"
+        "- `source_id`\n"
+        "- `source_category`\n"
+        "- `collected_at`\n"
+        "- `published_at`\n"
+        "- `title`\n"
+        "- `summary`\n"
+        "- `url`\n"
+        "- `evidence_text`\n"
+        "- `entities`\n"
+        "- `tags`\n"
+        "- `language`\n"
+        "- `confidence`\n"
+        "- `raw_artifact_path`\n"
+        "- `normalization_version`",
+        render_section("Trend Signals", "trend"),
+        render_section("Competitor Signals", "competitor"),
+        render_section("Complaint Signals", "complaint"),
+    ])
+    LATEST_SUMMARY_PATH.write_text(content + "\n", encoding="utf-8")
 
 
 def persist_raw(source_id, payload, timestamp):
@@ -336,6 +437,8 @@ def collect_source(source, args, existing_ids, new_rows, run_meta):
 
     if source["kind"] == "rss":
         items = parse_rss_items(body, final_url)
+    elif source["kind"] == "search":
+        items = parse_search_results(body_text, final_url, source["display_name"])
     else:
         items = [parse_page_item(body_text, final_url, source["display_name"])]
 
@@ -362,7 +465,29 @@ def filter_sources(sources, source_id=None):
         if not source.get("enabled", False):
             continue
         filtered.append(source)
-    return filtered
+    if filtered:
+        return filtered
+
+    fallback_candidates = [
+        os.environ.get("HERMES_DISCOVERY_SEARCH_URL", "").strip(),
+        "https://lobste.rs/",
+        "https://news.ycombinator.com/",
+    ]
+    fallback_sources = []
+    for index, url in enumerate([candidate for candidate in fallback_candidates if candidate], start=1):
+        fallback_sources.append({
+            "id": f"web-discovery-default-{index}",
+            "category": "complaint",
+            "kind": "search",
+            "display_name": f"Web Discovery Default {index}",
+            "base_url": url,
+            "collection_method": "search",
+            "enabled": True,
+            "poll_window_hours": 24,
+            "dedupe_key_fields": ["url", "title", "published_at"],
+            "notes": "Fallback live discovery seed when no explicit sources are enabled.",
+        })
+    return fallback_sources
 
 
 def main():
@@ -397,6 +522,7 @@ def main():
         "new_signal_count": 0,
         "duplicate_signal_count": 0,
         "failed_source_count": 0,
+        "failed_sources": [],
         "empty_source_count": 0,
         "dry_run": args.dry_run,
     }
@@ -407,6 +533,7 @@ def main():
             run_meta["processed_source_count"] += 1
         except Exception as exc:
             run_meta["failed_source_count"] += 1
+            run_meta["failed_sources"].append(source["id"])
             print(f"[collect] {source['id']} failed: {exc}", file=sys.stderr)
 
     run_meta["completed_at"] = now_iso()
@@ -415,6 +542,7 @@ def main():
         if new_rows:
             write_jsonl(SIGNALS_PATH, new_rows)
         write_jsonl(RUNS_PATH, [run_meta])
+        write_latest_summary(run_meta, new_rows)
 
     print(json.dumps({
         "run_id": run_meta["run_id"],

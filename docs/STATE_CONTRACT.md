@@ -71,6 +71,9 @@
 - `/revenue` 当 `amt >= 1000` 必须 `/confirm`
 - `/bounty` 当 `amount >= 500` 必须 `/confirm`
 - `/archive` 永远需要 `/confirm`
+- Phase 4 起，高影响 finance / archive / fallback takeover / state transition 动作必须先生成治理事件，再由 `scripts/enforce_governed_action.py` 放行后才可执行。
+- CEO fallback 接管 `PAIN_POINTS.md` / `MARKET_PLAN.md` / `TECH_SPEC.md` 时，必须使用 `fallback.takeover.*` 类型治理动作，并在事件中记录 `primary_writer`、原因与 decision package backlink。
+- `LEDGER.json` 的治理放行不改变权威写路径：即使审批通过，也只能继续调用 `manage_finance.py`，不得直接写 ledger 文件。
 
 ## 6. Skill Mapping to State Rules
 

@@ -12,6 +12,6 @@
   assets/shared/CEO_RANKING.md
   ```
 - **MVP Features**: deterministic triage, shared shortlist generation, role-specific markdown handoffs, CEO ranking over the same shortlist
-- **Build Time**: 50
+- **Build Time**: 74
 - **Shared Shortlist Source**: `assets/shared/external_intelligence/triage/prioritized_signals.json`
 - **Chosen Idea ID**: IDEA-001
