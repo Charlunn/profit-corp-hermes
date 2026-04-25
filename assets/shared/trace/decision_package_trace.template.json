@@ -1,0 +1,29 @@
+{
+  "generated_at": "{{generated_at}}",
+  "run_id": "{{run_id}}",
+  "operating_package_path": "assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md",
+  "derived_from": {
+    "prioritized_shortlist_path": "assets/shared/external_intelligence/triage/prioritized_signals.json",
+    "role_outputs": [
+      "assets/shared/PAIN_POINTS.md",
+      "assets/shared/MARKET_PLAN.md",
+      "assets/shared/TECH_SPEC.md",
+      "assets/shared/CEO_RANKING.md"
+    ]
+  },
+  "judgment_links": [
+    {
+      "judgment_id": "{{judgment_id}}",
+      "idea_id": "{{idea_id}}",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#{{idea_id}}"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    }
+  ]
+}
