@@ -9,12 +9,12 @@ Requirements for milestone v1.1 SaaS Delivery Factory.
 
 ### Template Platform
 
-- [ ] **TMPL-01**: Operator can register `standalone-saas-template` as a governed Hermes platform asset with its source location, supported stack, and intended use
-- [ ] **TMPL-02**: Development workflows can read a canonical template contract that defines which files and layers are safe to customize for a new SaaS
-- [ ] **TMPL-03**: Development workflows can identify protected platform layers that must not be changed without explicit platform-level justification
-- [ ] **TMPL-04**: Hermes can create a new SaaS project workspace from the registered template without manual copy-paste setup
-- [ ] **TMPL-05**: Hermes can apply project identity values such as `APP_KEY`, `APP_NAME`, and `APP_URL` to a newly instantiated SaaS project
-- [ ] **TMPL-06**: Hermes can verify that a generated SaaS project still conforms to the shared template rules before handoff or deployment
+- [x] **TMPL-01**: Operator can register `standalone-saas-template` as a governed Hermes platform asset with its source location, supported stack, and intended use
+- [x] **TMPL-02**: Development workflows can read a canonical template contract that defines which files and layers are safe to customize for a new SaaS
+- [x] **TMPL-03**: Development workflows can identify protected platform layers that must not be changed without explicit platform-level justification
+- [x] **TMPL-04**: Hermes can create a new SaaS project workspace from the registered template without manual copy-paste setup
+- [x] **TMPL-05**: Hermes can apply project identity values such as `APP_KEY`, `APP_NAME`, and `APP_URL` to a newly instantiated SaaS project
+- [x] **TMPL-06**: Hermes can verify that a generated SaaS project still conforms to the shared template rules before handoff or deployment
 
 ### Shared Backend Contract
 
@@ -88,12 +88,12 @@ Deferred to a future milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TMPL-01 | Phase 7 | Pending |
-| TMPL-02 | Phase 7 | Pending |
-| TMPL-03 | Phase 7 | Pending |
-| TMPL-04 | Phase 7 | Pending |
-| TMPL-05 | Phase 7 | Pending |
-| TMPL-06 | Phase 7 | Pending |
+| TMPL-01 | Phase 7 | Complete |
+| TMPL-02 | Phase 7 | Complete |
+| TMPL-03 | Phase 7 | Complete |
+| TMPL-04 | Phase 7 | Complete |
+| TMPL-05 | Phase 7 | Complete |
+| TMPL-06 | Phase 7 | Complete |
 | BACK-01 | Phase 8 | Pending |
 | BACK-02 | Phase 8 | Pending |
 | BACK-03 | Phase 8 | Pending |

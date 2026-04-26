@@ -20,9 +20,9 @@
 </details>
 
 <details open>
-<summary>◆ v1.1 SaaS Delivery Factory (Phases 7-12) — PLANNED</summary>
+<summary>◆ v1.1 SaaS Delivery Factory (Phases 7-12) — IN PROGRESS</summary>
 
-- [ ] Phase 7: Template Assetization and Platform Contract
+- [x] Phase 7: Template Assetization and Platform Contract — completed 2026-04-26
 - [ ] Phase 8: Shared Supabase Backend Guardrails
 - [ ] Phase 9: Claude Code Delivery Team Orchestration
 - [ ] Phase 10: Approved Project Delivery Pipeline
@@ -110,7 +110,7 @@ Success criteria:
 | 4. Governance and Control Layer | v1.0 | 3/3 | Complete | 2026-04-25 |
 | 5. Operating Visibility Surface | v1.0 | 2/2 | Complete | 2026-04-25 |
 | 6. Execution Handoff and Team Readiness | v1.0 | 3/3 | Complete | 2026-04-26 |
-| 7. Template Assetization and Platform Contract | v1.1 | 0/0 | Planned | — |
+| 7. Template Assetization and Platform Contract | v1.1 | 3/3 | Complete | 2026-04-26 |
 | 8. Shared Supabase Backend Guardrails | v1.1 | 0/0 | Planned | — |
 | 9. Claude Code Delivery Team Orchestration | v1.1 | 0/0 | Planned | — |
 | 10. Approved Project Delivery Pipeline | v1.1 | 0/0 | Planned | — |
