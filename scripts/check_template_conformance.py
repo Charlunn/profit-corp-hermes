@@ -25,24 +25,43 @@ REQUIRED_CONTRACT_SECTIONS = (
 )
 REQUIRED_WORKSPACE_ARTIFACTS = (
     ".hermes/project-metadata.json",
+    ".hermes/shared-backend-guardrails.json",
     ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
 )
 PROTECTED_PATHS = (
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
     "src/app/api/auth/session/route.ts",
     "src/app/api/paypal/checkout/route.ts",
     "src/app/api/paypal/capture/route.ts",
     "supabase/migrations/20260423112500_create_shared_public_tables.sql",
 )
 PROTECTED_MANIFEST_PATHS = (
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
     "src/app/api/auth/session/route.ts",
     "src/app/api/paypal/checkout/route.ts",
     "src/app/api/paypal/capture/route.ts",
     "supabase/migrations/20260423112500_create_shared_public_tables.sql",
-    "src/lib/db-guards.ts",
 )
 VERIFIED_PATHS = (
     ".hermes/project-metadata.json",
+    ".hermes/shared-backend-guardrails.json",
     ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
     "src/app/api/auth/session/route.ts",
     "src/app/api/paypal/checkout/route.ts",
     "src/app/api/paypal/capture/route.ts",
@@ -50,6 +69,9 @@ VERIFIED_PATHS = (
     "supabase/migrations/20260423112500_create_shared_public_tables.sql",
 )
 REQUIRED_IDENTITY_KEYS = ("APP_KEY", "APP_NAME", "APP_URL")
+ALLOWED_SHARED_TABLES = {"users", "orders", "payments", "subscriptions"}
+MUTATION_METHODS = ("insert", "update", "upsert", "delete")
+CLIENT_SCAN_DIRS = ("src/app", "src/components")
 
 
 class TemplateConformanceError(Exception):
@@ -127,8 +149,8 @@ def require_workspace_identity(env_text: str, metadata: dict[str, Any]) -> None:
         if f"{env_key}=" not in env_text:
             violations.append(f"missing identity line: {env_key}=")
             continue
-        value = env_values.get(env_key, "").strip()
-        if not value:
+        value = env_values.get(env_key, "")
+        if not value.strip():
             violations.append(f"{env_key} missing or blank in workspace .env")
             continue
         expected = str(metadata.get(key_map[env_key], "")).strip()
@@ -160,6 +182,26 @@ def require_workspace_artifacts(workspace_root: Path) -> None:
     for relative_path in REQUIRED_WORKSPACE_ARTIFACTS:
         if not (workspace_root / relative_path).exists():
             violations.append(f"missing required workspace artifact: {relative_path}")
+    if violations:
+        raise BlockingViolationError(violations)
+
+
+def require_shared_backend_metadata(guardrails: dict[str, Any], metadata: dict[str, Any]) -> None:
+    violations: list[str] = []
+    allowed_shared_tables = {str(table).strip().lower() for table in guardrails.get("allowed_shared_tables", []) if str(table).strip()}
+    blocked_tables = {str(table).strip().lower() for table in guardrails.get("client_write_blocked_tables", []) if str(table).strip()}
+    if str(guardrails.get("backend_model", "")).strip() != "shared-supabase":
+        violations.append("shared backend model must be shared-supabase in .hermes/shared-backend-guardrails.json")
+    if str(guardrails.get("app_key", "")).strip() != str(metadata.get("app_key", "")).strip():
+        violations.append("shared backend guardrails app_key mismatch with .hermes/project-metadata.json")
+    if str(guardrails.get("canonical_contract_path", "")).strip() != str(metadata.get("canonical_contract_path", "")).strip():
+        violations.append("shared backend guardrails canonical contract mismatch with .hermes/project-metadata.json")
+    if allowed_shared_tables != ALLOWED_SHARED_TABLES:
+        violations.append("shared backend guardrails allowed_shared_tables drifted from the canonical shared table boundary")
+    if blocked_tables != ALLOWED_SHARED_TABLES:
+        violations.append("shared backend guardrails client_write_blocked_tables drifted from the canonical shared table boundary")
+    if guardrails.get("allow_independent_backend") is not False:
+        violations.append("shared backend guardrails must forbid independent backend bootstrap by default")
     if violations:
         raise BlockingViolationError(violations)
 
@@ -235,6 +277,61 @@ def require_shared_invariants(workspace_root: Path) -> None:
         raise BlockingViolationError(violations)
 
 
+def iter_migration_files(workspace_root: Path) -> list[Path]:
+    migrations_dir = workspace_root / "supabase" / "migrations"
+    if not migrations_dir.exists():
+        return []
+    return sorted(path for path in migrations_dir.glob("*.sql") if path.is_file())
+
+
+def require_table_boundaries(workspace_root: Path, app_key: str) -> None:
+    violations: list[str] = []
+    prefix = f"{app_key}_"
+    for migration_path in iter_migration_files(workspace_root):
+        lines = migration_path.read_text(encoding="utf-8").splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            lowered = line.lower()
+            if "create table" not in lowered or "public." not in lowered:
+                continue
+            table_name = lowered.split("public.", 1)[1].split("(", 1)[0].strip().rstrip(";")
+            if table_name in ALLOWED_SHARED_TABLES:
+                continue
+            if table_name.startswith(prefix):
+                continue
+            reason = "must use APP_KEY_ prefix"
+            if not table_name.startswith(prefix) and "_" not in table_name:
+                reason = "breaks shared table boundary and must use APP_KEY_ prefix"
+            violations.append(
+                f"{migration_path.relative_to(workspace_root).as_posix()}:{line_number} create table public.{table_name} {reason}"
+            )
+    if violations:
+        raise BlockingViolationError(violations)
+
+
+def require_no_forbidden_client_writes(workspace_root: Path) -> None:
+    violations: list[str] = []
+    for scan_dir in CLIENT_SCAN_DIRS:
+        root = workspace_root / scan_dir
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*.ts*")):
+            text = path.read_text(encoding="utf-8")
+            if '"use client"' not in text and "'use client'" not in text:
+                continue
+            lowered = text.lower()
+            for table in sorted(ALLOWED_SHARED_TABLES):
+                if f'.from("{table}")' not in lowered and f".from('{table}')" not in lowered:
+                    continue
+                for method in MUTATION_METHODS:
+                    if f".{method}(" in lowered:
+                        violations.append(
+                            f"{path.relative_to(workspace_root).as_posix()} use client file must not mutate shared table {table} via .{method}(...)"
+                        )
+                        break
+    if violations:
+        raise BlockingViolationError(violations)
+
+
 def build_report_lines(
     *,
     status: str,
@@ -298,10 +395,12 @@ def main() -> int:
         contract_text = load_text(contract_path, "template contract")
         require_contract_sections(contract_text)
 
+        require_workspace_artifacts(workspace_path)
         metadata = load_json(workspace_path / ".hermes" / "project-metadata.json", "workspace metadata")
+        guardrails = load_json(workspace_path / ".hermes" / "shared-backend-guardrails.json", "shared backend guardrails")
         env_text = load_text(workspace_path / ".env", "workspace .env")
         require_workspace_identity(env_text, metadata)
-        require_workspace_artifacts(workspace_path)
+        require_shared_backend_metadata(guardrails, metadata)
 
         protected_manifest = build_protected_manifest(asset, metadata)
         require_protected_paths_present(workspace_path, protected_manifest)
@@ -314,6 +413,8 @@ def main() -> int:
             raise TemplateConformanceError(f"template source path not found: {template_root}")
 
         require_shared_invariants(workspace_path)
+        require_table_boundaries(workspace_path, str(metadata.get("app_key", "")).strip())
+        require_no_forbidden_client_writes(workspace_path)
         fingerprint_checks = require_protected_fingerprints(workspace_path, template_root, protected_manifest)
         report = "\n".join(
             build_report_lines(

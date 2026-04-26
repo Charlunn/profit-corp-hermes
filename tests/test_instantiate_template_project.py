@@ -25,6 +25,19 @@ SCRIPT_PATH = ROOT_DIR / "scripts" / "instantiate_template_project.py"
 REGISTRY_PATH = ROOT_DIR / "assets" / "shared" / "templates" / "standalone-saas-template.json"
 CONTRACT_PATH = ROOT_DIR / "docs" / "platform" / "standalone-saas-template-contract.md"
 TEMPLATE_SOURCE = Path("C:/Users/42236/Desktop/standalone-saas-template")
+EXPECTED_SHARED_TABLES = ["users", "orders", "payments", "subscriptions"]
+EXPECTED_PROTECTED_PATHS = [
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
+    "src/app/api/auth/session/route.ts",
+    "src/app/api/paypal/checkout/route.ts",
+    "src/app/api/paypal/capture/route.ts",
+    "supabase/migrations/20260423112500_create_shared_public_tables.sql",
+]
 
 
 class TemplateContractCommonTests(unittest.TestCase):
@@ -158,8 +171,10 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertIn('description: "Lead Capture access"', app_definition)
 
         metadata_path = workspace / ".hermes" / "project-metadata.json"
+        guardrails_path = workspace / ".hermes" / "shared-backend-guardrails.json"
         brief_path = workspace / ".hermes" / "PROJECT_BRIEF_ENTRYPOINT.md"
         self.assertTrue(metadata_path.exists(), "metadata file missing")
+        self.assertTrue(guardrails_path.exists(), "guardrails file missing")
         self.assertTrue(brief_path.exists(), "brief entrypoint missing")
 
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -171,8 +186,18 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertEqual(metadata["template_source_path"], TEMPLATE_SOURCE.as_posix())
         self.assertEqual(metadata["canonical_contract_path"], CONTRACT_PATH.as_posix())
 
+        guardrails = json.loads(guardrails_path.read_text(encoding="utf-8"))
+        self.assertEqual(guardrails["backend_model"], "shared-supabase")
+        self.assertEqual(guardrails["app_key"], metadata["app_key"])
+        self.assertEqual(guardrails["canonical_contract_path"], metadata["canonical_contract_path"])
+        self.assertEqual(guardrails["allowed_shared_tables"], EXPECTED_SHARED_TABLES)
+        self.assertEqual(guardrails["protected_paths"], EXPECTED_PROTECTED_PATHS)
+        self.assertEqual(guardrails["client_write_blocked_tables"], EXPECTED_SHARED_TABLES)
+        self.assertFalse(guardrails["allow_independent_backend"])
+
         brief_text = brief_path.read_text(encoding="utf-8")
         self.assertIn("project-metadata.json", brief_text)
+        self.assertIn("shared-backend-guardrails.json", brief_text)
         self.assertIn("standalone-saas-template-contract.md", brief_text)
         self.assertIn("Lead Capture", brief_text)
 
@@ -196,6 +221,8 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn("DRY RUN", result.stdout)
         self.assertIn("lead-capture", result.stdout)
+        self.assertIn("shared-supabase", result.stdout)
+        self.assertIn("shared-backend-guardrails.json", result.stdout)
         self.assertFalse((workspace_root / "lead-capture").exists(), "dry-run must not create workspace")
 
     def test_workspace_root_safety_rejects_outside_allowed_tree(self) -> None:

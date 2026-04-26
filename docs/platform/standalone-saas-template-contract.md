@@ -34,6 +34,8 @@ Downstream delivery workflows must treat this file as the operational source of 
   - `typescript`: `^5.6.3`
 - **Governance Owner**: `Hermes platform`
 - **Governance Status**: `canonical`
+- **Default backend model**: `single shared Supabase`
+- **Independent backend bootstrap**: forbidden by default for generated SaaS workspaces
 
 ## 3. Protected platform layer
 
@@ -67,10 +69,14 @@ The following files, routes, and data boundaries are protected platform primitiv
   - `orders`
   - `payments`
   - `subscriptions`
+- Any new product business table must use the `APP_KEY_` prefix.
+- No generated SaaS workspace may introduce an additional unprefixed public business table such as `public.leads`.
 
 ### Protected behavior rules
+- Product code must reuse the single shared Supabase backend model instead of creating an independent backend by default.
 - Product code must reuse shared auth, payment, and entitlement primitives before introducing alternatives.
 - Product pages and client code must not directly write shared payment or entitlement state.
+- Product pages and client code must not directly mutate `users`, `orders`, `payments`, or `subscriptions` from browser-owned code.
 - Shared payment state remains server-owned.
 - Shared public table semantics remain platform-governed.
 
@@ -121,12 +127,17 @@ Required identity behavior:
 
 The following files and paths must exist in a conforming generated workspace:
 - `.env`
+- `.hermes/project-metadata.json`
+- `.hermes/shared-backend-guardrails.json`
+- `.hermes/PROJECT_BRIEF_ENTRYPOINT.md`
 - `src/lib/config.ts`
-- `src/lib/app-definition.ts`
 - `src/lib/auth.ts`
+- `src/lib/supabase-browser.ts`
+- `src/lib/supabase-server.ts`
 - `src/lib/paypal.ts`
 - `src/lib/entitlement.ts`
 - `src/lib/db-guards.ts`
+- `src/lib/app-definition.ts`
 - `src/app/api/auth/session/route.ts`
 - `src/app/api/paypal/checkout/route.ts`
 - `src/app/api/paypal/capture/route.ts`
@@ -145,17 +156,22 @@ Required Hermes-side authority artifacts:
 A generated workspace is not ready for handoff or deployment unless the conformance gate verifies all of the following:
 - required identity values were injected
 - required runtime and artifact paths exist
+- the workspace declares `shared-supabase` as its backend model through `.hermes/shared-backend-guardrails.json`
 - protected platform files and routes are still present
 - protected platform layer has not drifted unexpectedly relative to the registered template source
 - shared-path invariants still hold for auth, payment, entitlement, and shared public tables
 - product-specific data remains inside `APP_KEY_` business-table boundaries
+- `supabase/migrations/*.sql` only leave `users`, `orders`, `payments`, and `subscriptions` unprefixed; every other product business table must use the current `APP_KEY_` prefix
+- `src/app/**/*.ts*` and `src/components/**/*.ts*` client files do not directly mutate `users`, `orders`, `payments`, or `subscriptions`
 
 Blocking rule:
-- Any missing protected path, missing identity value, broken authority artifact, or protected-layer drift must fail conformance and block downstream delivery.
+- Any missing protected path, missing identity value, broken authority artifact, broken shared backend declaration, unauthorized shared-table mutation path, broken table-boundary rule, or protected-layer drift must fail conformance and block downstream delivery.
 
 ## 8. Verification checklist
 
 - `python -m unittest tests.test_template_registry tests.test_template_contract`
+- `python -m unittest tests.test_instantiate_template_project`
+- `python -m unittest tests.test_check_template_conformance`
 - `python scripts/instantiate_template_project.py --help`
 - `python scripts/check_template_conformance.py --help`
 - Confirm `assets/shared/templates/standalone-saas-template.json` points to `docs/platform/standalone-saas-template-contract.md`

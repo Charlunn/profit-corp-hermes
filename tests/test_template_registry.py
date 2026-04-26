@@ -14,6 +14,19 @@ EXPECTED_STACK = {
 }
 EXPECTED_UPSTREAM = ["README.md", "ARCHITECTURE.md", "BUILDING_RULES.md"]
 EXPECTED_CONTRACT_PATH = "docs/platform/standalone-saas-template-contract.md"
+EXPECTED_SHARED_TABLES = ["users", "orders", "payments", "subscriptions"]
+EXPECTED_PROTECTED_PATHS = [
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
+    "src/app/api/auth/session/route.ts",
+    "src/app/api/paypal/checkout/route.ts",
+    "src/app/api/paypal/capture/route.ts",
+    "supabase/migrations/20260423112500_create_shared_public_tables.sql",
+]
 
 
 class TemplateRegistryTests(unittest.TestCase):
@@ -43,6 +56,17 @@ class TemplateRegistryTests(unittest.TestCase):
         raw = REGISTRY_PATH.read_text(encoding="utf-8")
         self.assertNotIn("catalog", raw.lower())
         self.assertNotIn("templates[]", raw)
+
+    def test_registry_declares_shared_backend_guardrails(self) -> None:
+        payload = self.load_registry()
+        shared_backend = payload["shared_backend"]
+        self.assertEqual(shared_backend["mode"], "shared-supabase")
+        self.assertFalse(shared_backend["allow_independent_backend"])
+        self.assertEqual(shared_backend["shared_tables"], EXPECTED_SHARED_TABLES)
+        self.assertEqual(shared_backend["business_table_prefix"], "APP_KEY_")
+        self.assertEqual(shared_backend["protected_paths"], EXPECTED_PROTECTED_PATHS)
+        self.assertEqual(shared_backend["client_write_blocked_tables"], EXPECTED_SHARED_TABLES)
+        self.assertIn("shared backend", shared_backend["description"])
 
 
 if __name__ == "__main__":

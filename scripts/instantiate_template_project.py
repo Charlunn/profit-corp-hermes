@@ -31,6 +31,20 @@ PLACEHOLDER_ENV_KEYS = {
     "NEXT_PUBLIC_PAYPAL_CLIENT_ID": "__REQUIRED__",
     "PAYPAL_CLIENT_SECRET": "__REQUIRED__",
 }
+SHARED_BACKEND_MODEL = "shared-supabase"
+SHARED_TABLES = ["users", "orders", "payments", "subscriptions"]
+PROTECTED_PATHS = [
+    "src/lib/auth.ts",
+    "src/lib/supabase-browser.ts",
+    "src/lib/supabase-server.ts",
+    "src/lib/paypal.ts",
+    "src/lib/entitlement.ts",
+    "src/lib/db-guards.ts",
+    "src/app/api/auth/session/route.ts",
+    "src/app/api/paypal/checkout/route.ts",
+    "src/app/api/paypal/capture/route.ts",
+    "supabase/migrations/20260423112500_create_shared_public_tables.sql",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -120,12 +134,28 @@ def build_metadata(asset: dict, workspace_name: str, identity: dict[str, str], t
     }
 
 
+def build_shared_backend_guardrails(metadata: dict[str, str]) -> dict[str, object]:
+    return {
+        "backend_model": SHARED_BACKEND_MODEL,
+        "app_key": metadata["app_key"],
+        "canonical_contract_path": metadata["canonical_contract_path"],
+        "allowed_shared_tables": SHARED_TABLES,
+        "protected_paths": PROTECTED_PATHS,
+        "client_write_blocked_tables": SHARED_TABLES,
+        "allow_independent_backend": False,
+    }
+
+
 def write_hermes_handoff(workspace: Path, metadata: dict[str, str]) -> None:
     hermes_dir = workspace / ".hermes"
     hermes_dir.mkdir(parents=True, exist_ok=True)
 
     metadata_path = hermes_dir / "project-metadata.json"
     metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    guardrails = build_shared_backend_guardrails(metadata)
+    guardrails_path = hermes_dir / "shared-backend-guardrails.json"
+    guardrails_path.write_text(json.dumps(guardrails, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     brief_path = hermes_dir / "PROJECT_BRIEF_ENTRYPOINT.md"
     brief = "\n".join(
@@ -136,6 +166,7 @@ def write_hermes_handoff(workspace: Path, metadata: dict[str, str]) -> None:
             f"- App: `{metadata['app_name']}` (`{metadata['app_key']}`)",
             f"- App URL: `{metadata['app_url']}`",
             f"- Metadata: `.hermes/project-metadata.json`",
+            f"- Shared backend guardrails: `.hermes/shared-backend-guardrails.json`",
             f"- Canonical contract: `{metadata['canonical_contract_path']}`",
             f"- Template source: `{metadata['template_source_path']}`",
         ]
@@ -152,6 +183,8 @@ def render_dry_run(workspace: Path, metadata: dict[str, str]) -> str:
         f"app_key: {metadata['app_key']}",
         f"app_name: {metadata['app_name']}",
         f"app_url: {metadata['app_url']}",
+        f"backend_model: {SHARED_BACKEND_MODEL}",
+        "guardrails_path: .hermes/shared-backend-guardrails.json",
     ]
     return "\n".join(lines)
 
