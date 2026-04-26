@@ -73,8 +73,8 @@
 | ANLY-02 | Phase 2 | Completed |
 | ANLY-03 | Phase 2 | Completed |
 | DECI-01 | Phase 3 | Completed |
-| DECI-02 | Phase 3 | Completed |
-| DECI-03 | Phase 3 | Completed |
+| DECI-02 | Phase 6 | Completed |
+| DECI-03 | Phase 6 | Completed |
 | GOV-01 | Phase 4 | Pending |
 | GOV-02 | Phase 4 | Pending |
 | VIZ-01 | Phase 5 | Pending |
