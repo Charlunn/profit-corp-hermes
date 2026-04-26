@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import re
 import sys
 from datetime import datetime, timezone
@@ -12,8 +13,11 @@ DECISION_PACKAGES_DIR = SHARED_DIR / "decision_packages"
 BOARD_BRIEFINGS_DIR = SHARED_DIR / "board_briefings"
 BOARD_HISTORY_DIR = BOARD_BRIEFINGS_DIR / "history"
 TRACE_DIR = SHARED_DIR / "trace"
+GOVERNANCE_DIR = SHARED_DIR / "governance"
 OPERATING_DECISION_PACKAGE_PATH = DECISION_PACKAGES_DIR / "OPERATING_DECISION_PACKAGE.md"
 DECISION_TRACE_PATH = TRACE_DIR / "decision_package_trace.json"
+GOVERNANCE_STATUS_PATH = GOVERNANCE_DIR / "GOVERNANCE_STATUS.md"
+LEDGER_PATH = SHARED_DIR / "LEDGER.json"
 BOARD_BRIEFING_PATH = BOARD_BRIEFINGS_DIR / "BOARD_BRIEFING.md"
 BOARD_BRIEFING_HISTORY_TEMPLATE = "{date}-board-briefing.md"
 ALLOWED_WRITE_DIRS = (
@@ -67,6 +71,17 @@ def load_text(path: Path, label: str) -> str:
     return content
 
 
+def load_json(path: Path, label: str) -> dict:
+    raw = load_text(path, label)
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise BoardBriefingError(f"invalid JSON in {label}: {path}") from exc
+    if not isinstance(payload, dict):
+        raise BoardBriefingError(f"{label} must be a JSON object: {path}")
+    return payload
+
+
 def relative(path: Path) -> str:
     return path.relative_to(ROOT_DIR).as_posix()
 
@@ -93,18 +108,6 @@ def extract_line_after_heading(content: str, heading: str) -> str:
                     return stripped
             break
     raise BoardBriefingError(f"content missing value after heading: {heading}")
-
-
-def extract_top_rows(content: str) -> list[tuple[str, str, str]]:
-    rows: list[tuple[str, str, str]] = []
-    for line in content.splitlines():
-        if line.startswith("| ") and not line.startswith("| Rank ") and not line.startswith("|---"):
-            parts = [part.strip() for part in line.strip("|").split("|")]
-            if len(parts) >= 6:
-                rows.append((parts[0], parts[1], parts[3]))
-    if not rows:
-        raise BoardBriefingError("Top 3 rows not found in operating package")
-    return rows
 
 
 def extract_bullets(content: str, heading: str) -> list[str]:
@@ -134,11 +137,44 @@ def extract_first_risk_summary(content: str) -> str:
     return extract_labeled_bullet_value(section, "Summary")
 
 
+def parse_governance_section(content: str, heading: str) -> list[str]:
+    if heading not in content:
+        raise BoardBriefingError(f"governance status missing required section: {heading}")
+    section = content.split(heading, 1)[1].split("\n## ", 1)[0]
+    return [line.strip()[2:] for line in section.splitlines() if line.strip().startswith("- ") and line.strip() != "- None"]
+
+
+def select_governance_signal(governance_content: str) -> str:
+    blocked_items = parse_governance_section(governance_content, "## Active Blocks")
+    if blocked_items:
+        return blocked_items[0]
+    pending_items = parse_governance_section(governance_content, "## Pending Approvals")
+    if pending_items:
+        return pending_items[0]
+    overrides = parse_governance_section(governance_content, "## Recent Overrides")
+    if overrides:
+        return overrides[0]
+    return "No current governance blockers or pending approvals."
+
+
+def build_finance_signal(ledger_payload: dict) -> str:
+    treasury = ledger_payload.get("treasury", "unknown")
+    maturity = ledger_payload.get("maturity_level", "unknown")
+    status = ledger_payload.get("status", "unknown")
+    return f"Treasury={treasury}; maturity={maturity}; status={status}."
+
+
 def history_output_path(date_value: str) -> Path:
     return BOARD_HISTORY_DIR / BOARD_BRIEFING_HISTORY_TEMPLATE.format(date=date_value)
 
 
-def render_board_briefing(date_value: str, operating_package: str, trace_content: str) -> str:
+def render_board_briefing(
+    date_value: str,
+    operating_package: str,
+    trace_content: str,
+    governance_content: str,
+    ledger_payload: dict,
+) -> str:
     require_section(operating_package, "## Overall Conclusion / 一句话总判断")
     require_section(operating_package, "## Top 3 Ranked Opportunities")
     require_section(operating_package, "## 主要风险")
@@ -147,26 +183,24 @@ def render_board_briefing(date_value: str, operating_package: str, trace_content
         raise BoardBriefingError("decision trace missing judgment_links")
 
     conclusion = extract_line_after_heading(operating_package, "## Overall Conclusion / 一句话总判断")
-    top_rows = extract_top_rows(operating_package)
-    major_risk = extract_first_risk_summary(operating_package)
+    governance_signal = select_governance_signal(governance_content)
+    risk_signal = extract_first_risk_summary(operating_package)
+    finance_signal = build_finance_signal(ledger_payload)
     action_bullets = extract_bullets(operating_package, "## 推荐下一步")
-
-    top_lines = [f"{rank}. {idea_id} — {why_now}" for rank, idea_id, why_now in top_rows]
-    key_signal_lines = [f"- {idea_id}: {why_now}" for _, idea_id, why_now in top_rows[:2]]
 
     return (
         f"# Board Briefing - {date_value}\n"
         f"- **Derived From**: `{relative(OPERATING_DECISION_PACKAGE_PATH)}`\n"
         f"- **Source Trace**: `{relative(DECISION_TRACE_PATH)}`\n"
         f"- **Conclusion**: {conclusion}\n\n"
-        f"## Top 3\n"
-        + "\n".join(top_lines)
-        + "\n\n## Key Numbers / Signals\n"
-        + "\n".join(key_signal_lines)
-        + "\n\n## Major Risk\n"
-        + f"- {major_risk}\n\n"
-        + "## Required Attention\n"
-        + f"- {action_bullets[0]}\n"
+        f"## Governance Signal\n"
+        f"- {governance_signal}\n\n"
+        f"## Risk Signal\n"
+        f"- {risk_signal}\n\n"
+        f"## Finance Signal\n"
+        f"- {finance_signal}\n\n"
+        f"## Required Attention\n"
+        f"- {action_bullets[0]}\n"
     )
 
 
@@ -177,7 +211,9 @@ def main() -> int:
         date_value = args.date or today_iso()
         operating_package = load_text(OPERATING_DECISION_PACKAGE_PATH, "operating decision package")
         trace_content = load_text(DECISION_TRACE_PATH, "decision trace")
-        latest_output = render_board_briefing(date_value, operating_package, trace_content)
+        governance_content = load_text(GOVERNANCE_STATUS_PATH, "governance status")
+        ledger_payload = load_json(LEDGER_PATH, "ledger")
+        latest_output = render_board_briefing(date_value, operating_package, trace_content, governance_content, ledger_payload)
         history_path = history_output_path(date_value)
         if args.dry_run:
             print("=== BOARD_BRIEFING.md ===")

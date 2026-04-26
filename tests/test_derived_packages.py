@@ -23,9 +23,9 @@ CURRENT_EXECUTION_SECTION_ORDER = [
     "## Handoff Target",
 ]
 CURRENT_BOARD_SECTION_ORDER = [
-    "## Top 3",
-    "## Key Numbers / Signals",
-    "## Major Risk",
+    "## Governance Signal",
+    "## Risk Signal",
+    "## Finance Signal",
     "## Required Attention",
 ]
 BANNED_TASK_BOARD_TERMS = [
@@ -144,16 +144,17 @@ class DerivedPackagesTests(unittest.TestCase):
         result = self.run_script(BOARD_SCRIPT, "--dry-run")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         document = self.extract_dry_run_document(result.stdout, "=== BOARD_BRIEFING.md ===")
-        self.assertIn("Top 3", document)
-        self.assertIn("Major Risk", document)
-        self.assertIn("Required Attention", document)
         self.assertIn("OPERATING_DECISION_PACKAGE.md", document)
-        self.assertIn("IDEA-001", document)
+        self.assertIn("decision_package_trace.json", document)
         self.assertNotIn("{{", document)
+        self.assertNotIn("## Top 3", document)
+        self.assertNotIn("## Key Numbers / Signals", document)
         self.assert_section_order(document, CURRENT_BOARD_SECTION_ORDER)
-        required_attention_bullets = self.extract_bullets(document, "## Required Attention")
-        self.assertGreaterEqual(len(required_attention_bullets), 1)
-        self.assertLessEqual(len(required_attention_bullets), 1)
+        for heading in CURRENT_BOARD_SECTION_ORDER:
+            bullets = self.extract_bullets(document, heading)
+            self.assertGreaterEqual(len(bullets), 1)
+            self.assertLessEqual(len(bullets), 1)
+        self.assertIn("Treasury=500; maturity=Bootstrapping; status=growth.", document)
         self.assert_absent_terms(document, BANNED_COLLABORATION_HEADINGS)
 
     def test_write_mode_updates_latest_and_history(self) -> None:
@@ -175,11 +176,12 @@ class DerivedPackagesTests(unittest.TestCase):
         self.assertNotIn("## Kickoff Focus", execution_text)
         self.assertNotIn("{{", execution_text)
         self.assertIn("OPERATING_DECISION_PACKAGE.md", board_text)
-        self.assertIn("Top 3", board_text)
-        self.assertIn("Major Risk", board_text)
-        self.assertIn("Required Attention", board_text)
-        self.assertIn("IDEA-001", board_text)
-        self.assertIn("medium", board_text)
+        self.assertIn("decision_package_trace.json", board_text)
+        self.assertIn("## Governance Signal", board_text)
+        self.assertIn("## Finance Signal", board_text)
+        self.assertIn("Treasury=500; maturity=Bootstrapping; status=growth.", board_text)
+        self.assertNotIn("## Top 3", board_text)
+        self.assertNotIn("## Key Numbers / Signals", board_text)
         self.assertNotIn("{{", board_text)
         self.assert_section_order(board_text, CURRENT_BOARD_SECTION_ORDER)
 
