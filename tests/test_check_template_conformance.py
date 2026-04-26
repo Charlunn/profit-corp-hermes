@@ -59,12 +59,13 @@ class CheckTemplateConformanceTests(unittest.TestCase):
         return tail[:next_heading].strip()
 
     def create_workspace_fixture(self) -> tuple[Path, Path, Path]:
-        assets_root = Path(tempfile.mkdtemp(prefix="conformance-assets-"))
-        self.addCleanupPath(assets_root)
-        workspace_root = assets_root / "assets" / "workspaces" / "projects"
+        workspace_root = ROOT_DIR / "assets" / "workspaces" / "projects"
         workspace_root.mkdir(parents=True, exist_ok=True)
+        workspace_name = f"lead-capture-{next(tempfile._get_candidate_names())}"
+        self.addCleanupPath(workspace_root / workspace_name)
 
-        registry_path = assets_root / "standalone-saas-template.json"
+        registry_path = Path(tempfile.mkdtemp(prefix="conformance-registry-") ) / "standalone-saas-template.json"
+        self.addCleanupPath(registry_path.parent)
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
         registry["source"]["repo_path"] = TEMPLATE_SOURCE.as_posix()
         registry_path.write_text(json.dumps(registry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -75,7 +76,7 @@ class CheckTemplateConformanceTests(unittest.TestCase):
             "--workspace-root",
             str(workspace_root),
             "--workspace-name",
-            "lead-capture",
+            workspace_name,
             "--app-key",
             "lead_capture",
             "--app-name",
@@ -84,9 +85,9 @@ class CheckTemplateConformanceTests(unittest.TestCase):
             "https://lead.example.com",
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        workspace = workspace_root / "lead-capture"
+        workspace = workspace_root / workspace_name
         self.assertTrue(workspace.exists(), "workspace was not created")
-        return assets_root, registry_path, workspace
+        return registry_path.parent, registry_path, workspace
 
     def base_args(self, registry_path: Path, workspace: Path) -> list[str]:
         return [
