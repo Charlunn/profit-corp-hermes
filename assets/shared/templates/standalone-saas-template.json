@@ -1,0 +1,29 @@
+{
+  "asset_id": "standalone-saas-template",
+  "governance_scope": "single-template-first",
+  "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
+  "source": {
+    "repo_path": "C:/Users/42236/Desktop/standalone-saas-template",
+    "intended_use": "Hermes-approved mini-SaaS project bootstrap"
+  },
+  "supported_stack": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@supabase/supabase-js": "^2.49.1",
+    "typescript": "^5.6.3"
+  },
+  "governance": {
+    "status": "canonical",
+    "owner": "Hermes platform",
+    "contract_path": "docs/platform/standalone-saas-template-contract.md"
+  },
+  "canonical_refs": {
+    "upstream": [
+      "README.md",
+      "ARCHITECTURE.md",
+      "BUILDING_RULES.md"
+    ],
+    "operational_truth": "docs/platform/standalone-saas-template-contract.md"
+  }
+}
