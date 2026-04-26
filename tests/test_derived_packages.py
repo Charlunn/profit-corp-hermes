@@ -12,7 +12,15 @@ BOARD_PATH = ROOT_DIR / "assets" / "shared" / "board_briefings" / "BOARD_BRIEFIN
 EXECUTION_HISTORY_PATH = ROOT_DIR / "assets" / "shared" / "execution_packages" / "history" / "2026-04-25-execution-package.md"
 BOARD_HISTORY_PATH = ROOT_DIR / "assets" / "shared" / "board_briefings" / "history" / "2026-04-25-board-briefing.md"
 CURRENT_EXECUTION_SECTION_ORDER = [
-    "## Kickoff Focus",
+    "## Goal",
+    "## Scope Boundary",
+    "## Target User",
+    "## MVP Framing",
+    "## Dependencies",
+    "## Key Risks",
+    "## Acceptance Gate",
+    "## Recommended First Actions",
+    "## Handoff Target",
 ]
 CURRENT_BOARD_SECTION_ORDER = [
     "## Top 3",
@@ -32,6 +40,13 @@ BANNED_COLLABORATION_HEADINGS = [
     "## Assignment Matrix",
     "## Workflow Routing",
 ]
+EXPECTED_EXECUTION_METADATA = [
+    "Owner",
+    "Primary Role",
+    "Handoff Target",
+    "Readiness Status",
+]
+EXPECTED_READINESS_ENUM = {"ready", "blocked", "needs-input"}
 
 
 class DerivedPackagesTests(unittest.TestCase):
@@ -84,6 +99,20 @@ class DerivedPackagesTests(unittest.TestCase):
         self.assertEqual(latest_text, history_text)
         self.assertIn(required_section, latest_text)
 
+    def extract_labeled_value(self, output: str, label: str) -> str:
+        marker = f"- **{label}**: "
+        for line in output.splitlines():
+            if line.startswith(marker):
+                return line[len(marker):].strip()
+        self.fail(f"missing labeled value: {label}")
+
+    def assert_paired_sections(self, output: str, left_heading: str, right_heading: str) -> None:
+        left_bullets = self.extract_bullets(output, left_heading)
+        right_bullets = self.extract_bullets(output, right_heading)
+        self.assertEqual(len(left_bullets), len(right_bullets))
+        for index, bullet in enumerate(right_bullets, start=1):
+            self.assertTrue(bullet.startswith(f"- Risk {index} gate:"), msg=f"unexpected acceptance gate format: {bullet}")
+
     def assert_absent_terms(self, output: str, banned_terms: list[str]) -> None:
         for term in banned_terms:
             self.assertNotIn(term, output)
@@ -92,20 +121,22 @@ class DerivedPackagesTests(unittest.TestCase):
         result = self.run_script(EXECUTION_SCRIPT, "--dry-run")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         document = self.extract_dry_run_document(result.stdout, "=== EXECUTION_PACKAGE.md ===")
-        self.assertIn("Target User", document)
-        self.assertIn("MVP", document)
         self.assertIn("OPERATING_DECISION_PACKAGE.md", document)
-        self.assertIn("IDEA-001", document)
-        self.assertIn("## Kickoff Focus", document)
-        self.assertIn("Recommended Near-Term Actions", document)
+        self.assertIn("decision_package_trace.json", document)
+        self.assertIn("founder/operator", document)
         self.assertNotIn("待主包补充", document)
         self.assertNotIn("{{", document)
-        self.assertNotIn("Owner", document)
-        self.assertNotIn("Dependency", document)
+        self.assertNotIn("## Kickoff Focus", document)
         self.assert_section_order(document, CURRENT_EXECUTION_SECTION_ORDER)
-        kickoff_bullets = self.extract_bullets(document, "## Kickoff Focus")
-        self.assertGreaterEqual(len(kickoff_bullets), 1)
-        self.assertLessEqual(len(kickoff_bullets), 4)
+        for label in EXPECTED_EXECUTION_METADATA:
+            self.assertIn(f"- **{label}**:", document)
+        readiness = self.extract_labeled_value(document, "Readiness Status")
+        self.assertIn(readiness, EXPECTED_READINESS_ENUM)
+        self.assert_paired_sections(document, "## Key Risks", "## Acceptance Gate")
+        for heading in CURRENT_EXECUTION_SECTION_ORDER:
+            bullets = self.extract_bullets(document, heading)
+            self.assertGreaterEqual(len(bullets), 1)
+            self.assertLessEqual(len(bullets), 3)
         self.assert_absent_terms(document, BANNED_TASK_BOARD_TERMS)
         self.assert_absent_terms(document, BANNED_COLLABORATION_HEADINGS)
 
@@ -131,19 +162,18 @@ class DerivedPackagesTests(unittest.TestCase):
         self.assertEqual(execution_result.returncode, 0, msg=execution_result.stderr)
         self.assertEqual(board_result.returncode, 0, msg=board_result.stderr)
 
-        self.assert_latest_history_match(EXECUTION_PATH, EXECUTION_HISTORY_PATH, "## Kickoff Focus")
+        self.assert_latest_history_match(EXECUTION_PATH, EXECUTION_HISTORY_PATH, "## Goal")
         self.assert_latest_history_match(BOARD_PATH, BOARD_HISTORY_PATH, "## Required Attention")
 
         execution_text = EXECUTION_PATH.read_text(encoding="utf-8")
         board_text = BOARD_PATH.read_text(encoding="utf-8")
+        self.assert_section_order(execution_text, CURRENT_EXECUTION_SECTION_ORDER)
         self.assertIn("OPERATING_DECISION_PACKAGE.md", execution_text)
-        self.assertIn("Target User", execution_text)
-        self.assertIn("MVP", execution_text)
+        self.assertIn("Readiness Status", execution_text)
+        self.assertIn("founder/operator", execution_text)
         self.assertIn("IDEA-001", execution_text)
-        self.assertIn("medium", execution_text)
+        self.assertNotIn("## Kickoff Focus", execution_text)
         self.assertNotIn("{{", execution_text)
-        self.assertNotIn("Owner", execution_text)
-        self.assertNotIn("Dependency", execution_text)
         self.assertIn("OPERATING_DECISION_PACKAGE.md", board_text)
         self.assertIn("Top 3", board_text)
         self.assertIn("Major Risk", board_text)

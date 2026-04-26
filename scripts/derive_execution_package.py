@@ -12,13 +12,20 @@ DECISION_PACKAGES_DIR = SHARED_DIR / "decision_packages"
 EXECUTION_PACKAGES_DIR = SHARED_DIR / "execution_packages"
 EXECUTION_HISTORY_DIR = EXECUTION_PACKAGES_DIR / "history"
 TRACE_DIR = SHARED_DIR / "trace"
+GOVERNANCE_DIR = SHARED_DIR / "governance"
 OPERATING_DECISION_PACKAGE_PATH = DECISION_PACKAGES_DIR / "OPERATING_DECISION_PACKAGE.md"
 DECISION_TRACE_PATH = TRACE_DIR / "decision_package_trace.json"
+GOVERNANCE_STATUS_PATH = GOVERNANCE_DIR / "GOVERNANCE_STATUS.md"
 EXECUTION_PACKAGE_PATH = EXECUTION_PACKAGES_DIR / "EXECUTION_PACKAGE.md"
 EXECUTION_HISTORY_TEMPLATE = "{date}-execution-package.md"
 ALLOWED_WRITE_DIRS = (
     EXECUTION_PACKAGES_DIR,
     EXECUTION_HISTORY_DIR,
+)
+BANNED_SCOPE_BOUNDARY_LINES = (
+    "No task board behavior or work queue expansion.",
+    "No approval workflow detail or routing state machine.",
+    "No backlog dump or open-ended brainstorm capture.",
 )
 
 
@@ -114,39 +121,63 @@ def extract_first_table_row(content: str) -> dict[str, str]:
     raise ExecutionPackageError("Top 3 first row not found in operating package")
 
 
-def extract_first_risk_summary(content: str) -> str:
+def extract_risk_items(content: str) -> list[dict[str, str]]:
     section_start = content.find("## 主要风险")
     if section_start == -1:
         raise ExecutionPackageError("heading not found: ## 主要风险")
     section = content[section_start:].split("\n## ", 1)[0]
-    return extract_labeled_bullet_value(section, "Summary")
+    chunks = [chunk.strip() for chunk in section.split("### ") if chunk.strip()]
+    risk_items: list[dict[str, str]] = []
+    for chunk in chunks:
+        lines = chunk.splitlines()
+        title = lines[0].strip()
+        summary = ""
+        judgment_id = ""
+        for line in lines[1:]:
+            if line.startswith("- **Judgment ID**:"):
+                judgment_id = line.split(":", 1)[1].strip()
+            if line.startswith("- **Summary**:"):
+                summary = line.split(":", 1)[1].strip()
+        if title and summary:
+            risk_items.append({"title": title, "summary": summary, "judgment_id": judgment_id})
+    if not risk_items:
+        raise ExecutionPackageError("risk summaries not found in operating package")
+    return risk_items[:3]
 
 
-def extract_first_bullet_after_heading(content: str, heading: str) -> str:
+def extract_bullets(content: str, heading: str) -> list[str]:
     section_start = content.find(heading)
     if section_start == -1:
         raise ExecutionPackageError(f"heading not found: {heading}")
     section = content[section_start:].split("\n## ", 1)[0]
-    for line in section.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("- "):
-            return stripped[2:]
-    raise ExecutionPackageError(f"no bullet found under heading: {heading}")
+    bullets = [line.strip()[2:] for line in section.splitlines() if line.strip().startswith("- ")]
+    if not bullets:
+        raise ExecutionPackageError(f"no bullet found under heading: {heading}")
+    return bullets
 
 
-def extract_labeled_bullet_value(content: str, label: str) -> str:
-    pattern = re.compile(rf"^- \*\*{re.escape(label)}\*\*: (.+)$", re.MULTILINE)
-    match = pattern.search(content)
-    if not match:
-        raise ExecutionPackageError(f"missing required labeled bullet in operating package: {label}")
-    return match.group(1).strip()
+def parse_governance_section(content: str, heading: str) -> list[str]:
+    if heading not in content:
+        raise ExecutionPackageError(f"governance status missing required section: {heading}")
+    section = content.split(heading, 1)[1].split("\n## ", 1)[0]
+    return [line.strip()[2:] for line in section.splitlines() if line.strip().startswith("- ") and line.strip() != "- None"]
+
+
+def derive_readiness_status(governance_content: str) -> str:
+    blocked_items = parse_governance_section(governance_content, "## Active Blocks")
+    if blocked_items:
+        return "blocked"
+    pending_items = parse_governance_section(governance_content, "## Pending Approvals")
+    if pending_items:
+        return "needs-input"
+    return "ready"
 
 
 def history_output_path(date_value: str) -> Path:
     return EXECUTION_HISTORY_DIR / EXECUTION_HISTORY_TEMPLATE.format(date=date_value)
 
 
-def render_execution_package(date_value: str, operating_package: str, trace_content: str) -> str:
+def render_execution_package(date_value: str, operating_package: str, trace_content: str, governance_content: str) -> str:
     require_section(operating_package, "## Overall Conclusion / 一句话总判断")
     require_section(operating_package, "## Top 3 Ranked Opportunities")
     require_section(operating_package, "## Operating Framing")
@@ -160,25 +191,54 @@ def render_execution_package(date_value: str, operating_package: str, trace_cont
     goal = extract_value(operating_package, "Goal")
     target_user = extract_value(operating_package, "Target User")
     mvp_framing = extract_value(operating_package, "MVP Framing")
-    key_risk = extract_first_risk_summary(operating_package)
-    first_action = extract_first_bullet_after_heading(operating_package, "## 推荐下一步")
+    risks = extract_risk_items(operating_package)
+    actions = extract_bullets(operating_package, "## 推荐下一步")[:3]
+    readiness_status = derive_readiness_status(governance_content)
+    dependency_lines = [
+        f"- Operating decision anchor: `{relative(OPERATING_DECISION_PACKAGE_PATH)}`",
+        f"- Source trace: `{relative(DECISION_TRACE_PATH)}`",
+        f"- Governance readiness overlay: `{relative(GOVERNANCE_STATUS_PATH)}`",
+    ]
+    key_risk_lines = [
+        f"- Risk {index}: {risk['summary']}"
+        for index, risk in enumerate(risks, start=1)
+    ]
+    acceptance_lines = [
+        f"- Risk {index} gate: Confirm the handoff stays narrow enough to address '{risk['title']}' before moving beyond founder/operator validation."
+        for index, risk in enumerate(risks, start=1)
+    ]
+    first_action_lines = [f"- {action}" for action in actions]
 
     return (
         f"# Execution Package - {date_value}\n"
         f"- **Derived From**: `{relative(OPERATING_DECISION_PACKAGE_PATH)}`\n"
         f"- **Source Trace**: `{relative(DECISION_TRACE_PATH)}`\n"
-        f"- **Goal**: {goal}\n"
-        f"- **Target User**: {target_user}\n"
-        f"- **MVP Framing**: {mvp_framing}\n"
-        f"- **Key Risks**: {key_risk}\n"
-        f"- **Recommended Near-Term Actions**:\n"
-        f"  - {first_action}\n"
-        f"  - Keep scope anchored on {top_row['idea_id']} until user validation confirms expansion.\n\n"
-        f"## Kickoff Focus\n"
-        f"- **Primary Idea**: {top_row['idea_id']}\n"
-        f"- **Why This Opportunity**: {top_row['why_now']}\n"
-        f"- **Signal Reference**: {top_row['signal']}\n"
-        f"- **MVP Boundary**: Stay within the operator workflow implied by the operating package; do not add task-board governance fields.\n"
+        f"- **Owner**: ceo\n"
+        f"- **Primary Role**: ceo\n"
+        f"- **Handoff Target**: founder/operator\n"
+        f"- **Readiness Status**: {readiness_status}\n\n"
+        f"## Goal\n"
+        f"- {goal}\n\n"
+        f"## Scope Boundary\n"
+        f"- {BANNED_SCOPE_BOUNDARY_LINES[0]}\n"
+        f"- {BANNED_SCOPE_BOUNDARY_LINES[1]}\n"
+        f"- {BANNED_SCOPE_BOUNDARY_LINES[2]}\n\n"
+        f"## Target User\n"
+        f"- {target_user}\n\n"
+        f"## MVP Framing\n"
+        f"- {mvp_framing}\n"
+        f"- Primary focus remains {top_row['idea_id']} until founder/operator validation clears expansion.\n\n"
+        f"## Dependencies\n"
+        + "\n".join(dependency_lines)
+        + "\n\n## Key Risks\n"
+        + "\n".join(key_risk_lines)
+        + "\n\n## Acceptance Gate\n"
+        + "\n".join(acceptance_lines)
+        + "\n\n## Recommended First Actions\n"
+        + "\n".join(first_action_lines)
+        + "\n\n## Handoff Target\n"
+        + "- Current handoff is for the founder/operator to pick up immediately.\n"
+        + "- Stable ownership metadata keeps the structure reusable for later team intake without adding workflow machinery.\n"
     )
 
 
@@ -189,7 +249,8 @@ def main() -> int:
         date_value = args.date or today_iso()
         operating_package = load_text(OPERATING_DECISION_PACKAGE_PATH, "operating decision package")
         trace_content = load_text(DECISION_TRACE_PATH, "decision trace")
-        latest_output = render_execution_package(date_value, operating_package, trace_content)
+        governance_content = load_text(GOVERNANCE_STATUS_PATH, "governance status")
+        latest_output = render_execution_package(date_value, operating_package, trace_content, governance_content)
         history_path = history_output_path(date_value)
         if args.dry_run:
             print("=== EXECUTION_PACKAGE.md ===")
