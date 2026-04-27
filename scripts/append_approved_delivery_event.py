@@ -35,6 +35,10 @@ ALLOWED_STAGES = {
     "workspace_instantiation",
     "conformance",
     "delivery_run_bootstrap",
+    "github_repository",
+    "github_sync",
+    "vercel_linkage",
+    "vercel_deploy",
     "handoff",
 }
 ALLOWED_STATUSES = {"ready", "blocked", "completed", "running"}
