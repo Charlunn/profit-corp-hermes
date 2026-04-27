@@ -239,6 +239,7 @@ def prepare_github_repository(
                 "repository_url": canonical_url,
                 "default_branch": default_branch,
                 "remote_name": remote,
+                "command": "gh repo create" if repository_mode == "create" else "gh repo view",
             },
         )
         return {
