@@ -56,9 +56,9 @@ class DeliveryOrchestrationContractTests(unittest.TestCase):
         content = self.load_workflow().lower()
         self.assertIn("delivery-orchestrator", content, "D-01: delivery-orchestrator role must be explicit")
         self.assertEqual(
-            content.count("delivery-orchestrator"),
+            content.count("- `delivery-orchestrator`"),
             1,
-            "D-01: workflow must define one delivery-orchestrator role",
+            "D-01: workflow must define one delivery-orchestrator role entry",
         )
         for role in EXPECTED_ROLE_NAMES[1:]:
             self.assertIn(role, content, f"D-02: missing specialist role {role}")
