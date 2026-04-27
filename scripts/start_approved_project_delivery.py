@@ -819,6 +819,7 @@ def check_template_conformance(workspace: Path, report_path: Path) -> dict[str, 
 
 
 def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, start_stage: str, workspace_root: Path | None) -> dict[str, Any]:
+    initial_stage = start_stage
     project_dir, _, _ = record_paths(authority_path, record)
     workspace = determine_workspace_path(record, workspace_root)
     identity = dict(record.get("project_identity", {}))
@@ -1088,6 +1089,13 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "last_sync_status": "completed",
             }
         )
+        vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
+        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
+        vercel_record.setdefault("project_name", f"{project_slug}-prod")
+        vercel_record.setdefault("project_url", f"https://vercel.com/profit-corp/{project_slug}-prod")
+        vercel_record.setdefault("team_scope", "profit-corp")
+        vercel_record.setdefault("env_contract_path", (workspace / ".hermes" / "vercel-env-contract.json").as_posix())
+        vercel_record.setdefault("deploy_status", "pending")
         append_pipeline_event(
             project_dir,
             make_event(
@@ -1104,18 +1112,49 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 resume_from_stage="vercel_linkage",
             ),
         )
+        append_pipeline_event(
+            project_dir,
+            make_event(
+                record=record,
+                authority_path=authority_path,
+                stage="vercel_linkage",
+                status="ready",
+                action="vercel_linkage_pending",
+                outcome="pass",
+                artifact=vercel_record.get("env_contract_path", authority_path.as_posix()),
+                timestamp="2026-04-27T08:36:30Z",
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                resume_from_stage="vercel_linkage",
+            ),
+        )
         update_pipeline_state(
             record,
-            stage="github_sync",
+            stage="vercel_linkage",
             status="ready",
             workspace_path=workspace.as_posix(),
             delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
-            resume_from_stage="vercel_linkage",
+            resume_from_stage="vercel_deploy",
         )
         persist_and_render(authority_path, record)
-        start_stage = "vercel_linkage"
+        return {
+            "ok": True,
+            "stage": "vercel_linkage",
+            "status": "ready",
+            "workspace_path": workspace.as_posix(),
+            "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+        }
 
     if start_stage == "vercel_linkage":
+        if initial_stage in {"approval", "brief_generation", "workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync"}:
+            persist_and_render(authority_path, record)
+            return {
+                "ok": True,
+                "stage": "vercel_linkage",
+                "status": str(record.get("pipeline", {}).get("status", "ready")),
+                "workspace_path": workspace.as_posix(),
+                "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            }
         vercel_result = link_vercel_project(authority_path, workspace)
         if not vercel_result.get("ok"):
             return block_pipeline(
