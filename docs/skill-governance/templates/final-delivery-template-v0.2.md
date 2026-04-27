@@ -3,6 +3,10 @@
 > 用于流程收尾，给出是否可发布与回滚准备情况。
 
 ## 1) End-to-end Summary
+- `run_id`:
+- `role`: release-readiness-specialist
+- `stage`: release readiness
+- `scope_status`: in-scope | scope-reopen-requested | blocked
 - 目标完成情况：
 - 关键改动摘要：
 

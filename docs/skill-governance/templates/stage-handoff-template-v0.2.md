@@ -3,7 +3,10 @@
 > 每个阶段结束必须填写，供下一阶段继续执行。
 
 ## 1) Stage Summary
+- `run_id`:
+- `role`:
 - `stage`:
+- `scope_status`: in-scope | scope-reopen-requested | blocked
 - `summary`:
 
 ## 2) Outputs Produced
@@ -26,5 +29,6 @@
 - 缓解建议：
 
 ## 6) Next Stage Input
+- `next_stage`: design | development | testing | git versioning | release readiness | none
 - 下一阶段需要的输入：
 - 注意事项：

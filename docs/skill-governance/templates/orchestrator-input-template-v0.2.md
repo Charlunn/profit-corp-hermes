@@ -11,6 +11,7 @@
 ## 2) Scope & Non-goals
 - 本次范围（做什么）：
 - 非目标（不做什么）：
+- `scope_default`: approved-brief-only
 
 ## 3) Constraints
 - 时间约束：
@@ -25,6 +26,14 @@
 ## 5) Dependencies & Assumptions
 - 依赖项：
 - 假设：
+
+### Approved-project Delivery Bundle
+- `approved brief path`: `.hermes/PROJECT_BRIEF_ENTRYPOINT.md`
+- `template contract path`: `docs/platform/standalone-saas-template-contract.md`
+- `shared-backend guardrails path`: `.hermes/shared-backend-guardrails.json`
+- `project metadata path`: `.hermes/project-metadata.json`
+- `gsd constraints source`: `.planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md`
+- required bundle fields: approved brief, template contract, .hermes/shared-backend-guardrails.json, .hermes/project-metadata.json, GSD constraints
 
 ## 6) Risk Register
 - 风险项：
