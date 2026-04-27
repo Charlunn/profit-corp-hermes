@@ -40,10 +40,10 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
     def addCleanupPath(self, path: Path) -> None:
         self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
 
-    def create_project_fixture(self) -> tuple[Path, Path, Path, Path]:
+    def create_project_fixture(self, *, custom_approved_root: bool = False) -> tuple[Path, Path, Path, Path]:
         root = Path(tempfile.mkdtemp(prefix="approved-delivery-bootstrap-"))
         self.addCleanupPath(root)
-        approved_root = root / "assets" / "shared" / "approved-projects"
+        approved_root = (root / "external-approved-projects") if custom_approved_root else (root / "assets" / "shared" / "approved-projects")
         approved_root.mkdir(parents=True, exist_ok=True)
         workspace_root = root / "generated-workspaces"
         workspace_root.mkdir(parents=True, exist_ok=True)
@@ -177,6 +177,81 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             )
         return workspace
 
+    def test_bundle_written_to_custom_root_bootstraps_without_brief_generation_block(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root = Path(tempfile.mkdtemp(prefix="approved-delivery-custom-root-"))
+        self.addCleanupPath(root)
+        approved_root = root / "external-approved-projects"
+        workspace_root = root / "generated-workspaces"
+        approved_root.mkdir(parents=True, exist_ok=True)
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        workspace = self.seed_workspace_outputs(workspace_root)
+
+        payload = {
+            "approval_id": "APR-2026-04-27-01",
+            "approved_at": "2026-04-27T08:30:00Z",
+            "approver": "owner",
+            "approval_evidence": {
+                "decision_record": "assets/shared/CORP_CULTURE.md#greenlight-2026-04-27",
+                "summary": "Approved after confirming market pull and template fit.",
+            },
+            "project_name": "Lead Capture Copilot",
+            "project_url": "https://lead-capture.example.com",
+            "target_user": "Solo operators who need to qualify inbound leads quickly.",
+            "mvp_framing": "Turn incoming lead notes into ranked follow-up actions.",
+            "approved_scope": [
+                "capture inbound lead notes",
+                "score urgency and intent",
+                "show daily follow-up queue",
+            ],
+            "constraints": [
+                "reuse shared Supabase auth and payments",
+                "keep delivery scope approved-brief-only",
+            ],
+            "acceptance_gates": [
+                "brief generated",
+                "workspace bootstrap ready",
+            ],
+            "template_contract_path": CONTRACT_PATH.as_posix(),
+            "gsd_constraints_path": PLAN_09_01_PATH.as_posix(),
+        }
+        bundle = start_module.write_approved_project_bundle(payload, approved_projects_root=approved_root)
+        authority_path = Path(bundle["authority_record_path"])
+        project_dir = authority_path.parent
+
+        def fake_instantiate(*args, **kwargs):
+            return None
+
+        def fake_conformance(*args, **kwargs):
+            return {
+                "ok": True,
+                "report_path": (project_dir / "conformance-report.md").as_posix(),
+            }
+
+        def fake_start_run(*args, **kwargs):
+            return {
+                "ok": True,
+                "workspace": workspace.as_posix(),
+                "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+                "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+                "run_id": "delivery-lead-capture-copilot-001",
+            }
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "instantiate_workspace", side_effect=fake_instantiate), \
+             mock.patch.object(start_module, "check_template_conformance", side_effect=fake_conformance), \
+             mock.patch.object(start_module, "initialize_delivery_run", side_effect=fake_start_run):
+            result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["stage"], "delivery_run_bootstrap")
+        updated = self.read_json(authority_path)
+        self.assertEqual(updated["artifacts"]["project_directory"], project_dir.as_posix())
+        self.assertEqual(updated["artifacts"]["authority_record_path"], authority_path.as_posix())
+        self.assertEqual(updated["artifacts"]["delivery_brief_path"], (project_dir / "PROJECT_BRIEF.md").as_posix())
+        events = self.read_events(project_dir)
+        self.assert_event_stages(events, PIPELINE_STAGES[:-1])
+
     def test_bootstrap_success_persists_authority_events_workspace_and_delivery_run(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()
@@ -240,7 +315,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             },
             {
                 "name": "missing required brief input",
-                "mutate_record": lambda record: record["artifacts"].update({"delivery_brief_path": (project_dir / "MISSING_BRIEF.md").as_posix()}),
+                "mutate_record": lambda record: (project_dir / "PROJECT_BRIEF.md").unlink(),
                 "expected_reason": "missing_required_brief_input",
                 "expected_stage": "brief_generation",
                 "expected_evidence": "__MISSING_BRIEF_PATH__",
@@ -332,7 +407,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                     result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
 
                 expected_evidence = authority_path.as_posix() if case["expected_evidence"] == "__AUTHORITY_PATH__" else (
-                    (project_dir / "MISSING_BRIEF.md").as_posix() if case["expected_evidence"] == "__MISSING_BRIEF_PATH__" else (
+                    (project_dir / "PROJECT_BRIEF.md").as_posix() if case["expected_evidence"] == "__MISSING_BRIEF_PATH__" else (
                         (workspace / ".hermes" / "deployment-prerequisites.md").as_posix() if case["expected_evidence"] == "__DOWNSTREAM_EVIDENCE__" else case["expected_evidence"]
                     )
                 )

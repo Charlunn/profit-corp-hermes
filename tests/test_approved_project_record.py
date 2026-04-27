@@ -1,4 +1,7 @@
 import importlib.util
+import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -33,6 +36,9 @@ def load_module(module_name: str, script_path: Path):
 
 class ApprovedProjectRecordTests(unittest.TestCase):
     maxDiff = None
+
+    def addCleanupPath(self, path: Path) -> None:
+        self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
 
     def build_payload(self) -> dict[str, object]:
         return {
@@ -125,6 +131,27 @@ class ApprovedProjectRecordTests(unittest.TestCase):
                 "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
             },
         )
+
+    def test_bundle_write_uses_custom_approved_projects_root_for_persisted_artifact_paths(self) -> None:
+        start_approved_delivery = load_module("start_approved_project_delivery", SCRIPT_PATH)
+        payload = self.build_payload()
+        custom_root = Path(tempfile.mkdtemp(prefix="approved-project-root-"))
+        self.addCleanupPath(custom_root)
+
+        result = start_approved_delivery.write_approved_project_bundle(payload, approved_projects_root=custom_root)
+
+        self.assertTrue(result["ok"], msg=result)
+        project_dir = custom_root / "lead-capture-copilot"
+        authority_path = project_dir / "APPROVED_PROJECT.json"
+        brief_path = project_dir / "PROJECT_BRIEF.md"
+        self.assertEqual(result["authority_record_path"], authority_path.as_posix())
+        self.assertEqual(result["delivery_brief_path"], brief_path.as_posix())
+        persisted = json.loads(authority_path.read_text(encoding="utf-8"))
+        self.assertEqual(persisted["artifacts"]["project_directory"], project_dir.as_posix())
+        self.assertEqual(persisted["artifacts"]["authority_record_path"], authority_path.as_posix())
+        self.assertEqual(persisted["artifacts"]["delivery_brief_path"], brief_path.as_posix())
+        self.assertEqual(persisted["artifacts"]["events_path"], (project_dir / "approved-delivery-events.jsonl").as_posix())
+        self.assertEqual(persisted["artifacts"]["status_path"], (project_dir / "DELIVERY_PIPELINE_STATUS.md").as_posix())
 
     def test_d13_d14_returns_blocked_result_for_missing_required_inputs(self) -> None:
         start_approved_delivery = load_module("start_approved_project_delivery", SCRIPT_PATH)

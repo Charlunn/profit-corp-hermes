@@ -138,8 +138,15 @@ def normalize_project_identity(project_name: str, project_url: str) -> dict[str,
     }
 
 
-def build_artifact_paths(project_slug: str, *, template_contract_path: str, gsd_constraints_path: str) -> dict[str, str]:
-    project_directory = Path("assets/shared/approved-projects") / project_slug
+def build_artifact_paths(
+    project_slug: str,
+    *,
+    template_contract_path: str,
+    gsd_constraints_path: str,
+    approved_projects_root: Path | None = None,
+) -> dict[str, str]:
+    root = Path(approved_projects_root) if approved_projects_root is not None else Path("assets/shared/approved-projects")
+    project_directory = root / project_slug
     return {
         "project_directory": project_directory.as_posix(),
         "authority_record_path": (project_directory / "APPROVED_PROJECT.json").as_posix(),
@@ -185,7 +192,7 @@ def resolve_block_reason(missing: list[str]) -> str | None:
     return None
 
 
-def build_approved_project_record(payload: dict[str, Any]) -> dict[str, Any]:
+def build_approved_project_record(payload: dict[str, Any], *, approved_projects_root: Path | None = None) -> dict[str, Any]:
     normalized_payload = {
         "approval_id": str(payload.get("approval_id", "")).strip(),
         "approved_at": str(payload.get("approved_at", "")).strip(),
@@ -209,6 +216,7 @@ def build_approved_project_record(payload: dict[str, Any]) -> dict[str, Any]:
         identity["project_slug"],
         template_contract_path=normalized_payload["template_contract_path"],
         gsd_constraints_path=normalized_payload["gsd_constraints_path"],
+        approved_projects_root=approved_projects_root,
     )
     approved_project = {
         "approval": {
@@ -311,10 +319,10 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def write_approved_project_bundle(payload: dict[str, Any], approved_projects_root: Path | None = None) -> dict[str, Any]:
-    result = build_approved_project_record(payload)
+    root = Path(approved_projects_root) if approved_projects_root is not None else APPROVED_PROJECTS_ROOT
+    result = build_approved_project_record(payload, approved_projects_root=root)
     approved_project = result["approved_project"]
     project_slug = approved_project["project_identity"]["project_slug"]
-    root = Path(approved_projects_root) if approved_projects_root is not None else APPROVED_PROJECTS_ROOT
     project_dir = root / project_slug
     authority_path = project_dir / "APPROVED_PROJECT.json"
     brief_path = project_dir / "PROJECT_BRIEF.md"
@@ -373,11 +381,11 @@ def record_paths(authority_path: Path, record: dict[str, Any]) -> tuple[Path, Pa
     artifacts = record.setdefault("artifacts", {})
     events_path = Path(str(artifacts.get("events_path", project_dir / "approved-delivery-events.jsonl")))
     status_path = Path(str(artifacts.get("status_path", project_dir / "DELIVERY_PIPELINE_STATUS.md")))
+    artifacts["project_directory"] = project_dir.as_posix()
+    artifacts["authority_record_path"] = authority_path.as_posix()
+    artifacts["delivery_brief_path"] = (project_dir / "PROJECT_BRIEF.md").as_posix()
     artifacts["events_path"] = events_path.as_posix()
     artifacts["status_path"] = status_path.as_posix()
-    artifacts["authority_record_path"] = authority_path.as_posix()
-    artifacts.setdefault("project_directory", project_dir.as_posix())
-    artifacts.setdefault("delivery_brief_path", (project_dir / "PROJECT_BRIEF.md").as_posix())
     return project_dir, events_path, status_path
 
 
