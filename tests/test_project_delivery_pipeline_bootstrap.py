@@ -236,28 +236,28 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "mutate_record": lambda record: record["approval"].update({"evidence": {}}),
                 "expected_reason": "missing_approval_evidence",
                 "expected_stage": "approval",
-                "expected_evidence": authority_path.as_posix(),
+                "expected_evidence": "__AUTHORITY_PATH__",
             },
             {
                 "name": "missing required brief input",
                 "mutate_record": lambda record: record["artifacts"].update({"delivery_brief_path": (project_dir / "MISSING_BRIEF.md").as_posix()}),
                 "expected_reason": "missing_required_brief_input",
                 "expected_stage": "brief_generation",
-                "expected_evidence": (project_dir / "MISSING_BRIEF.md").as_posix(),
+                "expected_evidence": "__MISSING_BRIEF_PATH__",
             },
             {
                 "name": "duplicate active bootstrap",
                 "mutate_record": lambda record: record["pipeline"].update({"stage": "workspace_instantiation", "status": "running", "active_run_id": "phase10-001"}),
                 "expected_reason": "duplicate_active_bootstrap",
                 "expected_stage": "workspace_instantiation",
-                "expected_evidence": authority_path.as_posix(),
+                "expected_evidence": "__AUTHORITY_PATH__",
             },
             {
                 "name": "instantiation failure",
                 "patch": {"instantiate_workspace": RuntimeError("copy failed")},
                 "expected_reason": "workspace_instantiation_failed",
                 "expected_stage": "workspace_instantiation",
-                "expected_evidence": authority_path.as_posix(),
+                "expected_evidence": "__AUTHORITY_PATH__",
             },
             {
                 "name": "conformance failure",
@@ -289,7 +289,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 },
                 "expected_reason": "missing_downstream_prerequisite_evidence",
                 "expected_stage": "delivery_run_bootstrap",
-                "expected_evidence": (blocked_workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
+                "expected_evidence": "__DOWNSTREAM_EVIDENCE__",
             },
         ]
 
@@ -312,7 +312,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                     "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
                     "run_id": "delivery-lead-capture-copilot-001",
                 }
-                patch_map = case.get("patch", {})
+                patch_map = dict(case.get("patch", {}))
+                if case["expected_evidence"] == "__DOWNSTREAM_EVIDENCE__" and "initialize_delivery_run" in patch_map:
+                    patch_map["initialize_delivery_run"] = {
+                        **patch_map["initialize_delivery_run"],
+                        "evidence_path": (workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
+                    }
                 if "instantiate_workspace" in patch_map:
                     instantiate_side_effect = patch_map["instantiate_workspace"]
                 if "check_template_conformance" in patch_map:
@@ -326,6 +331,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                      mock.patch.object(start_module, "initialize_delivery_run", return_value=start_run_return):
                     result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
 
+                expected_evidence = authority_path.as_posix() if case["expected_evidence"] == "__AUTHORITY_PATH__" else (
+                    (project_dir / "MISSING_BRIEF.md").as_posix() if case["expected_evidence"] == "__MISSING_BRIEF_PATH__" else (
+                        (workspace / ".hermes" / "deployment-prerequisites.md").as_posix() if case["expected_evidence"] == "__DOWNSTREAM_EVIDENCE__" else case["expected_evidence"]
+                    )
+                )
+
                 self.assertFalse(result["ok"], msg=result)
                 self.assertEqual(result["status"], "blocked")
                 self.assertEqual(result["stage"], case["expected_stage"])
@@ -335,18 +346,18 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 self.assertEqual(updated["pipeline"]["stage"], case["expected_stage"])
                 self.assertEqual(updated["pipeline"]["block_reason"], case["expected_reason"])
                 self.assertEqual(updated["pipeline"]["resume_from_stage"], case["expected_stage"])
-                self.assertEqual(updated["pipeline"]["evidence_path"], case["expected_evidence"])
+                self.assertEqual(updated["pipeline"]["evidence_path"], expected_evidence)
 
                 events = self.read_events(project_dir)
                 self.assertEqual(events[-1]["outcome"], "blocked")
                 self.assertEqual(events[-1]["stage"], case["expected_stage"])
                 self.assertEqual(events[-1]["block_reason"], case["expected_reason"])
-                self.assertEqual(events[-1]["evidence_path"], case["expected_evidence"])
+                self.assertEqual(events[-1]["evidence_path"], expected_evidence)
 
                 status_text = (project_dir / "DELIVERY_PIPELINE_STATUS.md").read_text(encoding="utf-8")
                 self.assertIn(case["expected_stage"], status_text)
                 self.assertIn(case["expected_reason"], status_text)
-                self.assertIn(case["expected_evidence"], status_text)
+                self.assertIn(expected_evidence, status_text)
 
     def test_status_renderer_derives_workspace_brief_prerequisite_run_and_handoff_links(self) -> None:
         append_module = load_module("append_approved_delivery_event", APPEND_SCRIPT_PATH)
