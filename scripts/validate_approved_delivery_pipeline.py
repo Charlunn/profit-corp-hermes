@@ -1,0 +1,287 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from scripts.validate_delivery_handoff import require_in_order
+
+
+APPROVED_RECORD_NAME = "APPROVED_PROJECT.json"
+BRIEF_NAME = "PROJECT_BRIEF.md"
+EVENTS_NAME = "approved-delivery-events.jsonl"
+STATUS_NAME = "DELIVERY_PIPELINE_STATUS.md"
+FINAL_DELIVERY_RELATIVE = ".hermes/FINAL_DELIVERY.md"
+MANIFEST_RELATIVE = ".hermes/delivery-run-manifest.json"
+CONFORMANCE_CANDIDATES = (
+    ".hermes/template-conformance.json",
+    ".hermes/conformance-report.md",
+)
+STATUS_REQUIRED_LINES = [
+    "Authority",
+    "Workspace",
+    "Final handoff",
+]
+
+
+class ApprovedDeliveryPipelineValidationError(Exception):
+    pass
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Validate the approved-project authority bundle through final delivery handoff cross-links."
+    )
+    parser.add_argument(
+        "--approved-project-path",
+        required=True,
+        help="Path to assets/shared/approved-projects/<project>.",
+    )
+    return parser.parse_args()
+
+
+def load_text(path: Path, label: str) -> str:
+    if not path.exists():
+        raise ApprovedDeliveryPipelineValidationError(f"{label} not found: {path.as_posix()}")
+    content = path.read_text(encoding="utf-8")
+    if not content.strip():
+        raise ApprovedDeliveryPipelineValidationError(f"{label} is empty: {path.as_posix()}")
+    return content
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(load_text(path, label))
+    except json.JSONDecodeError as exc:
+        raise ApprovedDeliveryPipelineValidationError(f"invalid JSON in {label}: {path.as_posix()}") from exc
+    if not isinstance(payload, dict):
+        raise ApprovedDeliveryPipelineValidationError(f"{label} must be a JSON object: {path.as_posix()}")
+    return payload
+
+
+def load_jsonl(path: Path, label: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for line_number, raw_line in enumerate(load_text(path, label).splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ApprovedDeliveryPipelineValidationError(
+                f"invalid JSONL in {label} at line {line_number}: {path.as_posix()}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise ApprovedDeliveryPipelineValidationError(
+                f"{label} line {line_number} must be a JSON object: {path.as_posix()}"
+            )
+        events.append(payload)
+    if not events:
+        raise ApprovedDeliveryPipelineValidationError(f"{label} has no events: {path.as_posix()}")
+    return events
+
+
+def first_nonempty(*values: Any) -> str:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def get_nested(payload: dict[str, Any], *keys: str) -> Any:
+    current: Any = payload
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def resolve_workspace_path(record: dict[str, Any]) -> Path:
+    workspace_path = first_nonempty(
+        get_nested(record, "pipeline", "workspace_path"),
+        get_nested(record, "artifacts", "workspace_path"),
+        record.get("workspace_path"),
+    )
+    if not workspace_path:
+        raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing workspace path")
+    workspace = Path(workspace_path)
+    if not workspace.exists():
+        raise ApprovedDeliveryPipelineValidationError(f"workspace path not found: {workspace.as_posix()}")
+    return workspace
+
+
+def resolve_manifest_path(record: dict[str, Any], workspace: Path) -> Path:
+    raw = first_nonempty(
+        get_nested(record, "artifacts", "delivery_manifest_path"),
+        record.get("phase9_delivery_run_manifest_path"),
+        record.get("phase9_delivery_run_manifest"),
+        MANIFEST_RELATIVE,
+    )
+    manifest_path = Path(raw)
+    if not manifest_path.is_absolute():
+        manifest_path = workspace / raw
+    if not manifest_path.exists():
+        raise ApprovedDeliveryPipelineValidationError(
+            f"Phase 9 delivery run manifest missing: {manifest_path.as_posix()}"
+        )
+    return manifest_path
+
+
+def resolve_conformance_path(record: dict[str, Any], workspace: Path) -> Path:
+    raw = first_nonempty(
+        get_nested(record, "artifacts", "conformance_evidence_path"),
+        record.get("conformance_evidence_path"),
+    )
+    candidates = [raw] if raw else []
+    candidates.extend(CONFORMANCE_CANDIDATES)
+    for candidate in candidates:
+        candidate_path = Path(candidate)
+        if not candidate_path.is_absolute():
+            candidate_path = workspace / candidate
+        if candidate_path.exists():
+            return candidate_path
+    raise ApprovedDeliveryPipelineValidationError("conformance evidence missing from authority record/workspace")
+
+
+def resolve_final_handoff_path(record: dict[str, Any], workspace: Path, *, blocked_context: bool = False) -> Path:
+    final_handoff_path = first_nonempty(
+        get_nested(record, "pipeline", "final_handoff_path"),
+        get_nested(record, "artifacts", "final_handoff_path"),
+        get_nested(record, "final_handoff", "path"),
+        get_nested(record, "final_handoff", "link"),
+    )
+    if not final_handoff_path:
+        if blocked_context:
+            raise ApprovedDeliveryPipelineValidationError(
+                "approved-project authority record missing final handoff path/link while blocked prerequisite evidence is still being tracked"
+            )
+        raise ApprovedDeliveryPipelineValidationError(
+            "approved-project authority record missing final handoff path/link"
+        )
+    path = Path(final_handoff_path)
+    if not path.is_absolute():
+        path = workspace / final_handoff_path
+    if not path.exists():
+        raise ApprovedDeliveryPipelineValidationError(f"final handoff artifact not found: {path.as_posix()}")
+    return path
+
+
+def latest_handoff_event(events: list[dict[str, Any]]) -> dict[str, Any]:
+    handoff_events = [event for event in events if str(event.get("stage", "")).strip() == "handoff"]
+    if not handoff_events:
+        raise ApprovedDeliveryPipelineValidationError("approved delivery events missing terminal handoff event")
+    return handoff_events[-1]
+
+
+def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: list[dict[str, Any]], status_text: str) -> None:
+    blocked_events = [event for event in events if str(event.get("status", "")).strip() == "blocked"]
+    if not blocked_events:
+        return
+    latest_blocked = blocked_events[-1]
+    block_reason = first_nonempty(
+        latest_blocked.get("block_reason"),
+        get_nested(record, "pipeline", "block_reason"),
+        get_nested(record, "latest_blocked_prerequisite", "reason"),
+    )
+    evidence_path = first_nonempty(
+        latest_blocked.get("evidence_path"),
+        get_nested(record, "pipeline", "evidence_path"),
+        get_nested(record, "latest_blocked_prerequisite", "path"),
+    )
+    lowered = status_text.lower()
+    if not block_reason:
+        raise ApprovedDeliveryPipelineValidationError("blocked pipeline state missing persisted block reason")
+    if not evidence_path:
+        raise ApprovedDeliveryPipelineValidationError("blocked pipeline state missing persisted evidence path")
+    if "block" not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing blocked-state summary")
+    if Path(evidence_path).name.lower() not in lowered and evidence_path.lower() not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing blocked prerequisite evidence link")
+
+
+def validate_status_markdown(status_text: str, workspace: Path, final_handoff: Path) -> None:
+    require_in_order(status_text, ["#", "Final"], STATUS_NAME)
+    lowered = status_text.lower()
+    for token in STATUS_REQUIRED_LINES:
+        if token.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError(
+                f"{STATUS_NAME} missing required operator linkage token: {token}"
+            )
+    if workspace.as_posix().lower() not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing workspace path linkage")
+    if final_handoff.as_posix().lower() not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing final handoff link")
+
+
+def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str, Any]:
+    project_dir = Path(approved_project_path)
+    record = load_json(project_dir / APPROVED_RECORD_NAME, "approved-project authority record")
+    load_text(project_dir / BRIEF_NAME, "approved-project brief")
+    events = load_jsonl(project_dir / EVENTS_NAME, "approved delivery events")
+    status_text = load_text(project_dir / STATUS_NAME, "delivery pipeline status")
+
+    workspace = resolve_workspace_path(record)
+    conformance_path = resolve_conformance_path(record, workspace)
+    manifest_path = resolve_manifest_path(record, workspace)
+    blocked_events = [event for event in events if str(event.get("status", "")).strip() == "blocked"]
+    has_blocked_state = bool(blocked_events)
+    validate_blocked_prerequisite_visibility(record, events, status_text)
+    final_handoff_path = resolve_final_handoff_path(record, workspace, blocked_context=has_blocked_state)
+
+    handoff_event = latest_handoff_event(events)
+    event_final_handoff = first_nonempty(
+        handoff_event.get("final_handoff_path"),
+        get_nested(handoff_event, "final_handoff", "path"),
+        get_nested(handoff_event, "final_handoff", "link"),
+        handoff_event.get("artifact"),
+    )
+    if not event_final_handoff:
+        raise ApprovedDeliveryPipelineValidationError("handoff event missing final handoff path/link")
+    event_final_handoff_path = Path(event_final_handoff)
+    if not event_final_handoff_path.is_absolute():
+        event_final_handoff_path = workspace / event_final_handoff
+    if event_final_handoff_path.resolve() != final_handoff_path.resolve():
+        raise ApprovedDeliveryPipelineValidationError("final handoff path mismatch between authority record and handoff event")
+
+    event_workspace = first_nonempty(handoff_event.get("workspace_path"), workspace.as_posix())
+    if Path(event_workspace).resolve() != workspace.resolve():
+        raise ApprovedDeliveryPipelineValidationError("workspace path mismatch between authority record and handoff event")
+
+    validate_status_markdown(status_text, workspace, final_handoff_path)
+    validate_blocked_prerequisite_visibility(record, events, status_text)
+
+    return {
+        "ok": True,
+        "approved_project_path": project_dir.as_posix(),
+        "workspace_path": workspace.as_posix(),
+        "conformance_evidence_path": conformance_path.as_posix(),
+        "delivery_run_manifest_path": manifest_path.as_posix(),
+        "final_handoff_path": final_handoff_path.as_posix(),
+        "event_count": len(events),
+        "terminal_stage": str(handoff_event.get("stage", "handoff")),
+    }
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        result = validate_approved_delivery_pipeline(Path(args.approved_project_path))
+    except ApprovedDeliveryPipelineValidationError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(
+        "validated approved delivery pipeline: "
+        f"workspace={result['workspace_path']} handoff={result['final_handoff_path']}"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

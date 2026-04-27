@@ -43,6 +43,7 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             hermes = workspace / ".hermes"
             hermes.mkdir()
 
+            conformance = workspace / ".hermes" / "template-conformance.json"
             self.write_text(approved_project / "PROJECT_BRIEF.md", "# Brief\n")
             self.write_json(
                 approved_project / "APPROVED_PROJECT.json",
@@ -52,8 +53,10 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                     "status": "blocked",
                     "stage": "delivery_run_bootstrap",
                     "phase9_delivery_run_manifest": ".hermes/delivery-run-manifest.json",
+                    "conformance_evidence_path": conformance.as_posix(),
                 },
             )
+            downstream = workspace / ".hermes" / "release-prerequisites.json"
             self.write_jsonl(
                 approved_project / "approved-delivery-events.jsonl",
                 [
@@ -61,14 +64,18 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                         "stage": "delivery_run_bootstrap",
                         "status": "blocked",
                         "block_reason": "missing downstream prerequisite evidence",
+                        "evidence_path": downstream.as_posix(),
                     }
                 ],
             )
             self.write_text(
                 approved_project / "DELIVERY_PIPELINE_STATUS.md",
-                "# Approved Delivery Status\n\nBlocked without final handoff link.\n",
+                "# Approved Delivery Status\n\n"
+                "Blocked on prerequisite evidence.\n"
+                f"Evidence: {downstream.as_posix()}\n",
             )
             self.write_json(workspace / ".hermes" / "delivery-run-manifest.json", {"run_id": "run-1"})
+            self.write_json(conformance, {"ok": True})
             self.write_text(workspace / ".hermes" / "FINAL_DELIVERY.md", "# Final delivery\n")
 
             result = self.run_validator(approved_project)
@@ -129,7 +136,10 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             )
             self.write_text(
                 approved_project / "DELIVERY_PIPELINE_STATUS.md",
-                "# Approved Delivery Status\n\n- Final handoff: " + final_ref + "\n- Workspace: " + workspace.as_posix() + "\n",
+                "# Approved Delivery Status\n\n"
+                "- Authority: approved-project\n"
+                f"- Workspace: {workspace.as_posix()}\n"
+                f"- Final handoff: {final_ref}\n",
             )
 
             result = self.run_validator(approved_project)
@@ -146,7 +156,7 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                 self.assertIn("start-approved-delivery", text)
                 self.assertIn("render-approved-delivery-status", text)
                 self.assertIn("resume-approved-delivery", text)
-                self.assertNotIn("restart from scratch", text.lower())
+                self.assertRegex(text.lower(), r"resume from persisted state|instead of restarting from scratch")
                 self.assertRegex(text.lower(), r"block|blocked")
                 self.assertRegex(text.lower(), r"credential|deployment|prerequisite")
 

@@ -179,6 +179,42 @@ validate_delivery_handoff_cmd() {
   python "$ROOT_DIR/scripts/validate_delivery_handoff.py" --workspace-path "$1"
 }
 
+resume_approved_delivery() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh resume-approved-delivery <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
+start_approved_delivery() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh start-approved-delivery <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1"
+}
+
+render_approved_delivery_status_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/render_approved_delivery_status.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh render-approved-delivery-status <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/render_approved_delivery_status.py" --project-dir "$1"
+}
+
+validate_approved_delivery_pipeline_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/validate_approved_delivery_pipeline.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh validate-approved-delivery-pipeline <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/validate_approved_delivery_pipeline.py" --approved-project-path "$1"
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -225,9 +261,25 @@ case "$ACTION" in
     shift
     validate_delivery_handoff_cmd "$@"
     ;;
+  start-approved-delivery)
+    shift
+    start_approved_delivery "$@"
+    ;;
+  render-approved-delivery-status)
+    shift
+    render_approved_delivery_status_cmd "$@"
+    ;;
+  validate-approved-delivery-pipeline)
+    shift
+    validate_approved_delivery_pipeline_cmd "$@"
+    ;;
+  resume-approved-delivery)
+    shift
+    resume_approved_delivery "$@"
+    ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|start-approved-delivery|render-approved-delivery-status|validate-approved-delivery-pipeline|resume-approved-delivery|pause-all]"
     exit 1
     ;;
 esac
