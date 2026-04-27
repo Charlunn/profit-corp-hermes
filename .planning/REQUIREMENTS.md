@@ -46,14 +46,14 @@ Requirements for milestone v1.1 SaaS Delivery Factory.
 
 ### GitHub and Deployment Automation
 
-- [ ] **SHIP-01**: Hermes can use platform-managed GitHub credentials to create or prepare a repository for a newly approved SaaS project
-- [ ] **SHIP-02**: Hermes can sync generated project code to the target GitHub repository without manual repository setup by the owner
-- [ ] **SHIP-03**: Hermes can record which repository, branch, and delivery run correspond to each approved SaaS project
-- [ ] **SHIP-04**: Hermes can use platform-managed Vercel credentials to link a generated SaaS project to a deployable Vercel project
-- [ ] **SHIP-05**: Hermes can configure required deployment environment values for a generated SaaS project through the approved platform delivery flow
-- [ ] **SHIP-06**: Hermes can trigger a Vercel deployment for a generated SaaS project after code sync and deployment checks pass
-- [ ] **SHIP-07**: Hermes can report deployment success or failure back into the project handoff artifact
-- [ ] **SHIP-08**: Hermes can block deployment when required platform-managed credentials, project linkage, or environment configuration are incomplete
+- [x] **SHIP-01**: Hermes can use platform-managed GitHub credentials to create or prepare a repository for a newly approved SaaS project
+- [x] **SHIP-02**: Hermes can sync generated project code to the target GitHub repository without manual repository setup by the owner
+- [x] **SHIP-03**: Hermes can record which repository, branch, and delivery run correspond to each approved SaaS project
+- [x] **SHIP-04**: Hermes can use platform-managed Vercel credentials to link a generated SaaS project to a deployable Vercel project
+- [x] **SHIP-05**: Hermes can configure required deployment environment values for a generated SaaS project through the approved platform delivery flow
+- [x] **SHIP-06**: Hermes can trigger a Vercel deployment for a generated SaaS project after code sync and deployment checks pass
+- [x] **SHIP-07**: Hermes can report deployment success or failure back into the project handoff artifact
+- [x] **SHIP-08**: Hermes can block deployment when required platform-managed credentials, project linkage, or environment configuration are incomplete
 
 ### Governance and Credential Control
 
@@ -113,14 +113,14 @@ Deferred to a future milestone.
 | PIPE-05 | Phase 10 | Complete |
 | PIPE-06 | Phase 10 | Complete |
 | PIPE-07 | Phase 10 | Complete |
-| SHIP-01 | Phase 11 | Pending |
-| SHIP-02 | Phase 11 | Pending |
-| SHIP-03 | Phase 11 | Pending |
-| SHIP-04 | Phase 11 | Pending |
-| SHIP-05 | Phase 11 | Pending |
-| SHIP-06 | Phase 11 | Pending |
-| SHIP-07 | Phase 11 | Pending |
-| SHIP-08 | Phase 11 | Pending |
+| SHIP-01 | Phase 11 | Complete |
+| SHIP-02 | Phase 11 | Complete |
+| SHIP-03 | Phase 11 | Complete |
+| SHIP-04 | Phase 11 | Complete |
+| SHIP-05 | Phase 11 | Complete |
+| SHIP-06 | Phase 11 | Complete |
+| SHIP-07 | Phase 11 | Complete |
+| SHIP-08 | Phase 11 | Complete |
 | GOV-01 | Phase 12 | Pending |
 | GOV-02 | Phase 12 | Pending |
 | GOV-03 | Phase 12 | Pending |

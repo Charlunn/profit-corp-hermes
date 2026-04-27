@@ -41,7 +41,7 @@
 | 8 | Shared Supabase Backend Guardrails | Enforce the single-Supabase, shared-platform contract so generated SaaS projects stay inside safe shared-table and app-prefix boundaries. | BACK-01, BACK-02, BACK-03, BACK-04, BACK-05, BACK-06 | 4 |
 | 9 | Claude Code Delivery Team Orchestration | Define the specialist delivery team, role contracts, and GSD operating boundaries for approved-project execution. | TEAM-01, TEAM-02, TEAM-03, TEAM-04, TEAM-05, TEAM-06 | 4 |
 | 10 | Approved Project Delivery Pipeline | 3/3 | Complete    | 2026-04-27 |
-| 11 | GitHub and Vercel Automation | Enable platform-managed repository sync, deployable Vercel linking, environment configuration, and deployment execution for generated SaaS projects. | SHIP-01, SHIP-02, SHIP-03, SHIP-04, SHIP-05, SHIP-06, SHIP-07, SHIP-08 | 4 |
+| 11 | GitHub and Vercel Automation | 3/3 | Complete    | 2026-04-27 |
 | 12 | Credential Governance and Operator Handoff | Add the audit, credential-scope, platform-justification, and operator review controls needed to keep automated delivery trustworthy. | GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06 | 4 |
 
 ### Phase Details
