@@ -44,8 +44,8 @@ ALLOWED_STAGES = {
     "vercel_deploy",
     "handoff",
 }
-ALLOWED_STATUSES = {"ready", "blocked", "completed", "running"}
-ALLOWED_OUTCOMES = {"pass", "blocked", "running"}
+ALLOWED_STATUSES = {"ready", "blocked", "completed", "running", "failed"}
+ALLOWED_OUTCOMES = {"pass", "blocked", "running", "success", "failed"}
 
 
 class ApprovedDeliveryEventError(Exception):
