@@ -81,6 +81,29 @@ Acceptance criteria:
 - 触达受保护路径或出现扩 scope 时，必须先走 `request_scope_reopen.py`，等待治理结果后再继续。
 - 交付编排仍复用当前 `delegate_task` 语法，不引入第二套 orchestration DSL。
 
+### Approved-project delivery delegation example
+```python
+delegate_task(
+  goal="Drive one approved project through the governed delivery pipeline",
+  context="""
+Start from `assets/shared/approved-projects/<project>/APPROVED_PROJECT.json`.
+
+Required operator-safe command path:
+1. `bash orchestration/cron/commands.sh start-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json`
+2. `bash orchestration/cron/commands.sh render-approved-delivery-status assets/shared/approved-projects/<project>`
+3. If blocked, inspect the persisted block reason plus credential/deployment prerequisite evidence in `assets/shared/approved-projects/<project>/DELIVERY_PIPELINE_STATUS.md`
+4. Resolve the prerequisite, then resume with `bash orchestration/cron/commands.sh resume-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json`
+5. Prove final handoff completeness with `bash orchestration/cron/commands.sh validate-approved-delivery-pipeline assets/shared/approved-projects/<project>`
+
+Rules:
+- treat the approved-project authority layer as the source of truth above workspace-local `.hermes` artifacts
+- do not restart from scratch when a downstream prerequisite blocks delivery; resume from persisted state
+- keep hard blocks visible until the linked evidence artifact is updated
+""",
+  toolsets=["terminal", "file"]
+)
+```
+
 ## Command Handling Contract (Gateway/Cron)
 你在 Hermes gateway 中作为主入口 profile（ceo）。
 

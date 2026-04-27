@@ -138,7 +138,38 @@ Skill-level policy:
 - Revenue/bounty mutations only via `manage_finance.py` skills with confirm gate.
 - Announcement updates go through `ceo_publish_announcement` and must follow board maintenance rules.
 
-## Recovery mode
+## Approved project delivery pipeline
+
+### Start an approved delivery run
+- Start from the approved-project authority bundle, not ad-hoc workspace commands:
+  ```bash
+  bash orchestration/cron/commands.sh start-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  ```
+- This wrapper reuses the existing Phase 10 controller and keeps the authority layer above the workspace layer.
+
+### Inspect latest status before any retry
+- Read the persisted latest view first:
+  ```bash
+  bash orchestration/cron/commands.sh render-approved-delivery-status assets/shared/approved-projects/<project>
+  more assets/shared/approved-projects/<project>/DELIVERY_PIPELINE_STATUS.md
+  ```
+- Confirm the status view shows stage, workspace path, block reason, blocked prerequisite evidence, delivery-run linkage, and final handoff linkage.
+
+### Validate handoff completeness
+- Prove the approval-to-handoff chain before declaring success:
+  ```bash
+  bash orchestration/cron/commands.sh validate-approved-delivery-pipeline assets/shared/approved-projects/<project>
+  ```
+- Validation cross-checks `APPROVED_PROJECT.json`, `PROJECT_BRIEF.md`, `approved-delivery-events.jsonl`, `DELIVERY_PIPELINE_STATUS.md`, workspace `.hermes/delivery-run-manifest.json`, conformance evidence, and `.hermes/FINAL_DELIVERY.md`.
+
+### Resolve blocked downstream prerequisites, then resume
+- If credential, deployment, or other downstream prerequisite evidence is missing, inspect the persisted block reason and linked evidence artifact in `DELIVERY_PIPELINE_STATUS.md` before acting.
+- After the missing prerequisite is resolved, resume from persisted state instead of restarting from scratch:
+  ```bash
+  bash orchestration/cron/commands.sh resume-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  ```
+- Do not create a second workspace or rerun manual bootstrap steps unless the authority record explicitly tells you the original workspace path is invalid.
+
 If Hermes workflow is unstable:
 1. Pause cron jobs (`pause-all`).
 2. Execute manual CEO-driven run (`run-daily`) after checks.
