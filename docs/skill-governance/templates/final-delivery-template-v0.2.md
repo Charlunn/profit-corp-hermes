@@ -6,7 +6,7 @@
 - `run_id`:
 - `role`: release-readiness-specialist
 - `stage`: release readiness
-- `scope_status`: in-scope | scope-reopen-requested | blocked
+- `scope_status`: approved-brief-only | in-scope | scope-reopen-requested | blocked
 - 目标完成情况：
 - 关键改动摘要：
 

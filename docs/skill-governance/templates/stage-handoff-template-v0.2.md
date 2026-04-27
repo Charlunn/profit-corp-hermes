@@ -6,7 +6,7 @@
 - `run_id`:
 - `role`:
 - `stage`:
-- `scope_status`: in-scope | scope-reopen-requested | blocked
+- `scope_status`: approved-brief-only | in-scope | scope-reopen-requested | blocked
 - `summary`:
 
 ## 2) Outputs Produced
