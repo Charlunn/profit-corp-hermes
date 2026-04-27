@@ -445,12 +445,14 @@ def update_pipeline_state(
 ) -> None:
     pipeline = record.setdefault("pipeline", {})
     artifacts = record.setdefault("artifacts", {})
+    record.setdefault("final_handoff", {})
     pipeline["stage"] = stage
     pipeline["status"] = status
     pipeline["block_reason"] = block_reason
     if workspace_path is not None:
         pipeline["workspace_path"] = workspace_path
         artifacts["workspace_path"] = workspace_path
+        record["workspace_path"] = workspace_path
     if evidence_path is not None:
         pipeline["evidence_path"] = evidence_path
     if resume_from_stage is not None:
@@ -460,6 +462,10 @@ def update_pipeline_state(
     if final_handoff_path is not None:
         pipeline["final_handoff_path"] = final_handoff_path
         artifacts["final_handoff_path"] = final_handoff_path
+        record["final_handoff"] = {
+            "path": final_handoff_path,
+            "link": final_handoff_path,
+        }
 
 
 def persist_and_render(authority_path: Path, record: dict[str, Any]) -> None:

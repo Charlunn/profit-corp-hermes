@@ -432,40 +432,73 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertIn("delivery-lead-capture-copilot-001", status_text)
         self.assertIn((workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix(), status_text)
 
-    def test_finalize_handoff_persists_identical_canonical_reference_across_surfaces(self) -> None:
+    def test_blocked_resume_finalize_then_validate_succeeds_with_canonical_workspace_linkage(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        validate_module = load_module("validate_approved_delivery_pipeline", ROOT_DIR / "scripts" / "validate_approved_delivery_pipeline.py")
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()
-        workspace = self.seed_workspace_outputs(workspace_root, include_final_handoff=True)
-        record = self.read_json(authority_path)
-        record["pipeline"].update(
-            {
-                "stage": "delivery_run_bootstrap",
-                "status": "ready",
-                "workspace_path": workspace.as_posix(),
-                "delivery_run_id": "delivery-lead-capture-copilot-001",
-            }
+        workspace = self.seed_workspace_outputs(
+            workspace_root,
+            include_downstream_prereq_evidence=True,
+            include_final_handoff=True,
         )
-        record["artifacts"]["workspace_path"] = workspace.as_posix()
-        authority_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (workspace / ".hermes" / "template-conformance.json").write_text(
+            json.dumps({"ok": True}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
-        with mock.patch.object(start_module, "ROOT_DIR", root):
-            result = start_module.finalize_delivery_handoff(authority_path)
+        blocked_result = {
+            "ok": False,
+            "error": "missing downstream prerequisite evidence",
+            "block_reason": "missing_downstream_prerequisite_evidence",
+            "evidence_path": (workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
+        }
+        ready_result = {
+            "ok": True,
+            "workspace": workspace.as_posix(),
+            "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+            "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+            "run_id": "delivery-lead-capture-copilot-001",
+        }
 
-        self.assertTrue(result["ok"], msg=result)
-        final_handoff_path = (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "instantiate_workspace"), \
+             mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value=blocked_result):
+            first_result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
+            self.assertFalse(first_result["ok"], msg=first_result)
+            self.assertEqual(first_result["status"], "blocked")
+
+        events_path = project_dir / "approved-delivery-events.jsonl"
+        blocked_events = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        blocked_events[-1]["timestamp"] = "2026-04-27T08:33:30Z"
+        events_path.write_text(
+            "\n".join(json.dumps(event, ensure_ascii=False) for event in blocked_events) + "\n",
+            encoding="utf-8",
+        )
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value=ready_result):
+            resumed_result = start_module.resume_approved_project_delivery(authority_path, workspace_root=workspace_root)
+            self.assertTrue(resumed_result["ok"], msg=resumed_result)
+            self.assertEqual(resumed_result["stage"], "delivery_run_bootstrap")
+
+            finalized_result = start_module.finalize_delivery_handoff(authority_path)
+            self.assertTrue(finalized_result["ok"], msg=finalized_result)
+
         updated = self.read_json(authority_path)
-        self.assertEqual(updated["pipeline"]["stage"], "handoff")
-        self.assertEqual(updated["pipeline"]["status"], "completed")
+        final_handoff_path = (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()
+        self.assertEqual(updated["pipeline"]["workspace_path"], workspace.as_posix())
+        self.assertEqual(updated["artifacts"]["workspace_path"], workspace.as_posix())
+        self.assertEqual(updated["workspace_path"], workspace.as_posix())
         self.assertEqual(updated["pipeline"]["final_handoff_path"], final_handoff_path)
         self.assertEqual(updated["artifacts"]["final_handoff_path"], final_handoff_path)
+        self.assertEqual(updated["final_handoff"]["path"], final_handoff_path)
+        self.assertEqual(updated["final_handoff"]["link"], final_handoff_path)
 
-        events = self.read_events(project_dir)
-        self.assertEqual(events[-1]["stage"], "handoff")
-        self.assertEqual(events[-1]["final_handoff_path"], final_handoff_path)
-        self.assertEqual(events[-1]["artifact"], final_handoff_path)
-
-        status_text = (project_dir / "DELIVERY_PIPELINE_STATUS.md").read_text(encoding="utf-8")
-        self.assertIn(final_handoff_path, status_text)
+        validation = validate_module.validate_approved_delivery_pipeline(project_dir)
+        self.assertTrue(validation["ok"], msg=validation)
+        self.assertEqual(validation["workspace_path"], workspace.as_posix())
+        self.assertEqual(validation["final_handoff_path"], final_handoff_path)
 
 
 if __name__ == "__main__":
