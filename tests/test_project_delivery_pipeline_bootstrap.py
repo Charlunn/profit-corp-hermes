@@ -19,6 +19,10 @@ PIPELINE_STAGES = [
     "workspace_instantiation",
     "conformance",
     "delivery_run_bootstrap",
+    "github_repository",
+    "github_sync",
+    "vercel_linkage",
+    "vercel_deploy",
     "handoff",
 ]
 
@@ -296,7 +300,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assert_event_stages(events, PIPELINE_STAGES[:-1])
         self.assertEqual(events[0]["stage"], "approval")
         self.assertEqual(events[1]["stage"], "brief_generation")
-        self.assertEqual(events[-1]["stage"], "delivery_run_bootstrap")
+        self.assertEqual(events[-1]["stage"], "vercel_deploy")
         self.assertEqual(events[-1]["delivery_run_id"], "delivery-lead-capture-copilot-001")
         self.assertEqual(events[-1]["workspace_path"], workspace.as_posix())
 

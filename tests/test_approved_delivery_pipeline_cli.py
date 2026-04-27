@@ -21,6 +21,10 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             ("render-approved-delivery-status", "render_approved_delivery_status.py", "<approved-project-path>"),
             ("validate-approved-delivery-pipeline", "validate_approved_delivery_pipeline.py", "<approved-project-path>"),
             ("resume-approved-delivery", "start_approved_project_delivery.py", "resume-approved-delivery"),
+            ("prepare-approved-delivery-github", "start_approved_project_delivery.py", "prepare-approved-delivery-github"),
+            ("sync-approved-delivery-github", "start_approved_project_delivery.py", "sync-approved-delivery-github"),
+            ("link-approved-delivery-vercel", "start_approved_project_delivery.py", "link-approved-delivery-vercel"),
+            ("deploy-approved-delivery-vercel", "start_approved_project_delivery.py", "deploy-approved-delivery-vercel"),
         ]
 
         for command, expected_help_fragment, usage_fragment in wrappers:
