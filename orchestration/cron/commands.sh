@@ -134,6 +134,51 @@ run_governed_action() {
   python "$ROOT_DIR/scripts/enforce_governed_action.py" --action-id "$action_id" --command "$@"
 }
 
+start_delivery_run() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_delivery_run.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh start-delivery-run <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_delivery_run.py" --workspace-path "$1"
+}
+
+append_delivery_event_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/append_delivery_event.py" --help
+    return 0
+  fi
+  [ "$#" -ge 2 ] || { echo "Usage: bash orchestration/cron/commands.sh append-delivery-event <workspace-path> <event-json>"; return 1; }
+  python "$ROOT_DIR/scripts/append_delivery_event.py" --workspace-path "$1" --event-json "$2"
+}
+
+render_delivery_status_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/render_delivery_status.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh render-delivery-status <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/render_delivery_status.py" --workspace-path "$1"
+}
+
+request_scope_reopen_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/request_scope_reopen.py" --help
+    return 0
+  fi
+  [ "$#" -ge 6 ] || { echo "Usage: bash orchestration/cron/commands.sh request-scope-reopen <workspace-path> <run-id> <stage> <role> <target-artifact> <reason>"; return 1; }
+  python "$ROOT_DIR/scripts/request_scope_reopen.py" --workspace-path "$1" --run-id "$2" --stage "$3" --role "$4" --target-artifact "$5" --reason "$6"
+}
+
+validate_delivery_handoff_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/validate_delivery_handoff.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh validate-delivery-handoff <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/validate_delivery_handoff.py" --workspace-path "$1"
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -160,9 +205,29 @@ case "$ACTION" in
     shift
     run_governed_action "$@"
     ;;
+  start-delivery-run)
+    shift
+    start_delivery_run "$@"
+    ;;
+  append-delivery-event)
+    shift
+    append_delivery_event_cmd "$@"
+    ;;
+  render-delivery-status)
+    shift
+    render_delivery_status_cmd "$@"
+    ;;
+  request-scope-reopen)
+    shift
+    request_scope_reopen_cmd "$@"
+    ;;
+  validate-delivery-handoff)
+    shift
+    validate_delivery_handoff_cmd "$@"
+    ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|pause-all]"
     exit 1
     ;;
 esac
