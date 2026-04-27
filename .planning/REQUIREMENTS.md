@@ -36,13 +36,13 @@ Requirements for milestone v1.1 SaaS Delivery Factory.
 
 ### Approval and Delivery Pipeline
 
-- [ ] **PIPE-01**: Owner can approve a product opportunity once and mark it ready for automated delivery execution
-- [ ] **PIPE-02**: Hermes can convert an approved product opportunity into a delivery-ready project brief with the required implementation context
-- [ ] **PIPE-03**: Hermes can start a new SaaS delivery workflow automatically after approval without requiring repeated manual kickoff actions
-- [ ] **PIPE-04**: Hermes can instantiate a project from the shared template and attach the approved project brief to the new delivery workspace
-- [ ] **PIPE-05**: Hermes can track the delivery state of each approved SaaS project from initialization through handoff
-- [ ] **PIPE-06**: Hermes can stop or block automated delivery when a required platform rule, credential requirement, or deployment precondition is missing
-- [ ] **PIPE-07**: Hermes can produce a final operator-facing handoff artifact that summarizes what was built, what was deployed, and what still needs attention
+- [x] **PIPE-01**: Owner can approve a product opportunity once and mark it ready for automated delivery execution
+- [x] **PIPE-02**: Hermes can convert an approved product opportunity into a delivery-ready project brief with the required implementation context
+- [x] **PIPE-03**: Hermes can start a new SaaS delivery workflow automatically after approval without requiring repeated manual kickoff actions
+- [x] **PIPE-04**: Hermes can instantiate a project from the shared template and attach the approved project brief to the new delivery workspace
+- [x] **PIPE-05**: Hermes can track the delivery state of each approved SaaS project from initialization through handoff
+- [x] **PIPE-06**: Hermes can stop or block automated delivery when a required platform rule, credential requirement, or deployment precondition is missing
+- [x] **PIPE-07**: Hermes can produce a final operator-facing handoff artifact that summarizes what was built, what was deployed, and what still needs attention
 
 ### GitHub and Deployment Automation
 
@@ -106,13 +106,13 @@ Deferred to a future milestone.
 | TEAM-04 | Phase 9 | Pending |
 | TEAM-05 | Phase 9 | Pending |
 | TEAM-06 | Phase 9 | Pending |
-| PIPE-01 | Phase 10 | Pending |
-| PIPE-02 | Phase 10 | Pending |
-| PIPE-03 | Phase 10 | Pending |
-| PIPE-04 | Phase 10 | Pending |
-| PIPE-05 | Phase 10 | Pending |
-| PIPE-06 | Phase 10 | Pending |
-| PIPE-07 | Phase 10 | Pending |
+| PIPE-01 | Phase 10 | Complete |
+| PIPE-02 | Phase 10 | Complete |
+| PIPE-03 | Phase 10 | Complete |
+| PIPE-04 | Phase 10 | Complete |
+| PIPE-05 | Phase 10 | Complete |
+| PIPE-06 | Phase 10 | Complete |
+| PIPE-07 | Phase 10 | Complete |
 | SHIP-01 | Phase 11 | Pending |
 | SHIP-02 | Phase 11 | Pending |
 | SHIP-03 | Phase 11 | Pending |

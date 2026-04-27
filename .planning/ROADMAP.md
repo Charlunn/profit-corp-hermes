@@ -40,7 +40,7 @@
 | 7 | Template Assetization and Platform Contract | Register the standalone SaaS template as a governed Hermes asset and codify how new projects may extend it safely. | TMPL-01, TMPL-02, TMPL-03, TMPL-04, TMPL-05, TMPL-06 | 4 |
 | 8 | Shared Supabase Backend Guardrails | Enforce the single-Supabase, shared-platform contract so generated SaaS projects stay inside safe shared-table and app-prefix boundaries. | BACK-01, BACK-02, BACK-03, BACK-04, BACK-05, BACK-06 | 4 |
 | 9 | Claude Code Delivery Team Orchestration | Define the specialist delivery team, role contracts, and GSD operating boundaries for approved-project execution. | TEAM-01, TEAM-02, TEAM-03, TEAM-04, TEAM-05, TEAM-06 | 4 |
-| 10 | Approved Project Delivery Pipeline | Convert a user-approved opportunity into a live delivery workflow with project brief generation, template instantiation, and tracked execution state. | PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05, PIPE-06, PIPE-07 | 4 |
+| 10 | Approved Project Delivery Pipeline | 3/3 | Complete    | 2026-04-27 |
 | 11 | GitHub and Vercel Automation | Enable platform-managed repository sync, deployable Vercel linking, environment configuration, and deployment execution for generated SaaS projects. | SHIP-01, SHIP-02, SHIP-03, SHIP-04, SHIP-05, SHIP-06, SHIP-07, SHIP-08 | 4 |
 | 12 | Credential Governance and Operator Handoff | Add the audit, credential-scope, platform-justification, and operator review controls needed to keep automated delivery trustworthy. | GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06 | 4 |
 
@@ -76,10 +76,10 @@
 ### Phase 10: Approved Project Delivery Pipeline
 **Goal:** Turn a one-time owner approval into an automated delivery workflow with tracked state and reliable blocking behavior.
 **Requirements:** PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05, PIPE-06, PIPE-07
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
 - [ ] `10-01-PLAN.md` — create the approved-project authority record and deterministic delivery-ready brief contract.
-- [ ] `10-02-PLAN.md` — wire approval-to-workspace bootstrap, Phase 10 state tracking, blocking behavior, and resume/retry flow.
+- [x] `10-02-PLAN.md` — wire approval-to-workspace bootstrap, Phase 10 state tracking, blocking behavior, and resume/retry flow. (completed 2026-04-27)
 - [ ] `10-03-PLAN.md` — add validator, orchestrator command wrappers, and operator/CEO runbooks for start/status/resume/handoff.
 **Success Criteria:**
 1. An approved opportunity can be converted into a delivery-ready project brief without manual restructuring.
