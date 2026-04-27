@@ -83,7 +83,7 @@ Plans:
 - [ ] `10-03-PLAN.md` — add validator, orchestrator command wrappers, and operator/CEO runbooks for start/status/resume/handoff.
 **Success Criteria:**
 1. An approved opportunity can be converted into a delivery-ready project brief without manual restructuring.
-2. Hermes can automatically instantiate a project from the template and attach the approved brief to the delivery workspace.
+2. Hermes can automatically instantiate a project from the shared template and attach the approved brief to the delivery workspace.
 3. Hermes tracks delivery state from initialization through handoff in a durable, operator-readable way.
 4. Hermes blocks or stops the workflow when platform rules, credentials, or deployment preconditions are missing and reports the reason clearly.
 
@@ -99,6 +99,11 @@ Plans:
 ### Phase 12: Credential Governance and Operator Handoff
 **Goal:** Keep automated delivery safe by adding auditable credential controls, platform-change justification, and a final operator-facing review surface.
 **Requirements:** GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06
+**Plans:** 3 plans
+Plans:
+- [ ] `12-01-PLAN.md` — harden the authority-controlled credential path with allowlisted actions and durable audit evidence.
+- [ ] `12-02-PLAN.md` — add protected-surface classification plus governed platform-justification blocking before sync and deploy.
+- [ ] `12-03-PLAN.md` — render the final operator review artifact and validator coverage for governance visibility.
 **Success Criteria:**
 1. Hermes uses platform-managed GitHub and Vercel credentials through a documented, constrained path rather than open-ended arbitrary access.
 2. Hermes records an audit trail for repository creation, sync, environment setup, and deployment actions.
@@ -120,4 +125,4 @@ Plans:
 | 9. Claude Code Delivery Team Orchestration | v1.1 | 0/0 | Planned | — |
 | 10. Approved Project Delivery Pipeline | v1.1 | 0/3 | Planned | — |
 | 11. GitHub and Vercel Automation | v1.1 | 0/0 | Planned | — |
-| 12. Credential Governance and Operator Handoff | v1.1 | 0/0 | Planned | — |
+| 12. Credential Governance and Operator Handoff | v1.1 | 0/3 | Planned | — |
