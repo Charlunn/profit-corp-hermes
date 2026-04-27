@@ -597,8 +597,6 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
     project_name = str(os.environ.get("VERCEL_PROJECT", "")).strip() or f"{project_slug}-prod"
 
     command_env = {key: value for key, value in os.environ.items() if key.startswith("VERCEL_")}
-    if "VERCEL_TOKEN" not in command_env:
-        command_env["VERCEL_TOKEN"] = "test-token"
 
     link_result = vercel_link_project(
         workspace_path=workspace,
@@ -617,11 +615,12 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
         "PAYPAL_BRAND_NAME": app_name,
     }
     platform_managed_env = {
-        name: str(os.environ.get(name, "")).strip() or f"placeholder-{name.lower()}"
+        name: str(os.environ.get(name, "")).strip()
         for name in [
             "SUPABASE_SERVICE_ROLE_KEY",
             "PAYPAL_CLIENT_SECRET",
         ]
+        if str(os.environ.get(name, "")).strip()
     }
 
     env_result = vercel_apply_env_contract(
@@ -666,8 +665,6 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
     )
 
     command_env = {key: value for key, value in os.environ.items() if key.startswith("VERCEL_")}
-    if "VERCEL_TOKEN" not in command_env:
-        command_env["VERCEL_TOKEN"] = "test-token"
 
     result = deploy_to_vercel(
         workspace_path=workspace,
