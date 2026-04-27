@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -8,6 +9,7 @@ from unittest import mock
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 START_SCRIPT_PATH = ROOT_DIR / "scripts" / "start_approved_project_delivery.py"
+VERCEL_COMMON_PATH = ROOT_DIR / "scripts" / "vercel_delivery_common.py"
 
 
 def load_module(module_name: str, script_path: Path):
@@ -19,6 +21,120 @@ def load_module(module_name: str, script_path: Path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class VercelDeliveryCommonTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(prefix="vercel-delivery-common-")
+        self.addCleanup(self.tmp.cleanup)
+        self.workspace = Path(self.tmp.name) / "workspace"
+        self.workspace.mkdir(parents=True)
+
+    def test_missing_cli_and_missing_auth_produce_distinct_blocked_states(self) -> None:
+        module = load_module("vercel_delivery_common_missing", VERCEL_COMMON_PATH)
+
+        missing_cli = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: None,
+        )
+        self.assertFalse(missing_cli["ok"], msg=missing_cli)
+        self.assertEqual(missing_cli["block_reason"], "missing_vercel_cli")
+
+        missing_auth = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={},
+            which=lambda name: "vercel",
+        )
+        self.assertFalse(missing_auth["ok"], msg=missing_auth)
+        self.assertEqual(missing_auth["block_reason"], "missing_vercel_auth")
+
+    def test_project_linkage_records_one_linked_project(self) -> None:
+        module = load_module("vercel_delivery_common_link", VERCEL_COMMON_PATH)
+
+        def fake_runner(command, cwd, capture_output, text, check, env):
+            if command[:3] == ["vercel", "link", "--yes"]:
+                return types.SimpleNamespace(returncode=0, stdout="linked", stderr="")
+            raise AssertionError(f"unexpected command: {command}")
+
+        result = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            project_id="prj_123",
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=fake_runner,
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertTrue(result["linked"])
+        self.assertEqual(result["project_id"], "prj_123")
+        self.assertEqual(result["project_name"], "demo-app-prod")
+        self.assertEqual(result["team_scope"], "profit-corp")
+        self.assertIn("evidence_path", result)
+
+    def test_env_contract_separates_platform_managed_and_identity_derived_values(self) -> None:
+        module = load_module("vercel_delivery_common_env", VERCEL_COMMON_PATH)
+
+        result = module.apply_env_contract(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            platform_managed_env={
+                "SUPABASE_SERVICE_ROLE_KEY": "secret",
+                "PAYPAL_CLIENT_SECRET": "another-secret",
+            },
+            identity_derived_env={
+                "APP_KEY": "demo_app",
+                "APP_NAME": "Demo App",
+                "APP_URL": "https://demo.example.com",
+                "PAYPAL_BRAND_NAME": "Demo App",
+            },
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=lambda *args, **kwargs: types.SimpleNamespace(returncode=0, stdout="ok", stderr=""),
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        contract = json.loads(Path(result["env_contract_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(contract["platform_managed"], ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"])
+        self.assertEqual(contract["identity_derived"]["APP_KEY"], "demo_app")
+        self.assertEqual(contract["identity_derived"]["PAYPAL_BRAND_NAME"], "Demo App")
+        self.assertNotIn("secret", json.dumps(contract, ensure_ascii=False))
+
+    def test_deploy_only_runs_after_github_sync_and_env_contract_checks(self) -> None:
+        module = load_module("vercel_delivery_common_deploy", VERCEL_COMMON_PATH)
+
+        missing_sync = module.deploy_to_vercel(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            github_sync_ok=False,
+            vercel_link_ok=True,
+            env_contract_ok=True,
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+        )
+        self.assertFalse(missing_sync["ok"], msg=missing_sync)
+        self.assertEqual(missing_sync["block_reason"], "github_sync_incomplete")
+
+        missing_env_contract = module.deploy_to_vercel(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            github_sync_ok=True,
+            vercel_link_ok=True,
+            env_contract_ok=False,
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+        )
+        self.assertFalse(missing_env_contract["ok"], msg=missing_env_contract)
+        self.assertEqual(missing_env_contract["block_reason"], "missing_vercel_env_contract")
 
 
 class Phase11VercelFlowTests(unittest.TestCase):
@@ -125,6 +241,7 @@ class Phase11VercelFlowTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["vercel"]["project_id"], "prj_123")
         self.assertEqual(updated["shipping"]["vercel"]["project_name"], "demo-app-prod")
         self.assertEqual(updated["shipping"]["vercel"]["env_contract_path"], env_evidence.as_posix())
+        self.assertEqual(updated["shipping"]["vercel"]["env_contract"]["evidence_path"], env_evidence.as_posix())
         self.assertEqual(updated["shipping"]["vercel"]["required_env"]["platform_managed"], ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"])
         self.assertEqual(updated["shipping"]["vercel"]["required_env"]["identity_derived"]["APP_KEY"], "demo_app")
         self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
@@ -172,6 +289,17 @@ class Phase11VercelFlowTests(unittest.TestCase):
                     "project_name": "demo-app-prod",
                     "project_url": "https://vercel.com/profit-corp/demo-app-prod",
                     "env_contract_path": (self.workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                    "env_contract": {
+                        "platform_managed": ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"],
+                        "identity_derived": {
+                            "APP_KEY": "demo_app",
+                            "APP_NAME": "Demo App",
+                            "APP_URL": "https://demo.example.com",
+                            "PAYPAL_BRAND_NAME": "Demo App",
+                        },
+                        "evidence_path": (self.workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                    },
+                    "deploy_status": "pending",
                 },
             }
         )
@@ -180,9 +308,9 @@ class Phase11VercelFlowTests(unittest.TestCase):
 
         with mock.patch.object(self.start_module, "run_vercel_deploy", return_value={
             "ok": True,
-            "deployment_url": "https://demo-app.vercel.app",
-            "deployment_status": "ready",
-            "deployment_evidence_path": (self.workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+            "deploy_url": "https://demo-app.vercel.app",
+            "deploy_status": "ready",
+            "deploy_evidence_path": (self.workspace / ".hermes" / "vercel-deploy.json").as_posix(),
             "final_handoff_path": final_handoff.as_posix(),
         }):
             result = self.start_module.run_pipeline_from_stage(
@@ -196,6 +324,8 @@ class Phase11VercelFlowTests(unittest.TestCase):
         updated = self.read_record()
         self.assertEqual(updated["shipping"]["vercel"]["deployment_url"], "https://demo-app.vercel.app")
         self.assertEqual(updated["shipping"]["vercel"]["deployment_status"], "ready")
+        self.assertEqual(updated["shipping"]["vercel"]["deploy_url"], "https://demo-app.vercel.app")
+        self.assertEqual(updated["shipping"]["vercel"]["deploy_status"], "ready")
         self.assertEqual(updated["pipeline"]["final_handoff_path"], final_handoff.as_posix())
         self.assertEqual(updated["artifacts"]["final_handoff_path"], final_handoff.as_posix())
 
