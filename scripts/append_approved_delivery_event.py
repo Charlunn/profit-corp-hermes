@@ -29,6 +29,9 @@ REQUIRED_EVENT_FIELDS = (
     "resume_from_stage",
     "final_handoff_path",
 )
+OPTIONAL_OBJECT_FIELDS = (
+    "shipping",
+)
 ALLOWED_STAGES = {
     "approval",
     "brief_generation",
@@ -87,6 +90,10 @@ def validate_event(event: dict[str, Any]) -> None:
         value = event.get(field)
         if not isinstance(value, str):
             raise ApprovedDeliveryEventError(f"approved delivery event field must be a string: {field}")
+
+    for field in OPTIONAL_OBJECT_FIELDS:
+        if field in event and not isinstance(event.get(field), dict):
+            raise ApprovedDeliveryEventError(f"approved delivery event field must be an object when present: {field}")
 
     if event["stage"] not in ALLOWED_STAGES:
         raise ApprovedDeliveryEventError(f"unsupported approved delivery stage: {event['stage']}")

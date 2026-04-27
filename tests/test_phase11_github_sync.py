@@ -3,7 +3,6 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent

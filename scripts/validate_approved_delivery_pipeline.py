@@ -27,6 +27,11 @@ STATUS_REQUIRED_LINES = [
     "Authority",
     "Workspace",
     "Final handoff",
+    "GitHub Repository Mode",
+    "GitHub Repository URL",
+    "GitHub Branch",
+    "GitHub Sync Commit",
+    "GitHub Sync Evidence",
 ]
 
 
@@ -206,6 +211,27 @@ def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: lis
         raise ApprovedDeliveryPipelineValidationError("status view missing blocked prerequisite evidence link")
 
 
+def validate_github_linkage(record: dict[str, Any], status_text: str) -> None:
+    github = get_nested(record, "shipping", "github")
+    if not isinstance(github, dict):
+        raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing shipping.github metadata")
+    required_fields = {
+        "repository_mode": "GitHub repository mode",
+        "repository_name": "GitHub repository name",
+        "repository_url": "GitHub repository URL",
+        "default_branch": "GitHub default branch",
+        "synced_commit": "GitHub synced commit",
+        "sync_evidence_path": "GitHub sync evidence path",
+    }
+    lowered = status_text.lower()
+    for key, label in required_fields.items():
+        value = first_nonempty(github.get(key))
+        if not value:
+            raise ApprovedDeliveryPipelineValidationError(f"approved-project authority record missing {label}")
+        if value.lower() not in lowered and Path(value).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError(f"status view missing {label} linkage")
+
+
 def validate_status_markdown(status_text: str, workspace: Path, final_handoff: Path) -> None:
     require_in_order(status_text, ["#", "Final"], STATUS_NAME)
     lowered = status_text.lower()
@@ -255,6 +281,7 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
         raise ApprovedDeliveryPipelineValidationError("workspace path mismatch between authority record and handoff event")
 
     validate_status_markdown(status_text, workspace, final_handoff_path)
+    validate_github_linkage(record, status_text)
     validate_blocked_prerequisite_visibility(record, events, status_text)
 
     return {
