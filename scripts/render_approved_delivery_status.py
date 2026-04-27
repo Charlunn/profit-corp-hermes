@@ -58,6 +58,9 @@ def build_status_markdown(events: list[dict[str, Any]]) -> str:
             f"evidence=`{event.get('evidence_path', 'not available')}` "
             f"handoff=`{event.get('final_handoff_path', 'not available')}`"
         )
+    shipping = latest.get("shipping", {}) if isinstance(latest.get("shipping"), dict) else {}
+    github = shipping.get("github", {}) if isinstance(shipping.get("github"), dict) else {}
+    vercel = shipping.get("vercel", {}) if isinstance(shipping.get("vercel"), dict) else {}
     return "\n".join(
         [
             "# Delivery Pipeline Status",
@@ -71,6 +74,13 @@ def build_status_markdown(events: list[dict[str, Any]]) -> str:
             f"- **Delivery Brief**: `{latest.get('brief_path', 'not available')}`",
             f"- **Workspace Path**: `{latest.get('workspace_path', 'not available')}`",
             f"- **Delivery Run ID**: `{latest.get('delivery_run_id', 'not available')}`",
+            f"- **GitHub Repository**: `{github.get('repository_name', 'not available')}`",
+            f"- **GitHub Branch**: `{github.get('default_branch', 'not available')}`",
+            f"- **GitHub Sync Evidence**: `{github.get('sync_evidence_path', 'not available')}`",
+            f"- **Vercel Project**: `{vercel.get('project_name', 'not available')}`",
+            f"- **Vercel Env Contract**: `{vercel.get('env_contract_path', 'not available')}`",
+            f"- **Deploy URL**: `{vercel.get('deployment_url', 'not available')}`",
+            f"- **Deploy Status**: `{vercel.get('deployment_status', 'not available')}`",
             f"- **Block Reason**: `{latest.get('block_reason', 'not available')}`",
             f"- **Evidence Path**: `{latest.get('evidence_path', 'not available')}`",
             f"- **Resume From Stage**: `{latest.get('resume_from_stage', 'not available')}`",

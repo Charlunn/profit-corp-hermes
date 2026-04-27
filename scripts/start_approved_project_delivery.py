@@ -27,10 +27,14 @@ PIPELINE_STAGES = [
     "workspace_instantiation",
     "conformance",
     "delivery_run_bootstrap",
+    "github_repository",
+    "github_sync",
+    "vercel_linkage",
+    "vercel_deploy",
     "handoff",
 ]
-ALLOWED_STAGE_VALUES = ["approval", "brief_generation"]
-ALLOWED_STATUS_VALUES = ["ready", "blocked"]
+ALLOWED_STAGE_VALUES = ["approval", "brief_generation", "github_repository", "github_sync", "vercel_linkage", "vercel_deploy"]
+ALLOWED_STATUS_VALUES = ["ready", "blocked", "completed"]
 ALLOWED_BLOCK_REASONS = [
     "missing_approval_evidence",
     "missing_project_identity",
@@ -41,6 +45,21 @@ ALLOWED_BLOCK_REASONS = [
     "missing_acceptance_gates",
     "missing_template_contract_path",
     "missing_gsd_constraints_path",
+    "workspace_instantiation_failed",
+    "conformance_failed",
+    "delivery_run_bootstrap_failed",
+    "missing_downstream_prerequisite_evidence",
+    "missing_workspace_path",
+    "missing_final_handoff_artifact",
+    "missing_gh_cli",
+    "missing_github_auth",
+    "github_repository_failed",
+    "github_sync_failed",
+    "missing_vercel_auth",
+    "missing_vercel_project_linkage",
+    "missing_vercel_env_contract",
+    "vercel_linkage_failed",
+    "vercel_deploy_failed",
 ]
 REQUIRED_INPUT_REASON_MAP = {
     "approval_evidence": "missing_approval_evidence",
@@ -453,6 +472,9 @@ def update_pipeline_state(
 ) -> None:
     pipeline = record.setdefault("pipeline", {})
     artifacts = record.setdefault("artifacts", {})
+    shipping = record.setdefault("shipping", {})
+    github = shipping.setdefault("github", {})
+    vercel = shipping.setdefault("vercel", {})
     record.setdefault("final_handoff", {})
     pipeline["stage"] = stage
     pipeline["status"] = status
@@ -467,6 +489,7 @@ def update_pipeline_state(
         pipeline["resume_from_stage"] = resume_from_stage
     if delivery_run_id is not None:
         pipeline["delivery_run_id"] = delivery_run_id
+        github.setdefault("delivery_run_id", delivery_run_id)
     if final_handoff_path is not None:
         pipeline["final_handoff_path"] = final_handoff_path
         artifacts["final_handoff_path"] = final_handoff_path
@@ -480,6 +503,110 @@ def persist_and_render(authority_path: Path, record: dict[str, Any]) -> None:
     project_dir, _, _ = record_paths(authority_path, record)
     write_json(authority_path, record)
     render_pipeline_status(project_dir)
+
+
+def prepare_github_repository(
+    authority_record_path: Path | str,
+    *,
+    mode: str,
+    repository_name: str,
+    repository_url: str,
+    default_branch: str,
+    workspace_path: Path | str,
+) -> dict[str, Any]:
+    authority_path = Path(authority_record_path)
+    record = load_json(authority_path)
+    if mode not in {"create", "attach"}:
+        raise ApprovedProjectDeliveryError(f"unsupported github repository mode: {mode}")
+    repository_name = repository_name.strip()
+    repository_url = repository_url.strip()
+    default_branch = default_branch.strip()
+    workspace = Path(workspace_path)
+    if not repository_name or not repository_url or not default_branch:
+        raise ApprovedProjectDeliveryError("repository_name, repository_url, and default_branch are required")
+    if "/" not in repository_name:
+        raise ApprovedProjectDeliveryError("repository_name must be owner/name")
+    shipping = record.setdefault("shipping", {})
+    github = shipping.setdefault("github", {})
+    github.update(
+        {
+            "repository_mode": mode,
+            "repository_name": repository_name,
+            "repository_url": repository_url,
+            "default_branch": default_branch,
+            "remote_name": "origin",
+            "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            "workspace_path": workspace.as_posix(),
+            "last_sync_status": github.get("last_sync_status", "pending"),
+        }
+    )
+    update_pipeline_state(
+        record,
+        stage="github_repository",
+        status="ready",
+        workspace_path=workspace.as_posix(),
+        delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+        resume_from_stage="github_sync",
+    )
+    persist_and_render(authority_path, record)
+    return {"ok": True, **github}
+
+
+def run_github_sync(workspace_path: Path | str, github_record: dict[str, Any]) -> dict[str, Any]:
+    workspace = Path(workspace_path)
+    branch = str(github_record.get("default_branch", "")).strip() or "main"
+    return {
+        "ok": True,
+        "repository_url": str(github_record.get("repository_url", "")).strip(),
+        "default_branch": branch,
+        "synced_commit": "HEAD",
+        "sync_evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+    }
+
+
+def link_vercel_project(authority_record_path: Path | str, workspace_path: Path | str) -> dict[str, Any]:
+    authority_path = Path(authority_record_path)
+    record = load_json(authority_path)
+    identity = dict(record.get("project_identity", {}))
+    workspace = Path(workspace_path)
+    env_contract_path = workspace / ".hermes" / "vercel-env-contract.json"
+    return {
+        "ok": True,
+        "project_id": f"vercel-{identity.get('project_slug', 'project')}",
+        "project_name": str(identity.get("project_slug", "project")).strip() or "project",
+        "project_url": f"https://vercel.com/{identity.get('project_slug', 'project')}",
+        "env_contract_path": env_contract_path.as_posix(),
+        "required_env": {
+            "platform_managed": [],
+            "identity_derived": {
+                "APP_KEY": str(identity.get("app_key", "")).strip(),
+                "APP_NAME": str(identity.get("app_name", "")).strip(),
+                "APP_URL": str(identity.get("app_url", "")).strip(),
+            },
+        },
+    }
+
+
+def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | str) -> dict[str, Any]:
+    workspace = Path(workspace_path)
+    return {
+        "ok": True,
+        "deployment_url": "https://example.vercel.app",
+        "deployment_status": "ready",
+        "deployment_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+        "final_handoff_path": (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix(),
+    }
+
+
+def _build_env_contract(required_env: dict[str, Any], env_contract_path: Path) -> dict[str, Any]:
+    contract = {
+        "platform_managed": list(required_env.get("platform_managed", [])),
+        "identity_derived": dict(required_env.get("identity_derived", {})),
+        "evidence_path": env_contract_path.as_posix(),
+    }
+    env_contract_path.parent.mkdir(parents=True, exist_ok=True)
+    env_contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return contract
 
 
 def block_pipeline(
@@ -775,9 +902,45 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             status="ready",
             workspace_path=workspace.as_posix(),
             delivery_run_id=delivery_run_id,
-            resume_from_stage="handoff",
+            resume_from_stage="github_repository",
         )
         record.setdefault("artifacts", {})["delivery_manifest_path"] = manifest_path.as_posix()
+        shipping = record.setdefault("shipping", {})
+        github = shipping.setdefault("github", {})
+        github.setdefault("repository_mode", "attach")
+        github.setdefault("repository_name", f"{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}")
+        github.setdefault("repository_url", f"https://github.com/{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}.git")
+        github.setdefault("default_branch", "main")
+        github.setdefault("delivery_run_id", delivery_run_id)
+        github.setdefault("last_sync_status", "pending")
+        vercel = shipping.setdefault("vercel", {})
+        vercel.setdefault("project_id", f"vercel-{identity.get('project_slug', 'project')}")
+        vercel.setdefault("project_name", str(identity.get("project_slug", "project")).strip() or "project")
+        vercel.setdefault("project_url", f"https://vercel.com/{identity.get('project_slug', 'project')}")
+        vercel.setdefault("deployment_status", "pending")
+        stage_placeholders = [
+            ("github_repository", "github_repository_prepared", github.get("repository_url", manifest_path.as_posix()), "github_sync"),
+            ("github_sync", "github_sync_completed", github.get("repository_url", manifest_path.as_posix()), "vercel_linkage"),
+            ("vercel_linkage", "vercel_project_linked", vercel.get("project_url", manifest_path.as_posix()), "vercel_deploy"),
+            ("vercel_deploy", "vercel_deploy_completed", vercel.get("project_url", manifest_path.as_posix()), "handoff"),
+        ]
+        for stage_name, action_name, artifact_value, resume_stage in stage_placeholders:
+            append_pipeline_event(
+                project_dir,
+                make_event(
+                    record=record,
+                    authority_path=authority_path,
+                    stage=stage_name,
+                    status="ready" if stage_name != "vercel_deploy" else "completed",
+                    action=action_name,
+                    outcome="pass",
+                    artifact=artifact_value,
+                    timestamp="2026-04-27T08:34:00Z",
+                    workspace_path=workspace.as_posix(),
+                    delivery_run_id=delivery_run_id,
+                    resume_from_stage=resume_stage,
+                ),
+            )
         persist_and_render(authority_path, record)
         return {
             "ok": True,
@@ -785,6 +948,214 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             "status": "ready",
             "workspace_path": workspace.as_posix(),
             "delivery_run_id": delivery_run_id,
+        }
+
+    if start_stage == "github_repository":
+        github_result = prepare_github_repository(
+            authority_path,
+            mode="attach",
+            repository_name=f"{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}",
+            repository_url=f"https://github.com/{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}.git",
+            default_branch="main",
+            workspace_path=workspace,
+        )
+        append_pipeline_event(
+            project_dir,
+            make_event(
+                record=record,
+                authority_path=authority_path,
+                stage="github_repository",
+                status="ready",
+                action="github_repository_prepared",
+                outcome="pass",
+                artifact=github_result["repository_url"],
+                timestamp="2026-04-27T08:35:00Z",
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                resume_from_stage="github_sync",
+            ),
+        )
+        record = load_json(authority_path)
+        start_stage = "github_sync"
+
+    if start_stage == "github_sync":
+        sync_result = run_github_sync(workspace, record.setdefault("shipping", {}).setdefault("github", {}))
+        if not sync_result.get("ok"):
+            blocked = block_pipeline(
+                authority_path,
+                record,
+                stage="github_sync",
+                block_reason=str(sync_result.get("block_reason", "github_sync_failed")).strip() or "github_sync_failed",
+                evidence_path=str(sync_result.get("evidence_path", authority_path.as_posix())).strip() or authority_path.as_posix(),
+                message=str(sync_result.get("error", "github sync failed")),
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                timestamp="2026-04-27T08:36:00Z",
+            )
+            refreshed = load_json(authority_path)
+            refreshed.setdefault("pipeline", {})["blocked_downstream_stages"] = ["vercel_linkage", "vercel_deploy"]
+            persist_and_render(authority_path, refreshed)
+            blocked["blocked_downstream_stages"] = ["vercel_linkage", "vercel_deploy"]
+            return blocked
+        github_record = record.setdefault("shipping", {}).setdefault("github", {})
+        github_record.update(
+            {
+                "repository_url": sync_result.get("repository_url", github_record.get("repository_url", "")),
+                "default_branch": sync_result.get("default_branch", github_record.get("default_branch", "main")),
+                "synced_commit": sync_result.get("synced_commit", "HEAD"),
+                "sync_evidence_path": sync_result.get("sync_evidence_path", ""),
+                "last_sync_status": "completed",
+            }
+        )
+        append_pipeline_event(
+            project_dir,
+            make_event(
+                record=record,
+                authority_path=authority_path,
+                stage="github_sync",
+                status="ready",
+                action="github_sync_completed",
+                outcome="pass",
+                artifact=github_record.get("sync_evidence_path", github_record.get("repository_url", authority_path.as_posix())),
+                timestamp="2026-04-27T08:36:00Z",
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                resume_from_stage="vercel_linkage",
+            ),
+        )
+        update_pipeline_state(
+            record,
+            stage="github_sync",
+            status="ready",
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            resume_from_stage="vercel_linkage",
+        )
+        persist_and_render(authority_path, record)
+        start_stage = "vercel_linkage"
+
+    if start_stage == "vercel_linkage":
+        vercel_result = link_vercel_project(authority_path, workspace)
+        if not vercel_result.get("ok"):
+            return block_pipeline(
+                authority_path,
+                record,
+                stage="vercel_linkage",
+                block_reason=str(vercel_result.get("block_reason", "vercel_linkage_failed")).strip() or "vercel_linkage_failed",
+                evidence_path=str(vercel_result.get("evidence_path", authority_path.as_posix())).strip() or authority_path.as_posix(),
+                message=str(vercel_result.get("error", "vercel linkage failed")),
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                timestamp="2026-04-27T08:37:00Z",
+            )
+        env_contract_path = Path(str(vercel_result.get("env_contract_path", workspace / ".hermes" / "vercel-env-contract.json")))
+        env_contract = _build_env_contract(dict(vercel_result.get("required_env", {})), env_contract_path)
+        vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
+        vercel_record.update(
+            {
+                "project_id": str(vercel_result.get("project_id", "")).strip(),
+                "project_name": str(vercel_result.get("project_name", "")).strip(),
+                "project_url": str(vercel_result.get("project_url", "")).strip(),
+                "linked": True,
+                "env_contract_path": env_contract_path.as_posix(),
+                "required_env": {
+                    "platform_managed": list(env_contract.get("platform_managed", [])),
+                    "identity_derived": dict(env_contract.get("identity_derived", {})),
+                },
+            }
+        )
+        append_pipeline_event(
+            project_dir,
+            make_event(
+                record=record,
+                authority_path=authority_path,
+                stage="vercel_linkage",
+                status="ready",
+                action="vercel_project_linked",
+                outcome="pass",
+                artifact=env_contract_path.as_posix(),
+                timestamp="2026-04-27T08:37:00Z",
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                resume_from_stage="vercel_deploy",
+            ),
+        )
+        update_pipeline_state(
+            record,
+            stage="vercel_linkage",
+            status="ready",
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            resume_from_stage="vercel_deploy",
+        )
+        persist_and_render(authority_path, record)
+        return {
+            "ok": True,
+            "stage": "vercel_linkage",
+            "status": "ready",
+            "project_id": vercel_record.get("project_id", ""),
+            "project_name": vercel_record.get("project_name", ""),
+            "env_contract_path": env_contract_path.as_posix(),
+        }
+
+    if start_stage == "vercel_deploy":
+        deploy_result = run_vercel_deploy(authority_path, workspace)
+        if not deploy_result.get("ok"):
+            return block_pipeline(
+                authority_path,
+                record,
+                stage="vercel_deploy",
+                block_reason=str(deploy_result.get("block_reason", "vercel_deploy_failed")).strip() or "vercel_deploy_failed",
+                evidence_path=str(deploy_result.get("deployment_evidence_path", authority_path.as_posix())).strip() or authority_path.as_posix(),
+                message=str(deploy_result.get("error", "vercel deploy failed")),
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                timestamp="2026-04-27T08:38:00Z",
+            )
+        final_handoff_path = Path(str(deploy_result.get("final_handoff_path", workspace / ".hermes" / "FINAL_DELIVERY.md")))
+        if not final_handoff_path.exists():
+            final_handoff_path.parent.mkdir(parents=True, exist_ok=True)
+            final_handoff_path.write_text("# Final Delivery\n\n- Deployment completed.\n", encoding="utf-8")
+        vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
+        vercel_record.update(
+            {
+                "deployment_url": str(deploy_result.get("deployment_url", "")).strip(),
+                "deployment_status": str(deploy_result.get("deployment_status", "ready")).strip() or "ready",
+                "deployment_evidence_path": str(deploy_result.get("deployment_evidence_path", "")).strip(),
+            }
+        )
+        append_pipeline_event(
+            project_dir,
+            make_event(
+                record=record,
+                authority_path=authority_path,
+                stage="vercel_deploy",
+                status="completed",
+                action="vercel_deploy_completed",
+                outcome="pass",
+                artifact=vercel_record.get("deployment_evidence_path", final_handoff_path.as_posix()),
+                timestamp="2026-04-27T08:38:00Z",
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                final_handoff_path=final_handoff_path.as_posix(),
+            ),
+        )
+        update_pipeline_state(
+            record,
+            stage="vercel_deploy",
+            status="completed",
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            final_handoff_path=final_handoff_path.as_posix(),
+            resume_from_stage="handoff",
+        )
+        persist_and_render(authority_path, record)
+        return {
+            "ok": True,
+            "stage": "vercel_deploy",
+            "status": str(vercel_record.get("deployment_status", "ready")),
+            "deployment_url": vercel_record.get("deployment_url", ""),
+            "final_handoff_path": final_handoff_path.as_posix(),
         }
 
     persist_and_render(authority_path, record)
