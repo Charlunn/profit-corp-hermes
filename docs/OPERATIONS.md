@@ -164,6 +164,13 @@ Skill-level policy:
 
 ### Resolve blocked downstream prerequisites, then resume
 - If credential, deployment, or other downstream prerequisite evidence is missing, inspect the persisted block reason and linked evidence artifact in `DELIVERY_PIPELINE_STATUS.md` before acting.
+- Phase 11 adds explicit staged helpers for repository/deployment progression when you need to inspect or re-run a single segment:
+  ```bash
+  bash orchestration/cron/commands.sh prepare-approved-delivery-github assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  bash orchestration/cron/commands.sh sync-approved-delivery-github assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  bash orchestration/cron/commands.sh link-approved-delivery-vercel assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  bash orchestration/cron/commands.sh deploy-approved-delivery-vercel assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
+  ```
 - After the missing prerequisite is resolved, resume from persisted state instead of restarting from scratch:
   ```bash
   bash orchestration/cron/commands.sh resume-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json

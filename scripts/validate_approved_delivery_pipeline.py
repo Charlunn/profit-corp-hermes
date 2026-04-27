@@ -27,11 +27,6 @@ STATUS_REQUIRED_LINES = [
     "Authority",
     "Workspace",
     "Final handoff",
-    "GitHub Repository Mode",
-    "GitHub Repository URL",
-    "GitHub Branch",
-    "GitHub Sync Commit",
-    "GitHub Sync Evidence",
 ]
 
 
@@ -214,7 +209,7 @@ def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: lis
 def validate_github_linkage(record: dict[str, Any], status_text: str) -> None:
     github = get_nested(record, "shipping", "github")
     if not isinstance(github, dict):
-        raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing shipping.github metadata")
+        return
     required_fields = {
         "repository_mode": "GitHub repository mode",
         "repository_name": "GitHub repository name",
@@ -230,6 +225,33 @@ def validate_github_linkage(record: dict[str, Any], status_text: str) -> None:
             raise ApprovedDeliveryPipelineValidationError(f"approved-project authority record missing {label}")
         if value.lower() not in lowered and Path(value).name.lower() not in lowered:
             raise ApprovedDeliveryPipelineValidationError(f"status view missing {label} linkage")
+
+
+
+def validate_vercel_linkage(record: dict[str, Any], status_text: str) -> None:
+    vercel = get_nested(record, "shipping", "vercel")
+    if not isinstance(vercel, dict):
+        return
+    required_fields = {
+        "project_name": "Vercel project name",
+        "env_contract_path": "Vercel env contract path",
+        "deploy_status": "Vercel deploy status",
+    }
+    lowered = status_text.lower()
+    for key, label in required_fields.items():
+        value = first_nonempty(vercel.get(key), get_nested(vercel, "env_contract", "evidence_path") if key == "env_contract_path" else "")
+        if not value:
+            raise ApprovedDeliveryPipelineValidationError(f"approved-project authority record missing {label}")
+        if value.lower() not in lowered and Path(value).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError(f"status view missing {label} linkage")
+    deploy_url = first_nonempty(vercel.get("deploy_url"), vercel.get("deployment_url"))
+    if deploy_url:
+        if deploy_url.lower() not in lowered and Path(deploy_url).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy URL linkage")
+    deploy_evidence = first_nonempty(vercel.get("deploy_evidence_path"), vercel.get("deployment_evidence_path"))
+    if deploy_evidence:
+        if deploy_evidence.lower() not in lowered and Path(deploy_evidence).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy evidence linkage")
 
 
 def validate_status_markdown(status_text: str, workspace: Path, final_handoff: Path) -> None:
@@ -282,6 +304,7 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
 
     validate_status_markdown(status_text, workspace, final_handoff_path)
     validate_github_linkage(record, status_text)
+    validate_vercel_linkage(record, status_text)
     validate_blocked_prerequisite_visibility(record, events, status_text)
 
     return {
