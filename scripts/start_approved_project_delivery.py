@@ -13,6 +13,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.github_delivery_common import prepare_github_repository as github_prepare_repository
+from scripts.github_delivery_common import sync_workspace_to_github
 from scripts.instantiate_template_project import build_metadata, instantiate_workspace
 from scripts.start_delivery_run import initialize_delivery_run
 from scripts.template_contract_common import build_identity_payload
@@ -436,9 +438,10 @@ def make_event(
     evidence_path: str = "",
     resume_from_stage: str = "",
     final_handoff_path: str = "",
-) -> dict[str, str]:
+) -> dict[str, Any]:
     identity = dict(record.get("project_identity", {}))
     artifacts = dict(record.get("artifacts", {}))
+    shipping = dict(record.get("shipping", {}))
     return {
         "project_slug": str(identity.get("project_slug", "")).strip(),
         "stage": stage,
@@ -455,6 +458,7 @@ def make_event(
         "evidence_path": evidence_path,
         "resume_from_stage": resume_from_stage,
         "final_handoff_path": final_handoff_path,
+        "shipping": shipping,
     }
 
 
@@ -526,18 +530,30 @@ def prepare_github_repository(
         raise ApprovedProjectDeliveryError("repository_name, repository_url, and default_branch are required")
     if "/" not in repository_name:
         raise ApprovedProjectDeliveryError("repository_name must be owner/name")
+    owner, repo = repository_name.split("/", 1)
+    helper_result = github_prepare_repository(
+        workspace_path=workspace,
+        repository_mode=mode,
+        repository_owner=owner,
+        repository_name=repo,
+        repository_url=repository_url,
+    )
+    if not helper_result.get("ok"):
+        return helper_result
     shipping = record.setdefault("shipping", {})
     github = shipping.setdefault("github", {})
     github.update(
         {
             "repository_mode": mode,
-            "repository_name": repository_name,
-            "repository_url": repository_url,
-            "default_branch": default_branch,
-            "remote_name": "origin",
+            "repository_owner": owner,
+            "repository_name": helper_result["repository_name"],
+            "repository_url": helper_result["repository_url"],
+            "default_branch": helper_result.get("default_branch", default_branch),
+            "remote_name": helper_result.get("remote_name", "origin"),
             "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             "workspace_path": workspace.as_posix(),
             "last_sync_status": github.get("last_sync_status", "pending"),
+            "prepare_evidence_path": helper_result.get("evidence_path", ""),
         }
     )
     update_pipeline_state(
@@ -553,15 +569,12 @@ def prepare_github_repository(
 
 
 def run_github_sync(workspace_path: Path | str, github_record: dict[str, Any]) -> dict[str, Any]:
-    workspace = Path(workspace_path)
-    branch = str(github_record.get("default_branch", "")).strip() or "main"
-    return {
-        "ok": True,
-        "repository_url": str(github_record.get("repository_url", "")).strip(),
-        "default_branch": branch,
-        "synced_commit": "HEAD",
-        "sync_evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
-    }
+    return sync_workspace_to_github(
+        workspace_path=workspace_path,
+        repository_url=str(github_record.get("repository_url", "")).strip(),
+        default_branch=str(github_record.get("default_branch", "")).strip() or "main",
+        remote_name=str(github_record.get("remote_name", "origin")).strip() or "origin",
+    )
 
 
 def link_vercel_project(authority_record_path: Path | str, workspace_path: Path | str) -> dict[str, Any]:
@@ -894,6 +907,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 timestamp="2026-04-27T08:34:00Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=delivery_run_id,
+                resume_from_stage="github_repository",
             ),
         )
         update_pipeline_state(
@@ -907,48 +921,19 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         record.setdefault("artifacts", {})["delivery_manifest_path"] = manifest_path.as_posix()
         shipping = record.setdefault("shipping", {})
         github = shipping.setdefault("github", {})
+        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
         github.setdefault("repository_mode", "attach")
-        github.setdefault("repository_name", f"{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}")
-        github.setdefault("repository_url", f"https://github.com/{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}.git")
+        github.setdefault("repository_owner", project_slug)
+        github.setdefault("repository_name", f"{project_slug}/{project_slug}")
+        github.setdefault("repository_url", f"https://github.com/{project_slug}/{project_slug}.git")
         github.setdefault("default_branch", "main")
+        github.setdefault("remote_name", "origin")
         github.setdefault("delivery_run_id", delivery_run_id)
+        github.setdefault("workspace_path", workspace.as_posix())
         github.setdefault("last_sync_status", "pending")
-        vercel = shipping.setdefault("vercel", {})
-        vercel.setdefault("project_id", f"vercel-{identity.get('project_slug', 'project')}")
-        vercel.setdefault("project_name", str(identity.get("project_slug", "project")).strip() or "project")
-        vercel.setdefault("project_url", f"https://vercel.com/{identity.get('project_slug', 'project')}")
-        vercel.setdefault("deployment_status", "pending")
-        stage_placeholders = [
-            ("github_repository", "github_repository_prepared", github.get("repository_url", manifest_path.as_posix()), "github_sync"),
-            ("github_sync", "github_sync_completed", github.get("repository_url", manifest_path.as_posix()), "vercel_linkage"),
-            ("vercel_linkage", "vercel_project_linked", vercel.get("project_url", manifest_path.as_posix()), "vercel_deploy"),
-            ("vercel_deploy", "vercel_deploy_completed", vercel.get("project_url", manifest_path.as_posix()), "handoff"),
-        ]
-        for stage_name, action_name, artifact_value, resume_stage in stage_placeholders:
-            append_pipeline_event(
-                project_dir,
-                make_event(
-                    record=record,
-                    authority_path=authority_path,
-                    stage=stage_name,
-                    status="ready" if stage_name != "vercel_deploy" else "completed",
-                    action=action_name,
-                    outcome="pass",
-                    artifact=artifact_value,
-                    timestamp="2026-04-27T08:34:00Z",
-                    workspace_path=workspace.as_posix(),
-                    delivery_run_id=delivery_run_id,
-                    resume_from_stage=resume_stage,
-                ),
-            )
         persist_and_render(authority_path, record)
-        return {
-            "ok": True,
-            "stage": "delivery_run_bootstrap",
-            "status": "ready",
-            "workspace_path": workspace.as_posix(),
-            "delivery_run_id": delivery_run_id,
-        }
+        record = load_json(authority_path)
+        start_stage = "github_repository"
 
     if start_stage == "github_repository":
         github_result = prepare_github_repository(
@@ -959,6 +944,22 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             default_branch="main",
             workspace_path=workspace,
         )
+        if not github_result.get("ok"):
+            blocked = block_pipeline(
+                authority_path,
+                record,
+                stage="github_repository",
+                block_reason=str(github_result.get("block_reason", "github_repository_failed")).strip() or "github_repository_failed",
+                evidence_path=str(github_result.get("evidence_path", authority_path.as_posix())).strip() or authority_path.as_posix(),
+                message=str(github_result.get("error", "github repository prepare failed")),
+                workspace_path=workspace.as_posix(),
+                delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                timestamp="2026-04-27T08:35:00Z",
+            )
+            blocked["blocked_downstream_stages"] = ["github_sync", "vercel_linkage", "vercel_deploy"]
+            return blocked
+        record = load_json(authority_path)
+        github_record = record.setdefault("shipping", {}).setdefault("github", {})
         append_pipeline_event(
             project_dir,
             make_event(
@@ -968,14 +969,13 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 status="ready",
                 action="github_repository_prepared",
                 outcome="pass",
-                artifact=github_result["repository_url"],
+                artifact=str(github_record.get("repository_url", github_result.get("repository_url", authority_path.as_posix()))),
                 timestamp="2026-04-27T08:35:00Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
                 resume_from_stage="github_sync",
             ),
         )
-        record = load_json(authority_path)
         start_stage = "github_sync"
 
     if start_stage == "github_sync":
@@ -994,6 +994,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             )
             refreshed = load_json(authority_path)
             refreshed.setdefault("pipeline", {})["blocked_downstream_stages"] = ["vercel_linkage", "vercel_deploy"]
+            refreshed.setdefault("shipping", {}).setdefault("github", {})["last_sync_status"] = "blocked"
             persist_and_render(authority_path, refreshed)
             blocked["blocked_downstream_stages"] = ["vercel_linkage", "vercel_deploy"]
             return blocked
@@ -1003,7 +1004,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "repository_url": sync_result.get("repository_url", github_record.get("repository_url", "")),
                 "default_branch": sync_result.get("default_branch", github_record.get("default_branch", "main")),
                 "synced_commit": sync_result.get("synced_commit", "HEAD"),
-                "sync_evidence_path": sync_result.get("sync_evidence_path", ""),
+                "sync_evidence_path": sync_result.get("evidence_path", sync_result.get("sync_evidence_path", "")),
                 "last_sync_status": "completed",
             }
         )
