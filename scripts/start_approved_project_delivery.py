@@ -13,6 +13,13 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.approved_delivery_governance import (
+    run_governed_github_repository_action,
+    run_governed_github_sync_action,
+    run_governed_vercel_deploy_action,
+    run_governed_vercel_env_action,
+    run_governed_vercel_link_action,
+)
 from scripts.github_delivery_common import prepare_github_repository as github_prepare_repository
 from scripts.github_delivery_common import sync_workspace_to_github
 from scripts.instantiate_template_project import build_metadata, instantiate_workspace
@@ -534,7 +541,9 @@ def prepare_github_repository(
     if "/" not in repository_name:
         raise ApprovedProjectDeliveryError("repository_name must be owner/name")
     owner, repo = repository_name.split("/", 1)
-    helper_result = github_prepare_repository(
+    helper_result = run_governed_github_repository_action(
+        authority_record_path=authority_path,
+        stage="github_repository",
         workspace_path=workspace,
         repository_mode=mode,
         repository_owner=owner,
@@ -553,10 +562,12 @@ def prepare_github_repository(
             "repository_url": helper_result["repository_url"],
             "default_branch": helper_result.get("default_branch", default_branch),
             "remote_name": helper_result.get("remote_name", "origin"),
+            "authority_record_path": authority_path.as_posix(),
             "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             "workspace_path": workspace.as_posix(),
             "last_sync_status": github.get("last_sync_status", "pending"),
             "prepare_evidence_path": helper_result.get("evidence_path", ""),
+            "prepare_audit_path": helper_result.get("audit_path", ""),
         }
     )
     update_pipeline_state(
@@ -572,7 +583,12 @@ def prepare_github_repository(
 
 
 def run_github_sync(workspace_path: Path | str, github_record: dict[str, Any]) -> dict[str, Any]:
-    return sync_workspace_to_github(
+    authority_record_path = str(github_record.get("authority_record_path", "")).strip()
+    if not authority_record_path:
+        raise ApprovedProjectDeliveryError("github authority_record_path is required for governed sync")
+    return run_governed_github_sync_action(
+        authority_record_path=authority_record_path,
+        stage="github_sync",
         workspace_path=workspace_path,
         repository_url=str(github_record.get("repository_url", "")).strip(),
         default_branch=str(github_record.get("default_branch", "")).strip() or "main",
@@ -598,7 +614,9 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
 
     command_env = {key: value for key, value in os.environ.items() if key.startswith("VERCEL_")}
 
-    link_result = vercel_link_project(
+    link_result = run_governed_vercel_link_action(
+        authority_record_path=authority_path,
+        stage="vercel_linkage",
         workspace_path=workspace,
         project_name=project_name,
         team_scope=team_scope,
@@ -623,7 +641,9 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
         if str(os.environ.get(name, "")).strip()
     }
 
-    env_result = vercel_apply_env_contract(
+    env_result = run_governed_vercel_env_action(
+        authority_record_path=authority_path,
+        stage="vercel_linkage",
         workspace_path=workspace,
         project_name=str(link_result.get("project_name", project_name)).strip(),
         team_scope=str(link_result.get("team_scope", team_scope)).strip(),
@@ -642,8 +662,10 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
         "project_url": str(link_result.get("project_url", "")).strip(),
         "team_scope": str(link_result.get("team_scope", team_scope)).strip(),
         "evidence_path": str(link_result.get("evidence_path", "")).strip(),
+        "audit_path": str(link_result.get("audit_path", "")).strip(),
         "env_contract": dict(env_result.get("env_contract", {})),
         "env_contract_path": str(env_result.get("env_contract_path", "")).strip(),
+        "env_audit_path": str(env_result.get("audit_path", "")).strip(),
         "required_env": dict(env_result.get("required_env", {})),
     }
 
@@ -666,7 +688,9 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
 
     command_env = {key: value for key, value in os.environ.items() if key.startswith("VERCEL_")}
 
-    result = deploy_to_vercel(
+    result = run_governed_vercel_deploy_action(
+        authority_record_path=authority_path,
+        stage="vercel_deploy",
         workspace_path=workspace,
         project_name=str(vercel.get("project_name", "")).strip() or str(os.environ.get("VERCEL_PROJECT", "")).strip() or "approved-project-prod",
         team_scope=str(vercel.get("team_scope", "")).strip() or str(os.environ.get("VERCEL_TEAM", "")).strip() or "profit-corp",
@@ -684,6 +708,7 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
         "deploy_url": str(result.get("deploy_url", "")).strip(),
         "deploy_status": str(result.get("deploy_status", "ready")).strip() or "ready",
         "deploy_evidence_path": str(result.get("deploy_evidence_path", "")).strip(),
+        "deploy_audit_path": str(result.get("audit_path", "")).strip(),
         "deployment_url": str(result.get("deployment_url", result.get("deploy_url", ""))).strip(),
         "deployment_status": str(result.get("deployment_status", result.get("deploy_status", "ready"))).strip() or "ready",
         "deployment_evidence_path": str(result.get("deployment_evidence_path", result.get("deploy_evidence_path", ""))).strip(),
