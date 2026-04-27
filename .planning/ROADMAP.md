@@ -25,7 +25,7 @@
 - [x] Phase 7: Template Assetization and Platform Contract — completed 2026-04-26
 - [ ] Phase 8: Shared Supabase Backend Guardrails
 - [ ] Phase 9: Claude Code Delivery Team Orchestration
-- [ ] Phase 10: Approved Project Delivery Pipeline
+- [ ] Phase 10: Approved Project Delivery Pipeline (0/3 plans) — planned
 - [ ] Phase 11: GitHub and Vercel Automation
 - [ ] Phase 12: Credential Governance and Operator Handoff
 
@@ -76,6 +76,11 @@
 ### Phase 10: Approved Project Delivery Pipeline
 **Goal:** Turn a one-time owner approval into an automated delivery workflow with tracked state and reliable blocking behavior.
 **Requirements:** PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05, PIPE-06, PIPE-07
+**Plans:** 3 plans
+Plans:
+- [ ] `10-01-PLAN.md` — create the approved-project authority record and deterministic delivery-ready brief contract.
+- [ ] `10-02-PLAN.md` — wire approval-to-workspace bootstrap, Phase 10 state tracking, blocking behavior, and resume/retry flow.
+- [ ] `10-03-PLAN.md` — add validator, orchestrator command wrappers, and operator/CEO runbooks for start/status/resume/handoff.
 **Success Criteria:**
 1. An approved opportunity can be converted into a delivery-ready project brief without manual restructuring.
 2. Hermes can automatically instantiate a project from the template and attach the approved brief to the delivery workspace.
@@ -113,6 +118,6 @@
 | 7. Template Assetization and Platform Contract | v1.1 | 3/3 | Complete | 2026-04-26 |
 | 8. Shared Supabase Backend Guardrails | v1.1 | 0/0 | Planned | — |
 | 9. Claude Code Delivery Team Orchestration | v1.1 | 0/0 | Planned | — |
-| 10. Approved Project Delivery Pipeline | v1.1 | 0/0 | Planned | — |
+| 10. Approved Project Delivery Pipeline | v1.1 | 0/3 | Planned | — |
 | 11. GitHub and Vercel Automation | v1.1 | 0/0 | Planned | — |
 | 12. Credential Governance and Operator Handoff | v1.1 | 0/0 | Planned | — |
