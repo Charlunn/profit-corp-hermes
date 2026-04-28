@@ -14,6 +14,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.approved_delivery_governance import (
+    inspect_workspace_changes,
     run_governed_github_repository_action,
     run_governed_github_sync_action,
     run_governed_vercel_deploy_action,
@@ -23,6 +24,7 @@ from scripts.approved_delivery_governance import (
 from scripts.github_delivery_common import prepare_github_repository as github_prepare_repository
 from scripts.github_delivery_common import sync_workspace_to_github
 from scripts.instantiate_template_project import build_metadata, instantiate_workspace
+from scripts.request_platform_justification import validate_platform_justification
 from scripts.start_delivery_run import initialize_delivery_run
 from scripts.template_contract_common import build_identity_payload
 from scripts.vercel_delivery_common import apply_env_contract as vercel_apply_env_contract
@@ -72,6 +74,10 @@ ALLOWED_BLOCK_REASONS = [
     "missing_vercel_env_contract",
     "vercel_linkage_failed",
     "vercel_deploy_failed",
+    "missing_workspace_change_inventory",
+    "workspace_change_inventory_incomplete",
+    "platform_justification_pending",
+    "platform_justification_rejected",
 ]
 REQUIRED_INPUT_REASON_MAP = {
     "approval_evidence": "missing_approval_evidence",
@@ -517,6 +523,58 @@ def persist_and_render(authority_path: Path, record: dict[str, Any]) -> None:
     project_dir, _, _ = record_paths(authority_path, record)
     write_json(authority_path, record)
     render_pipeline_status(project_dir)
+
+
+def enforce_platform_change_gate(
+    authority_path: Path,
+    record: dict[str, Any],
+    *,
+    stage: str,
+    workspace: Path,
+) -> dict[str, Any] | None:
+    inspection = inspect_workspace_changes(workspace_root=workspace, stage=stage)
+    classification = str(inspection.get("classification", "")).strip()
+    evidence_path = str(inspection.get("evidence_path", "")).strip() or authority_path.as_posix()
+    if classification == "product_only":
+        return None
+    if classification == "blocked_for_missing_information":
+        message = "; ".join(str(item).strip() for item in inspection.get("reasons", []) if str(item).strip()) or "workspace change classification is incomplete"
+        return block_pipeline(
+            authority_path,
+            record,
+            stage=stage,
+            block_reason=str(inspection.get("block_reason", "missing_workspace_change_inventory")).strip() or "missing_workspace_change_inventory",
+            evidence_path=evidence_path,
+            message=message,
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            timestamp="2026-04-27T08:35:30Z" if stage == "github_sync" else "2026-04-27T08:37:30Z",
+        )
+    justification = validate_platform_justification(
+        authority_record_path=authority_path,
+        stage=stage,
+        classification=inspection,
+        classification_evidence_path=evidence_path,
+        governance_action_id=str(record.get("pipeline", {}).get("platform_justification_action_id", "")).strip(),
+    )
+    record.setdefault("artifacts", {})["platform_justification_path"] = str(justification.get("artifact_path", "")).strip()
+    if justification.get("governance_action_id"):
+        record.setdefault("pipeline", {})["platform_justification_action_id"] = str(justification.get("governance_action_id", "")).strip()
+    if not justification.get("ok"):
+        governance_status = str(justification.get("governance_status", "pending")).strip()
+        message = f"protected platform changes require governed approval before {stage}; current justification status={governance_status}"
+        return block_pipeline(
+            authority_path,
+            record,
+            stage=stage,
+            block_reason=str(justification.get("block_reason", "platform_justification_pending")).strip() or "platform_justification_pending",
+            evidence_path=str(justification.get("artifact_path", evidence_path)).strip() or evidence_path,
+            message=message,
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            timestamp="2026-04-27T08:35:30Z" if stage == "github_sync" else "2026-04-27T08:37:30Z",
+        )
+    return None
 
 
 def prepare_github_repository(
