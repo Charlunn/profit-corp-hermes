@@ -192,6 +192,7 @@ def build_artifact_paths(
         "project_metadata_path": ".hermes/project-metadata.json",
         "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
         "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+        "final_review_path": (project_directory / "FINAL_OPERATOR_REVIEW.md").as_posix(),
         "gsd_constraints_path": str(gsd_constraints_path).strip(),
     }
 
@@ -421,6 +422,7 @@ def record_paths(authority_path: Path, record: dict[str, Any]) -> tuple[Path, Pa
     artifacts["project_directory"] = project_dir.as_posix()
     artifacts["authority_record_path"] = authority_path.as_posix()
     artifacts["delivery_brief_path"] = (project_dir / "PROJECT_BRIEF.md").as_posix()
+    artifacts.setdefault("final_review_path", (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix())
     artifacts["events_path"] = events_path.as_posix()
     artifacts["status_path"] = status_path.as_posix()
     return project_dir, events_path, status_path

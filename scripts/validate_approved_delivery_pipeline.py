@@ -17,6 +17,7 @@ APPROVED_RECORD_NAME = "APPROVED_PROJECT.json"
 BRIEF_NAME = "PROJECT_BRIEF.md"
 EVENTS_NAME = "approved-delivery-events.jsonl"
 STATUS_NAME = "DELIVERY_PIPELINE_STATUS.md"
+FINAL_REVIEW_NAME = "FINAL_OPERATOR_REVIEW.md"
 FINAL_DELIVERY_RELATIVE = ".hermes/FINAL_DELIVERY.md"
 MANIFEST_RELATIVE = ".hermes/delivery-run-manifest.json"
 CONFORMANCE_CANDIDATES = (
@@ -27,6 +28,10 @@ STATUS_REQUIRED_LINES = [
     "Authority",
     "Workspace",
     "Final handoff",
+    "Final operator review",
+    "Blocked prerequisite",
+    "Protected change",
+    "Platform justification",
 ]
 
 
@@ -173,11 +178,21 @@ def resolve_final_handoff_path(record: dict[str, Any], workspace: Path, *, block
     return path
 
 
-def latest_handoff_event(events: list[dict[str, Any]]) -> dict[str, Any]:
-    handoff_events = [event for event in events if str(event.get("stage", "")).strip() == "handoff"]
-    if not handoff_events:
-        raise ApprovedDeliveryPipelineValidationError("approved delivery events missing terminal handoff event")
-    return handoff_events[-1]
+def resolve_final_review_path(record: dict[str, Any], project_dir: Path, *, blocked_context: bool = False) -> Path:
+    raw = first_nonempty(
+        get_nested(record, "artifacts", "final_review_path"),
+        (project_dir / FINAL_REVIEW_NAME).as_posix(),
+    )
+    path = Path(raw)
+    if not path.is_absolute():
+        path = project_dir / raw
+    if not path.exists():
+        if blocked_context:
+            raise ApprovedDeliveryPipelineValidationError(
+                f"final operator review artifact missing while block evidence is still active: {path.as_posix()}"
+            )
+        raise ApprovedDeliveryPipelineValidationError(f"final operator review artifact not found: {path.as_posix()}")
+    return path
 
 
 def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: list[dict[str, Any]], status_text: str) -> None:
@@ -268,6 +283,36 @@ def validate_status_markdown(status_text: str, workspace: Path, final_handoff: P
         raise ApprovedDeliveryPipelineValidationError("status view missing final handoff link")
 
 
+def latest_handoff_event(events: list[dict[str, Any]]) -> dict[str, Any]:
+    for event in reversed(events):
+        if str(event.get("stage", "")).strip() == "handoff":
+            return event
+    if events:
+        return events[-1]
+    raise ApprovedDeliveryPipelineValidationError("approved delivery events missing handoff stage")
+
+
+def validate_final_review(record: dict[str, Any], final_review_path: Path, review_text: str) -> None:
+    lowered = review_text.lower()
+    required_tokens = [
+        "final operator review",
+        "credentialed delivery actions",
+    ]
+    for token in required_tokens:
+        if token not in lowered:
+            raise ApprovedDeliveryPipelineValidationError(f"final operator review missing required section: {token}")
+
+    protected_change = get_nested(record, "protected_change") if isinstance(get_nested(record, "protected_change"), dict) else {}
+    platform_justification = get_nested(record, "platform_justification") if isinstance(get_nested(record, "platform_justification"), dict) else {}
+    latest_blocked = get_nested(record, "latest_blocked_prerequisite") if isinstance(get_nested(record, "latest_blocked_prerequisite"), dict) else {}
+    final_handoff = get_nested(record, "final_handoff") if isinstance(get_nested(record, "final_handoff"), dict) else {}
+
+    if get_nested(record, "shipping", "github") and "github" not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("final operator review missing GitHub delivery summary")
+    if get_nested(record, "shipping", "vercel") and "vercel" not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("final operator review missing Vercel delivery summary")
+
+
 def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str, Any]:
     project_dir = Path(approved_project_path)
     record = load_json(project_dir / APPROVED_RECORD_NAME, "approved-project authority record")
@@ -275,11 +320,14 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
     events = load_jsonl(project_dir / EVENTS_NAME, "approved delivery events")
     status_text = load_text(project_dir / STATUS_NAME, "delivery pipeline status")
 
+    blocked_events = [event for event in events if str(event.get("status", "")).strip() == "blocked"]
+    has_blocked_state = bool(blocked_events)
+    final_review_path = resolve_final_review_path(record, project_dir, blocked_context=has_blocked_state)
+    final_review_text = load_text(final_review_path, "final operator review")
+
     workspace = resolve_workspace_path(record)
     conformance_path = resolve_conformance_path(record, workspace)
     manifest_path = resolve_manifest_path(record, workspace)
-    blocked_events = [event for event in events if str(event.get("status", "")).strip() == "blocked"]
-    has_blocked_state = bool(blocked_events)
     validate_blocked_prerequisite_visibility(record, events, status_text)
     final_handoff_path = resolve_final_handoff_path(record, workspace, blocked_context=has_blocked_state)
 
@@ -303,9 +351,10 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
         raise ApprovedDeliveryPipelineValidationError("workspace path mismatch between authority record and handoff event")
 
     validate_status_markdown(status_text, workspace, final_handoff_path)
-    validate_github_linkage(record, status_text)
-    validate_vercel_linkage(record, status_text)
-    validate_blocked_prerequisite_visibility(record, events, status_text)
+    validate_final_review(record, final_review_path, final_review_text)
+    validate_github_linkage(record, status_text + "\n" + final_review_text)
+    validate_vercel_linkage(record, status_text + "\n" + final_review_text)
+    validate_blocked_prerequisite_visibility(record, events, status_text + "\n" + final_review_text)
 
     return {
         "ok": True,
@@ -314,6 +363,7 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
         "conformance_evidence_path": conformance_path.as_posix(),
         "delivery_run_manifest_path": manifest_path.as_posix(),
         "final_handoff_path": final_handoff_path.as_posix(),
+        "final_review_path": final_review_path.as_posix(),
         "event_count": len(events),
         "terminal_stage": str(handoff_event.get("stage", "handoff")),
     }
