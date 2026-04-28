@@ -482,6 +482,53 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()
         workspace = self.seed_workspace_outputs(workspace_root, include_downstream_prereq_evidence=True)
 
+        record = self.read_json(authority_path)
+        record["shipping"] = {
+            "github": {
+                "repository_mode": "attach",
+                "repository_owner": "profit-corp",
+                "repository_name": "profit-corp/lead-capture-copilot",
+                "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                "default_branch": "main",
+                "synced_commit": "abc1234",
+                "sync_evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                "last_sync_status": "failed",
+                "prepare_audit_path": (workspace / ".hermes" / "github-repository-audit.json").as_posix(),
+                "sync_audit_path": (workspace / ".hermes" / "github-sync-audit.json").as_posix(),
+            },
+            "vercel": {
+                "team_scope": "profit-corp",
+                "project_id": "prj_123",
+                "project_name": "lead-capture-copilot-prod",
+                "project_url": "https://vercel.com/profit-corp/lead-capture-copilot-prod",
+                "linked": True,
+                "env_contract_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                "deploy_url": "https://lead-capture-copilot-prod.vercel.app",
+                "deploy_status": "failed",
+                "deploy_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                "link_audit_path": (workspace / ".hermes" / "vercel-link-audit.json").as_posix(),
+                "env_audit_path": (workspace / ".hermes" / "vercel-env-audit.json").as_posix(),
+                "deploy_audit_path": (workspace / ".hermes" / "vercel-deploy-audit.json").as_posix(),
+            },
+        }
+        record["latest_blocked_prerequisite"] = {
+            "reason": "missing_downstream_prerequisite_evidence",
+            "path": (workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
+            "status": "open",
+        }
+        record["protected_change"] = {
+            "classification": "protected_platform_change",
+            "status": "blocked",
+            "evidence_path": (workspace / ".hermes" / "protected-change-inventory.json").as_posix(),
+        }
+        record["platform_justification"] = {
+            "status": "pending",
+            "artifact_path": (project_dir / "PLATFORM_CHANGE_JUSTIFICATION.md").as_posix(),
+            "governance_action_id": "gov-approval-001",
+        }
+        record["artifacts"]["final_review_path"] = (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix()
+        authority_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
         events = [
             {
                 "project_slug": "lead-capture-copilot",
@@ -499,6 +546,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "evidence_path": "",
                 "resume_from_stage": "workspace_instantiation",
                 "final_handoff_path": "",
+                "shipping": record["shipping"],
             },
             {
                 "project_slug": "lead-capture-copilot",
@@ -516,6 +564,25 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "evidence_path": (workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
                 "resume_from_stage": "delivery_run_bootstrap",
                 "final_handoff_path": "",
+                "shipping": record["shipping"],
+            },
+            {
+                "project_slug": "lead-capture-copilot",
+                "stage": "vercel_deploy",
+                "status": "blocked",
+                "action": "vercel_deploy_failed",
+                "timestamp": "2026-04-27T08:39:00Z",
+                "outcome": "failed",
+                "authority_record_path": authority_path.as_posix(),
+                "brief_path": (project_dir / "PROJECT_BRIEF.md").as_posix(),
+                "workspace_path": workspace.as_posix(),
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+                "artifact": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                "block_reason": "vercel_deploy_failed",
+                "evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                "resume_from_stage": "vercel_deploy",
+                "final_handoff_path": "",
+                "shipping": record["shipping"],
             },
             {
                 "project_slug": "lead-capture-copilot",
@@ -533,6 +600,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "evidence_path": (workspace / ".hermes" / "deployment-prerequisites.md").as_posix(),
                 "resume_from_stage": "",
                 "final_handoff_path": (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix(),
+                "shipping": record["shipping"],
             },
         ]
         for event in events:
@@ -540,16 +608,22 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
 
         render_module.render_approved_delivery_status(project_dir)
         status_text = (project_dir / "DELIVERY_PIPELINE_STATUS.md").read_text(encoding="utf-8")
-        self.assertIn("delivery_run_bootstrap", status_text)
-        self.assertIn("completed", status_text)
+        self.assertIn("## Final Operator Review", status_text)
+        self.assertIn("## Action Required", status_text)
+        self.assertIn("## Approval Summary", status_text)
+        self.assertIn("## Blocked Prerequisites", status_text)
+        self.assertIn("## Credentialed Delivery Actions", status_text)
+        self.assertIn("## Protected Change Review", status_text)
+        self.assertIn("## Deployment Outcome", status_text)
+        self.assertIn("## Final Handoff", status_text)
+        self.assertIn((project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix(), status_text)
         self.assertIn("missing_downstream_prerequisite_evidence", status_text)
-        self.assertIn(workspace.as_posix(), status_text)
-        self.assertIn((project_dir / "PROJECT_BRIEF.md").as_posix(), status_text)
-        self.assertIn((workspace / ".hermes" / "deployment-prerequisites.md").as_posix(), status_text)
-        self.assertIn("delivery-lead-capture-copilot-001", status_text)
+        self.assertIn("vercel_deploy_failed", status_text)
+        self.assertIn("protected_platform_change", status_text)
+        self.assertIn("gov-approval-001", status_text)
+        self.assertIn((workspace / ".hermes" / "github-sync-audit.json").as_posix(), status_text)
+        self.assertIn((workspace / ".hermes" / "vercel-deploy-audit.json").as_posix(), status_text)
         self.assertIn((workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix(), status_text)
-        self.assertIn("GitHub Repository Mode", status_text)
-        self.assertIn("GitHub Repository URL", status_text)
 
     def test_blocked_resume_finalize_then_validate_succeeds_with_canonical_workspace_linkage(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
