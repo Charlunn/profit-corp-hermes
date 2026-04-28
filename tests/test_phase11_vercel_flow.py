@@ -80,6 +80,11 @@ class VercelDeliveryCommonTests(unittest.TestCase):
 
     def test_env_contract_separates_platform_managed_and_identity_derived_values(self) -> None:
         module = load_module("vercel_delivery_common_env", VERCEL_COMMON_PATH)
+        commands: list[tuple[list[str], str | None]] = []
+
+        def fake_runner(*args, **kwargs):
+            commands.append((list(args[0]), kwargs.get("input")))
+            return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
 
         result = module.apply_env_contract(
             workspace_path=self.workspace,
@@ -97,7 +102,7 @@ class VercelDeliveryCommonTests(unittest.TestCase):
             },
             env={"VERCEL_TOKEN": "token"},
             which=lambda name: "vercel",
-            runner=lambda *args, **kwargs: types.SimpleNamespace(returncode=0, stdout="ok", stderr=""),
+            runner=fake_runner,
         )
 
         self.assertTrue(result["ok"], msg=result)
@@ -106,6 +111,8 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.assertEqual(contract["identity_derived"]["APP_KEY"], "demo_app")
         self.assertEqual(contract["identity_derived"]["PAYPAL_BRAND_NAME"], "Demo App")
         self.assertNotIn("secret", json.dumps(contract, ensure_ascii=False))
+        self.assertEqual(commands[0][0][:4], ["vercel", "env", "add", "APP_KEY"])
+        self.assertEqual(commands[0][1], "demo_app\n")
 
     def test_deploy_only_runs_after_github_sync_and_env_contract_checks(self) -> None:
         module = load_module("vercel_delivery_common_deploy", VERCEL_COMMON_PATH)

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -23,10 +25,10 @@ from scripts.approved_delivery_governance import (
 )
 from scripts.github_delivery_common import prepare_github_repository as github_prepare_repository
 from scripts.github_delivery_common import sync_workspace_to_github
-from scripts.instantiate_template_project import build_metadata, instantiate_workspace
+from scripts.instantiate_template_project import build_metadata, instantiate_workspace, resolve_template_source
 from scripts.request_platform_justification import validate_platform_justification
 from scripts.start_delivery_run import initialize_delivery_run
-from scripts.template_contract_common import build_identity_payload
+from scripts.template_contract_common import build_identity_payload, load_registry, require_asset
 from scripts.vercel_delivery_common import apply_env_contract as vercel_apply_env_contract
 from scripts.vercel_delivery_common import deploy_to_vercel
 from scripts.vercel_delivery_common import link_vercel_project as vercel_link_project
@@ -527,6 +529,21 @@ def persist_and_render(authority_path: Path, record: dict[str, Any]) -> None:
     render_pipeline_status(project_dir)
 
 
+def append_next_pipeline_event(project_dir: Path, event: dict[str, Any]) -> None:
+    path = project_dir / "approved-delivery-events.jsonl"
+    if path.exists():
+        last_line = ""
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                last_line = line
+        if last_line:
+            last_event = json.loads(last_line)
+            latest_timestamp = str(last_event.get("timestamp", "")).strip()
+            if latest_timestamp and event["timestamp"] <= latest_timestamp:
+                event["timestamp"] = latest_timestamp
+    append_pipeline_event(project_dir, event)
+
+
 def enforce_platform_change_gate(
     authority_path: Path,
     record: dict[str, Any],
@@ -741,7 +758,9 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
     vercel = dict(record.get("shipping", {}).get("vercel", {}))
 
     github_sync_ok = str(github.get("last_sync_status", "")).strip() == "completed"
-    vercel_link_ok = bool(vercel.get("project_name"))
+    approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or str(vercel.get("project_name", "")).strip() or "approved-project-prod"
+    approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or str(vercel.get("team_scope", "")).strip() or "profit-corp"
+    vercel_link_ok = bool(approved_vercel_project)
     env_contract_ok = bool(vercel.get("env_contract_path")) or bool(
         isinstance(vercel.get("env_contract"), dict) and vercel.get("env_contract", {}).get("evidence_path")
     )
@@ -752,8 +771,8 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
         authority_record_path=authority_path,
         stage="vercel_deploy",
         workspace_path=workspace,
-        project_name=str(vercel.get("project_name", "")).strip() or str(os.environ.get("VERCEL_PROJECT", "")).strip() or "approved-project-prod",
-        team_scope=str(vercel.get("team_scope", "")).strip() or str(os.environ.get("VERCEL_TEAM", "")).strip() or "profit-corp",
+        project_name=approved_vercel_project,
+        team_scope=approved_vercel_team,
         github_sync_ok=github_sync_ok,
         vercel_link_ok=vercel_link_ok,
         env_contract_ok=env_contract_ok,
@@ -810,7 +829,7 @@ def block_pipeline(
         resume_from_stage=stage,
         delivery_run_id=delivery_run_id or record.get("pipeline", {}).get("delivery_run_id", ""),
     )
-    append_pipeline_event(
+    append_next_pipeline_event(
         project_dir,
         make_event(
             record=record,
@@ -903,6 +922,34 @@ def check_template_conformance(workspace: Path, report_path: Path) -> dict[str, 
     }
 
 
+def workspace_instantiation_artifacts_ready(workspace: Path, identity: dict[str, Any]) -> bool:
+    hermes_dir = workspace / ".hermes"
+    metadata_path = hermes_dir / "project-metadata.json"
+    guardrails_path = hermes_dir / "shared-backend-guardrails.json"
+    brief_entrypoint_path = hermes_dir / "PROJECT_BRIEF_ENTRYPOINT.md"
+    if not (workspace.exists() and metadata_path.exists() and guardrails_path.exists() and brief_entrypoint_path.exists()):
+        return False
+    try:
+        metadata = load_json(metadata_path)
+    except ApprovedProjectDeliveryError:
+        return False
+    return (
+        str(metadata.get("app_key", "")).strip() == str(identity.get("app_key", "")).strip()
+        and str(metadata.get("app_name", "")).strip() == str(identity.get("app_name", "")).strip()
+        and str(metadata.get("app_url", "")).strip() == str(identity.get("app_url", "")).strip()
+        and bool(str(metadata.get("canonical_contract_path", "")).strip())
+        and bool(str(metadata.get("gsd_constraints_path", "")).strip())
+        and Path(str(metadata.get("canonical_contract_path", "")).strip()).exists()
+        and Path(str(metadata.get("gsd_constraints_path", "")).strip()).exists()
+    )
+
+
+def resolve_approved_template_source() -> tuple[dict[str, Any], Path]:
+    registry_path = ROOT_DIR / "assets" / "shared" / "templates" / "standalone-saas-template.json"
+    asset = require_asset(load_registry(registry_path), "standalone-saas-template")
+    return asset, resolve_template_source(asset, "")
+
+
 def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, start_stage: str, workspace_root: Path | None) -> dict[str, Any]:
     initial_stage = start_stage
     project_dir, _, _ = record_paths(authority_path, record)
@@ -920,7 +967,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             assert_approval_ready(authority_path, record)
         except PipelineBlockedError as exc:
             return block_pipeline(authority_path, record, stage=exc.stage, block_reason=exc.block_reason, evidence_path=exc.evidence_path, message=exc.message)
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -942,7 +989,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             brief_path = assert_brief_ready(record)
         except PipelineBlockedError as exc:
             return block_pipeline(authority_path, record, stage=exc.stage, block_reason=exc.block_reason, evidence_path=exc.evidence_path, message=exc.message)
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -962,16 +1009,18 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
     if start_stage == "workspace_instantiation":
         try:
             identity_payload = build_identity_payload(identity["app_key"], identity["app_name"], identity["app_url"])
-            metadata = build_metadata(
-                {
-                    "asset_id": "standalone-saas-template",
-                    "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
-                },
-                workspace.name,
-                identity_payload,
-                ROOT_DIR,
-            )
-            instantiate_workspace(ROOT_DIR, workspace.parent, workspace, identity_payload, metadata)
+            if not workspace_instantiation_artifacts_ready(workspace, identity):
+                asset, template_source = resolve_approved_template_source()
+                metadata = build_metadata(
+                    asset,
+                    workspace.name,
+                    identity_payload,
+                    template_source,
+                )
+                metadata["gsd_constraints_path"] = str(record.get("artifacts", {}).get("gsd_constraints_path", "")).strip()
+                if workspace.exists():
+                    shutil.rmtree(workspace)
+                instantiate_workspace(template_source, workspace.parent, workspace, identity_payload, metadata)
         except PipelineBlockedError as exc:
             return block_pipeline(authority_path, record, stage=exc.stage, block_reason=exc.block_reason, evidence_path=exc.evidence_path, message=exc.message)
         except Exception as exc:
@@ -984,7 +1033,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 message=str(exc),
                 workspace_path=workspace.as_posix(),
             )
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1016,7 +1065,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=delivery_run_id,
             )
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1060,7 +1109,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 delivery_run_id = str(load_json(manifest_path).get("run_id", "")).strip()
             except ApprovedProjectDeliveryError:
                 delivery_run_id = ""
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1088,10 +1137,12 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         shipping = record.setdefault("shipping", {})
         github = shipping.setdefault("github", {})
         project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
+        github_owner = str(os.environ.get("APPROVED_DELIVERY_GITHUB_OWNER", "")).strip() or project_slug
+        github_repo = str(os.environ.get("APPROVED_DELIVERY_GITHUB_REPO", "")).strip() or project_slug
         github.setdefault("repository_mode", "attach")
-        github.setdefault("repository_owner", project_slug)
-        github.setdefault("repository_name", f"{project_slug}/{project_slug}")
-        github.setdefault("repository_url", f"https://github.com/{project_slug}/{project_slug}.git")
+        github["repository_owner"] = github_owner
+        github["repository_name"] = f"{github_owner}/{github_repo}"
+        github["repository_url"] = f"https://github.com/{github_owner}/{github_repo}.git"
         github.setdefault("default_branch", "main")
         github.setdefault("remote_name", "origin")
         github.setdefault("delivery_run_id", delivery_run_id)
@@ -1102,12 +1153,20 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         start_stage = "github_repository"
 
     if start_stage == "github_repository":
+        github_record = record.setdefault("shipping", {}).setdefault("github", {})
+        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
+        github_owner = str(os.environ.get("APPROVED_DELIVERY_GITHUB_OWNER", "")).strip() or str(github_record.get("repository_owner", "")).strip() or project_slug
+        github_repo = str(os.environ.get("APPROVED_DELIVERY_GITHUB_REPO", "")).strip() or str(github_record.get("repository_name", "")).strip().split("/")[-1] or project_slug
+        github_record["repository_owner"] = github_owner
+        github_record["repository_name"] = f"{github_owner}/{github_repo}"
+        github_record["repository_url"] = f"https://github.com/{github_owner}/{github_repo}.git"
+        github_mode = str(github_record.get("repository_mode", "attach")).strip() or "attach"
         github_result = prepare_github_repository(
             authority_path,
-            mode="attach",
-            repository_name=f"{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}",
-            repository_url=f"https://github.com/{identity.get('project_slug', 'approved-project')}/{identity.get('project_slug', 'approved-project')}.git",
-            default_branch="main",
+            mode=github_mode,
+            repository_name=github_record["repository_name"],
+            repository_url=github_record["repository_url"],
+            default_branch=str(github_record.get("default_branch", "main")).strip() or "main",
             workspace_path=workspace,
         )
         if not github_result.get("ok"):
@@ -1126,7 +1185,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             return blocked
         record = load_json(authority_path)
         github_record = record.setdefault("shipping", {}).setdefault("github", {})
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1176,12 +1235,14 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         )
         vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
         project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
-        vercel_record.setdefault("project_name", f"{project_slug}-prod")
-        vercel_record.setdefault("project_url", f"https://vercel.com/profit-corp/{project_slug}-prod")
-        vercel_record.setdefault("team_scope", "profit-corp")
+        approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or f"{project_slug}-prod"
+        approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or "profit-corp"
+        vercel_record["project_name"] = approved_vercel_project
+        vercel_record["project_url"] = f"https://vercel.com/{approved_vercel_team}/{approved_vercel_project}"
+        vercel_record["team_scope"] = approved_vercel_team
         vercel_record.setdefault("env_contract_path", (workspace / ".hermes" / "vercel-env-contract.json").as_posix())
         vercel_record.setdefault("deploy_status", "pending")
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1197,7 +1258,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 resume_from_stage="vercel_linkage",
             ),
         )
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1231,6 +1292,13 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         }
 
     if start_stage == "vercel_linkage":
+        vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
+        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
+        approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or str(vercel_record.get("project_name", "")).strip() or f"{project_slug}-prod"
+        approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or str(vercel_record.get("team_scope", "")).strip() or "profit-corp"
+        vercel_record["project_name"] = approved_vercel_project
+        vercel_record["project_url"] = f"https://vercel.com/{approved_vercel_team}/{approved_vercel_project}"
+        vercel_record["team_scope"] = approved_vercel_team
         if initial_stage in {"approval", "brief_generation", "workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync"}:
             persist_and_render(authority_path, record)
             return {
@@ -1270,7 +1338,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "deploy_status": str(vercel_record.get("deploy_status", "pending") or "pending"),
             }
         )
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1336,7 +1404,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "deployment_evidence_path": deploy_evidence_path,
             }
         )
-        append_pipeline_event(
+        append_next_pipeline_event(
             project_dir,
             make_event(
                 record=record,
@@ -1441,7 +1509,7 @@ def finalize_delivery_handoff(authority_record_path: Path | str) -> dict[str, An
         final_handoff_path=final_handoff.as_posix(),
         resume_from_stage="",
     )
-    append_pipeline_event(
+    append_next_pipeline_event(
         project_dir,
         make_event(
             record=record,

@@ -44,16 +44,10 @@ class Phase11GithubSyncTests(unittest.TestCase):
 
         def runner(cmd: list[str], **kwargs):
             commands.append(list(cmd))
+            if cmd[:3] == ["git", "init", "-b"]:
+                return CompletedProcessStub()
             if cmd[:3] == ["gh", "repo", "create"]:
-                return CompletedProcessStub(
-                    stdout=json.dumps(
-                        {
-                            "nameWithOwner": "profit-corp/demo-app",
-                            "url": "https://github.com/profit-corp/demo-app",
-                            "defaultBranchRef": {"name": "trunk"},
-                        }
-                    )
-                )
+                return CompletedProcessStub()
             if cmd[:3] == ["gh", "repo", "view"]:
                 target = cmd[3]
                 return CompletedProcessStub(
@@ -100,9 +94,10 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertEqual(attach_result["repository_url"], "https://github.com/profit-corp/existing-demo-app.git")
         self.assertEqual(attach_result["default_branch"], "release")
 
-        self.assertEqual(commands[0][:3], ["gh", "repo", "create"])
-        self.assertEqual(commands[1][:3], ["gh", "repo", "view"])
+        self.assertEqual(commands[0][:4], ["git", "init", "-b", "main"])
+        self.assertEqual(commands[1][:3], ["gh", "repo", "create"])
         self.assertEqual(commands[2][:3], ["gh", "repo", "view"])
+        self.assertEqual(commands[3][:3], ["gh", "repo", "view"])
 
     def test_missing_gh_and_missing_github_credentials_block_with_distinct_reasons(self) -> None:
         missing_cli = self.helper_module.prepare_github_repository(
@@ -117,6 +112,9 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertEqual(missing_cli["block_reason"], "missing_gh_cli")
         self.assertTrue(missing_cli["evidence_path"].endswith("github-repository-prepare.json"))
 
+        original_env = dict(self.helper_module.os.environ)
+        self.addCleanup(lambda: self.helper_module.os.environ.clear() or self.helper_module.os.environ.update(original_env))
+        self.helper_module.os.environ.clear()
         missing_auth = self.helper_module.prepare_github_repository(
             workspace_path=self.workspace,
             repository_mode="attach",
@@ -128,6 +126,36 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertFalse(missing_auth["ok"], msg=missing_auth)
         self.assertEqual(missing_auth["block_reason"], "missing_github_auth")
         self.assertTrue(missing_auth["evidence_path"].endswith("github-repository-prepare.json"))
+
+    def test_shell_environment_token_counts_as_github_auth(self) -> None:
+        original_env = dict(self.helper_module.os.environ)
+        self.addCleanup(lambda: self.helper_module.os.environ.clear() or self.helper_module.os.environ.update(original_env))
+        self.helper_module.os.environ.clear()
+        self.helper_module.os.environ["GH_TOKEN"] = "token-from-shell"
+
+        def runner(cmd: list[str], **kwargs):
+            if cmd[:3] == ["gh", "repo", "view"]:
+                return CompletedProcessStub(
+                    stdout=json.dumps(
+                        {
+                            "nameWithOwner": "profit-corp/demo-app",
+                            "url": "https://github.com/profit-corp/demo-app",
+                            "defaultBranchRef": {"name": "main"},
+                        }
+                    )
+                )
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        result = self.helper_module.prepare_github_repository(
+            workspace_path=self.workspace,
+            repository_mode="attach",
+            repository_owner="profit-corp",
+            repository_name="demo-app",
+            runner=runner,
+            which=lambda _: "/usr/bin/gh",
+            env=None,
+        )
+        self.assertTrue(result["ok"], msg=result)
 
     def test_sync_workspace_to_github_persists_detected_default_branch_instead_of_assuming_main(self) -> None:
         commands: list[list[str]] = []
@@ -146,13 +174,15 @@ class Phase11GithubSyncTests(unittest.TestCase):
                 return CompletedProcessStub()
             if cmd[:3] == ["git", "add", "-A"]:
                 return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(returncode=1, stderr="no commits yet")
             if cmd[:3] == ["git", "status", "--short"]:
                 return CompletedProcessStub(stdout=" M README.md\n")
             if cmd[:3] == ["git", "commit", "-m"]:
                 return CompletedProcessStub()
             if cmd[:3] == ["git", "push", "-u"]:
                 return CompletedProcessStub()
-            if cmd[:4] == ["git", "rev-parse", "HEAD", "--short"]:
+            if cmd[:4] == ["git", "rev-parse", "--short", "HEAD"]:
                 return CompletedProcessStub(stdout="abc1234\n")
             raise AssertionError(f"unexpected command: {cmd}")
 
@@ -186,11 +216,15 @@ class Phase11GithubSyncTests(unittest.TestCase):
                 return CompletedProcessStub()
             if cmd[:3] == ["git", "add", "-A"]:
                 return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(returncode=1, stderr="no commits yet")
             if cmd[:3] == ["git", "status", "--short"]:
                 return CompletedProcessStub(stdout="")
+            if cmd[:3] == ["git", "commit", "-m"]:
+                return CompletedProcessStub()
             if cmd[:3] == ["git", "push", "-u"]:
                 return CompletedProcessStub()
-            if cmd[:4] == ["git", "rev-parse", "HEAD", "--short"]:
+            if cmd[:4] == ["git", "rev-parse", "--short", "HEAD"]:
                 return CompletedProcessStub(stdout="def5678\n")
             raise AssertionError(f"unexpected command: {cmd}")
 

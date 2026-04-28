@@ -132,12 +132,19 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             return []
         return [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
-    def test_resume_restarts_from_last_incomplete_stage_without_reinstantiating_workspace(self) -> None:
+    def test_resume_rebuilds_workspace_when_required_repo_level_metadata_is_missing(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
-        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="conformance")
-        original_record = self.read_json(authority_path)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="workspace_instantiation")
+        metadata_path = workspace / ".hermes" / "project-metadata.json"
+        metadata = self.read_json(metadata_path)
+        metadata.pop("gsd_constraints_path", None)
+        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
         with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "resolve_approved_template_source", return_value=({
+                 "asset_id": "standalone-saas-template",
+                 "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
+             }, root)), \
              mock.patch.object(start_module, "instantiate_workspace") as instantiate_mock, \
              mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
              mock.patch.object(start_module, "initialize_delivery_run", return_value={
@@ -146,6 +153,103 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
                  "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
                  "run_id": "delivery-lead-capture-copilot-001",
+             }), \
+             mock.patch.object(start_module, "prepare_github_repository", return_value={
+                 "ok": True,
+                 "repository_mode": "attach",
+                 "repository_owner": "profit-corp",
+                 "repository_name": "profit-corp/lead-capture-copilot",
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "remote_name": "origin",
+                 "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+             }), \
+             mock.patch.object(start_module, "run_github_sync", return_value={
+                 "ok": True,
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "synced_commit": "abc1234",
+                 "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+             }):
+            result = start_module.resume_approved_project_delivery(authority_path)
+
+        self.assertTrue(result["ok"], msg=result)
+        instantiate_mock.assert_called_once()
+
+    def test_resume_restarts_from_workspace_instantiation_without_recreating_existing_workspace(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="workspace_instantiation")
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "instantiate_workspace") as instantiate_mock, \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
+             mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value={
+                 "ok": True,
+                 "workspace": workspace.as_posix(),
+                 "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+                 "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+                 "run_id": "delivery-lead-capture-copilot-001",
+             }), \
+             mock.patch.object(start_module, "prepare_github_repository", return_value={
+                 "ok": True,
+                 "repository_mode": "attach",
+                 "repository_owner": "profit-corp",
+                 "repository_name": "profit-corp/lead-capture-copilot",
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "remote_name": "origin",
+                 "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+             }), \
+             mock.patch.object(start_module, "run_github_sync", return_value={
+                 "ok": True,
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "synced_commit": "abc1234",
+                 "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+             }):
+            result = start_module.resume_approved_project_delivery(authority_path)
+
+        self.assertTrue(result["ok"], msg=result)
+        instantiate_mock.assert_not_called()
+        updated = self.read_json(authority_path)
+        self.assertEqual(updated["pipeline"]["workspace_path"], workspace.as_posix())
+        self.assertEqual(updated["pipeline"]["delivery_run_id"], "delivery-lead-capture-copilot-001")
+        events = self.read_events(project_dir)
+        self.assertEqual([event["stage"] for event in events], ["workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
+
+    def test_resume_restarts_from_last_incomplete_stage_without_reinstantiating_workspace(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="conformance")
+        original_record = self.read_json(authority_path)
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "instantiate_workspace") as instantiate_mock, \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
+             mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value={
+                 "ok": True,
+                 "workspace": workspace.as_posix(),
+                 "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+                 "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+                 "run_id": "delivery-lead-capture-copilot-001",
+             }), \
+             mock.patch.object(start_module, "prepare_github_repository", return_value={
+                 "ok": True,
+                 "repository_mode": "attach",
+                 "repository_owner": "profit-corp",
+                 "repository_name": "profit-corp/lead-capture-copilot",
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "remote_name": "origin",
+                 "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+             }), \
+             mock.patch.object(start_module, "run_github_sync", return_value={
+                 "ok": True,
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "synced_commit": "abc1234",
+                 "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
              }):
             result = start_module.resume_approved_project_delivery(authority_path)
 
@@ -157,7 +261,7 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         self.assertEqual(updated["project_identity"], original_record["project_identity"])
         self.assertEqual(updated["pipeline"]["delivery_run_id"], "delivery-lead-capture-copilot-001")
         events = self.read_events(project_dir)
-        self.assertEqual([event["stage"] for event in events], ["conformance", "delivery_run_bootstrap"])
+        self.assertEqual([event["stage"] for event in events], ["conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
 
     def test_resume_after_handoff_does_not_duplicate_pipeline_or_workspace(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)

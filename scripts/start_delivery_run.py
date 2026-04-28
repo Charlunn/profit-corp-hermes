@@ -63,8 +63,23 @@ def write_text(path: Path, content: str) -> None:
 def resolve_required_paths(workspace: Path) -> dict[str, Path]:
     workspace_root = workspace.parent
     resolved: dict[str, Path] = {}
+    metadata_path = workspace / REQUIRED_INPUTS["project_metadata_path"]
+    contract_path = None
+    constraints_path = None
+    if metadata_path.exists():
+        metadata = load_json(metadata_path, "project metadata")
+        contract_value = str(metadata.get("canonical_contract_path", "")).strip()
+        if contract_value:
+            contract_path = Path(contract_value)
+        constraints_value = str(metadata.get("gsd_constraints_path", "")).strip()
+        if constraints_value:
+            constraints_path = Path(constraints_value)
     for key, relative_path in REQUIRED_INPUTS.items():
-        if relative_path.startswith(".hermes/"):
+        if key == "template_contract_path" and contract_path is not None:
+            resolved[key] = contract_path
+        elif key == "gsd_constraints_path" and constraints_path is not None:
+            resolved[key] = constraints_path
+        elif relative_path.startswith(".hermes/"):
             resolved[key] = workspace / relative_path
         else:
             resolved[key] = workspace_root / relative_path

@@ -71,6 +71,34 @@ function Install-HermesIfMissing {
   Log 'Hermes installed successfully'
 }
 
+function Install-UiUxProMax {
+  if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    Warn 'npm not found; skipping UI/UX Pro Max install'
+    return
+  }
+
+  if (-not (Get-Command uipro -ErrorAction SilentlyContinue)) {
+    Log 'Installing UI/UX Pro Max CLI'
+    & npm install -g uipro-cli
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to install uipro-cli'
+    }
+  } else {
+    Log 'UI/UX Pro Max CLI already installed'
+  }
+
+  Log 'Installing UI/UX Pro Max skill for Claude Code'
+  Push-Location $RootDir
+  try {
+    & uipro init --ai claude
+    if ($LASTEXITCODE -ne 0) {
+      throw 'uipro init failed'
+    }
+  } finally {
+    Pop-Location
+  }
+}
+
 function Setup-DefaultConfig {
   New-Item -ItemType Directory -Path $HermesHome -Force | Out-Null
 
@@ -552,6 +580,7 @@ if ($needsBash -and -not (Get-Command bash -ErrorAction SilentlyContinue)) {
 
 Log "Project root: $RootDir"
 Install-HermesIfMissing
+Install-UiUxProMax
 Setup-DefaultConfig
 Setup-Profiles
 Configure-ModelsInteractive

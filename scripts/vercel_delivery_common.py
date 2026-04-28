@@ -122,21 +122,42 @@ def _validate_identity_derived(identity_derived_env: Mapping[str, str]) -> dict[
 
 
 
-def _run_command(command: list[str], *, cwd: Path, runner: Runner | None = None, env: Mapping[str, str] | None = None) -> Any:
+def _run_command(
+    command: list[str],
+    *,
+    cwd: Path,
+    runner: Runner | None = None,
+    env: Mapping[str, str] | None = None,
+    input_text: str | None = None,
+) -> Any:
     executor = runner or subprocess.run
     run_env = os.environ.copy()
     if env:
         run_env.update(env)
-    return executor(command, cwd=str(cwd), capture_output=True, text=True, check=False, env=run_env)
+    kwargs = {"cwd": str(cwd), "capture_output": True, "text": True, "check": False, "env": run_env}
+    if input_text is not None:
+        kwargs["input"] = input_text
+    if runner is None:
+        kwargs["encoding"] = "utf-8"
+        kwargs["errors"] = "replace"
+    return executor(command, **kwargs)
 
 
 
 def _resolve_vercel_command(which: Which | None = None) -> list[str] | None:
     locator = which or shutil.which
-    if locator("vercel"):
-        return ["vercel"]
-    if locator("npx"):
-        return ["npx", "vercel@latest"]
+    vercel = locator("vercel")
+    if vercel:
+        return [vercel]
+    vercel_cmd = locator("vercel.cmd")
+    if vercel_cmd:
+        return [vercel_cmd]
+    npx = locator("npx")
+    if npx:
+        return [npx, "vercel@latest"]
+    npx_cmd = locator("npx.cmd")
+    if npx_cmd:
+        return [npx_cmd, "vercel@latest"]
     return None
 
 
@@ -288,7 +309,13 @@ def apply_env_contract(
             validated_team_scope,
             "--yes",
         ]
-        result = _run_command(command, cwd=workspace, runner=runner, env={**dict(env or {}), env_name: contract["identity_derived"][env_name]})
+        result = _run_command(
+            command,
+            cwd=workspace,
+            runner=runner,
+            env=env,
+            input_text=contract["identity_derived"][env_name] + "\n",
+        )
         if int(getattr(result, "returncode", 1)) != 0:
             return _blocked(
                 workspace,

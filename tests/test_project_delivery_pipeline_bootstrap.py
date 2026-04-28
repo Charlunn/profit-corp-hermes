@@ -241,7 +241,14 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "run_id": "delivery-lead-capture-copilot-001",
             }
 
+        def fake_template_source(*args, **kwargs):
+            return {
+                "asset_id": "standalone-saas-template",
+                "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
+            }, root
+
         with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
              mock.patch.object(start_module, "instantiate_workspace", side_effect=fake_instantiate), \
              mock.patch.object(start_module, "check_template_conformance", side_effect=fake_conformance), \
              mock.patch.object(start_module, "initialize_delivery_run", side_effect=fake_start_run), \
@@ -270,6 +277,8 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["artifacts"]["project_directory"], project_dir.as_posix())
         self.assertEqual(updated["artifacts"]["authority_record_path"], authority_path.as_posix())
         self.assertEqual(updated["artifacts"]["delivery_brief_path"], (project_dir / "PROJECT_BRIEF.md").as_posix())
+        self.assertEqual(updated["shipping"]["github"]["repository_name"], "lead-capture-copilot/lead-capture-copilot")
+        self.assertEqual(updated["shipping"]["github"]["repository_url"], "https://github.com/profit-corp/lead-capture-copilot.git")
         events = self.read_events(project_dir)
         self.assert_event_stages(events, PIPELINE_STAGES[:-2])
 
@@ -297,6 +306,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             }
 
         with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
              mock.patch.object(start_module, "instantiate_workspace", side_effect=fake_instantiate), \
              mock.patch.object(start_module, "check_template_conformance", side_effect=fake_conformance), \
              mock.patch.object(start_module, "initialize_delivery_run", side_effect=fake_start_run), \
@@ -371,6 +381,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             },
             {
                 "name": "instantiation failure",
+                "mutate_workspace": lambda workspace: shutil.rmtree(workspace),
                 "patch": {"instantiate_workspace": RuntimeError("copy failed")},
                 "expected_reason": "workspace_instantiation_failed",
                 "expected_stage": "workspace_instantiation",
@@ -414,6 +425,9 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             with self.subTest(case=case["name"]):
                 root, project_dir, authority_path, workspace_root = self.create_project_fixture()
                 workspace = self.seed_workspace_outputs(workspace_root, include_downstream_prereq_evidence=True)
+                mutate_workspace = case.get("mutate_workspace")
+                if mutate_workspace:
+                    mutate_workspace(workspace)
                 record = self.read_json(authority_path)
                 mutate = case.get("mutate_record")
                 if mutate:
@@ -443,6 +457,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                     start_run_return = patch_map["initialize_delivery_run"]
 
                 with mock.patch.object(start_module, "ROOT_DIR", root), \
+                     mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=case["expected_stage"] != "workspace_instantiation"), \
                      mock.patch.object(start_module, "instantiate_workspace", side_effect=instantiate_side_effect), \
                      mock.patch.object(start_module, "check_template_conformance", return_value=conformance_return), \
                      mock.patch.object(start_module, "initialize_delivery_run", return_value=start_run_return):
@@ -654,6 +669,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         }
 
         with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
              mock.patch.object(start_module, "instantiate_workspace"), \
              mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
              mock.patch.object(start_module, "initialize_delivery_run", return_value=blocked_result), \
@@ -687,6 +703,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         )
 
         with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
              mock.patch.object(start_module, "initialize_delivery_run", return_value=ready_result), \
              mock.patch.object(start_module, "prepare_github_repository", return_value={
                  "ok": True,

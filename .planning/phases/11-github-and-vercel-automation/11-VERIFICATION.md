@@ -1,17 +1,17 @@
 ---
-status: blocked
+status: passed
 phase: 11-github-and-vercel-automation
-updated: 2026-04-28T02:20:00Z
-source: execution + automated verification + live UAT preflight blockers
+updated: 2026-04-28T09:09:00Z
+source: execution + automated verification + completed live UAT
 ---
 
 # Phase 11: GitHub and Vercel Automation - Verification
 
 ## Goal Verdict
 
-**Status:** blocked
+**Status:** passed
 
-Phase 11 code execution remains complete and the automated regression baseline still passes, but the final live external-system acceptance gate is currently blocked. The blocker is environmental rather than implementation-related: this execution host does not have the `gh` CLI installed, so real GitHub bootstrap/sync could not start, GitHub auth could not be verified, and the downstream Vercel live check was not run against an approved target.
+Phase 11 goal is achieved end to end. The implementation had already passed automated regression, and Phase 13-02 completed the remaining live external-system closure: GitHub repository creation/sync, Vercel project linkage, Vercel production deploy, and operator-facing artifact review all now have durable evidence.
 
 ## Must-Have Verification
 
@@ -23,16 +23,18 @@ Phase 11 code execution remains complete and the automated regression baseline s
 2. **GitHub repository preparation and canonical sync are implemented with durable evidence and blocked states** — verified via:
    - `scripts/github_delivery_common.py`
    - `tests/test_phase11_github_sync.py`
-   - `tests/test_project_delivery_pipeline_bootstrap.py`
+   - live repo evidence in `.../.hermes/github-repository-prepare.json` and `.../.hermes/github-sync.json`
 
 3. **Vercel project linkage, env-contract persistence, and deploy gating are implemented with durable evidence and blocked states** — verified via:
    - `scripts/vercel_delivery_common.py`
    - `tests/test_phase11_vercel_flow.py`
+   - live linkage/env/deploy evidence in `.../.hermes/vercel-linkage.json`, `.../.hermes/vercel-env-apply.json`, and `.../.hermes/vercel-deploy.json`
 
 4. **Authority-layer status and validator surfaces expose GitHub/Vercel linkage and deploy outcome data** — verified via:
    - `scripts/render_approved_delivery_status.py`
    - `scripts/validate_approved_delivery_pipeline.py`
    - `tests/test_approved_delivery_pipeline_cli.py`
+   - live authority artifacts under `assets/shared/approved-projects/lead-capture-copilot/`
 
 5. **Bootstrap compatibility with the Phase 10 pipeline is preserved after Phase 11 expansion** — verified via:
    - `tests/test_project_delivery_pipeline_bootstrap.py`
@@ -41,52 +43,43 @@ Phase 11 code execution remains complete and the automated regression baseline s
    - `orchestration/cron/commands.sh`
    - `docs/OPERATIONS.md`
    - `tests/test_approved_delivery_pipeline_cli.py`
+   - actual Phase 13-02 resume chain from blocked preflight to passed deploy
 
 ## Requirements Coverage
 
-- SHIP-01 — implementation verified, live closure blocked
-- SHIP-02 — implementation verified, live closure blocked
-- SHIP-03 — implementation verified, live closure blocked
-- SHIP-04 — implementation verified, live closure blocked
-- SHIP-05 — implementation verified, live closure blocked
-- SHIP-06 — implementation verified, live closure blocked
-- SHIP-07 — implementation verified, live closure blocked
-- SHIP-08 — implementation verified, live closure blocked
+- SHIP-01 — passed
+- SHIP-02 — passed
+- SHIP-03 — passed
+- SHIP-04 — passed
+- SHIP-05 — passed
+- SHIP-06 — passed
+- SHIP-07 — passed
+- SHIP-08 — passed
 
 ## Verification Evidence
 
 ### Automated suites passed
 - `python -m unittest tests.test_phase11_github_sync tests.test_phase11_vercel_flow tests.test_project_delivery_pipeline_bootstrap tests.test_approved_delivery_pipeline_cli -v`
+- extended regressions also passed during Phase 13-02 recovery work, including `tests.test_start_delivery_run` and `tests.test_project_delivery_pipeline_resume`
 
-### Preflight checks
-- `gh --version` — blocked: `/usr/bin/bash: line 1: gh: command not found`
-- `gh auth status` — blocked: `/usr/bin/bash: line 1: gh: command not found`
-- `git --version` — passed: `git version 2.53.0.windows.1`
-- `npx vercel@latest --version` — passed: `52.0.0`
-- `npx vercel@latest whoami` — passed: authenticated as `charlunn`
+### Live GitHub evidence
+- repository: `https://github.com/Charlunn/hermes-phase11-live-uat.git`
+- branch: `main`
+- synced commit: `70bc502`
+- prepare evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json`
+- sync evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json`
 
-### Live UAT artifact
-- `.planning/phases/11-github-and-vercel-automation/11-HUMAN-UAT.md` — updated with explicit blocked results and prerequisite evidence
-
-## Blockers
-
-1. **GitHub CLI missing on execution host**
-   - Without `gh`, the plan cannot execute or verify real GitHub bootstrap/sync.
-2. **GitHub auth and target namespace access unverified**
-   - Because `gh auth status` could not run, the repo/org access required for live UAT remains unknown.
-3. **Vercel live target not executed after GitHub stage**
-   - Vercel auth is available, but no approved live repo/project tuple was executed in this run because the GitHub prerequisite failed first.
-
-## Resume Path
-
-1. Install GitHub CLI so `gh --version` succeeds.
-2. Run `gh auth login` or provide valid `GH_TOKEN`, then verify with `gh auth status`.
-3. Confirm the intended GitHub repo/org namespace and Vercel target (`VERCEL_TEAM`, `VERCEL_PROJECT`).
-4. Re-run Plan 13-02 from the live-UAT stage and update both `11-HUMAN-UAT.md` and this file with real repo/deploy evidence.
+### Live Vercel evidence
+- linked project: `charlunns-projects/hermes-phase11-live-uat`
+- production URL: `https://hermes-phase11-live-uat.vercel.app`
+- linkage evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-linkage.json`
+- env evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-env-apply.json`
+- deploy evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json`
+- final handoff: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md`
 
 ## Result
 
-**Phase 11 implementation remains regression-safe, but final live verification is blocked pending GitHub CLI/auth availability and approved live target access.**
+**Phase 11 passes full verification, including completed live GitHub and Vercel closure.**
 
 ---
 *Phase: 11-github-and-vercel-automation*

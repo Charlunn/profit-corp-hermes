@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -37,6 +38,23 @@ def _ensure_workspace(workspace_path: Path | str) -> Path:
 
 def _evidence_path(workspace: Path, stem: str) -> Path:
     return workspace / ".hermes" / stem
+
+
+def _ensure_git_repository(workspace: Path, *, runner: Runner | None = None) -> dict[str, Any] | None:
+    git_dir = workspace / ".git"
+    if git_dir.exists():
+        return None
+    init_result = _run_command(["git", "init", "-b", "main"], cwd=workspace, runner=runner)
+    if int(getattr(init_result, "returncode", 1)) != 0:
+        return _blocked(
+            workspace,
+            "github-repository-prepare.json",
+            "github_repository_failed",
+            "Failed to initialize workspace git repository.",
+            command="git init",
+            stderr_summary=_safe_summary(getattr(init_result, "stderr", "")),
+        )
+    return None
 
 
 def _write_evidence(path: Path, payload: dict[str, Any]) -> str:
@@ -106,7 +124,9 @@ def _github_identity(repository_owner: str, repository_name: str) -> str:
 
 
 def _has_github_auth(env: Mapping[str, str] | None = None) -> bool:
-    source = dict(env or {})
+    source = dict(os.environ)
+    if env is not None:
+        source.update(dict(env))
     return bool(source.get("GH_TOKEN") or source.get("GITHUB_TOKEN"))
 
 
@@ -164,6 +184,11 @@ def prepare_github_repository(
     if repository_mode not in {"create", "attach"}:
         raise GithubDeliveryError("repository_mode must be create or attach")
 
+    if repository_mode == "create":
+        init_blocked = _ensure_git_repository(workspace, runner=runner)
+        if init_blocked:
+            return init_blocked
+
     owner = _validate_owner(repository_owner)
     repo = _validate_repo(repository_name)
     remote = _validate_remote(remote_name)
@@ -182,8 +207,6 @@ def prepare_github_repository(
                 "--remote",
                 remote,
                 "--private",
-                "--json",
-                "nameWithOwner,url,defaultBranchRef",
             ]
             create_result = _run_command(create_command, cwd=workspace, runner=runner)
             if int(getattr(create_result, "returncode", 1)) != 0:
@@ -328,6 +351,9 @@ def sync_workspace_to_github(
                 stderr_summary=_safe_summary(getattr(add_result, "stderr", "")),
             )
 
+        head_exists_result = run_git("git", "rev-parse", "--verify", "HEAD")
+        has_existing_commit = int(getattr(head_exists_result, "returncode", 1)) == 0
+
         status_result = run_git("git", "status", "--short")
         if int(getattr(status_result, "returncode", 1)) != 0:
             return _blocked(
@@ -338,7 +364,7 @@ def sync_workspace_to_github(
                 stderr_summary=_safe_summary(getattr(status_result, "stderr", "")),
             )
 
-        if str(getattr(status_result, "stdout", "")).strip():
+        if str(getattr(status_result, "stdout", "")).strip() or not has_existing_commit:
             commit_result = run_git("git", "commit", "-m", "Bootstrap approved project delivery snapshot")
             if int(getattr(commit_result, "returncode", 1)) != 0:
                 return _blocked(
@@ -359,7 +385,7 @@ def sync_workspace_to_github(
                 stderr_summary=_safe_summary(getattr(push_result, "stderr", "")),
             )
 
-        head_result = run_git("git", "rev-parse", "HEAD", "--short")
+        head_result = run_git("git", "rev-parse", "--short", "HEAD")
         if int(getattr(head_result, "returncode", 1)) != 0:
             return _blocked(
                 workspace,

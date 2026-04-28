@@ -86,6 +86,26 @@ install_hermes_if_missing() {
   log "Hermes installed successfully"
 }
 
+install_ui_ux_pro_max() {
+  if ! command -v npm >/dev/null 2>&1; then
+    warn "npm not found; skipping UI/UX Pro Max install"
+    return 0
+  fi
+
+  if ! command -v uipro >/dev/null 2>&1; then
+    log "Installing UI/UX Pro Max CLI"
+    npm install -g uipro-cli || {
+      warn "Failed to install uipro-cli; skipping UI/UX Pro Max setup"
+      return 0
+    }
+  else
+    log "UI/UX Pro Max CLI already installed"
+  fi
+
+  log "Ensuring UI/UX Pro Max skill is installed for Claude Code"
+  (cd "$ROOT_DIR" && uipro init --ai claude) || warn "UI/UX Pro Max init reported issues"
+}
+
 setup_default_config() {
   mkdir -p "$HERMES_HOME_DEFAULT"
 
@@ -494,6 +514,7 @@ main() {
 
   log "Project root: $ROOT_DIR"
   install_hermes_if_missing
+  install_ui_ux_pro_max
   setup_default_config
   setup_profiles
   configure_models_interactive

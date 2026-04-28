@@ -117,10 +117,39 @@ class StartDeliveryRunTests(unittest.TestCase):
         )
         return workspace
 
+    def test_d04_prefers_repo_level_paths_recorded_in_workspace_metadata(self) -> None:
+        start_delivery_run = load_module("start_delivery_run", START_SCRIPT_PATH)
+        workspace = self.create_workspace_fixture()
+        metadata_path = workspace / ".hermes" / "project-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["gsd_constraints_path"] = PLAN_09_01_PATH.as_posix()
+        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        repo_level_contract = Path(metadata["canonical_contract_path"])
+        repo_level_constraints = Path(metadata["gsd_constraints_path"])
+        fallback_contract = workspace.parent / REQUIRED_INPUT_FILES["template_contract_path"]
+        fallback_constraints = workspace.parent / REQUIRED_INPUT_FILES["gsd_constraints_path"]
+        fallback_contract.unlink()
+        fallback_constraints.unlink()
+
+        ok, error, resolved = start_delivery_run.validate_required_inputs(workspace)
+
+        self.assertTrue(ok, msg=error)
+        self.assertIsNone(error)
+        self.assertEqual(resolved["template_contract_path"], repo_level_contract)
+        self.assertEqual(resolved["gsd_constraints_path"], repo_level_constraints)
+
     def test_d04_blocks_when_any_required_input_is_missing(self) -> None:
         start_delivery_run = load_module("start_delivery_run", START_SCRIPT_PATH)
         for input_key, relative_path in REQUIRED_INPUT_FILES.items():
             workspace = self.create_workspace_fixture()
+            metadata_path = workspace / ".hermes" / "project-metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if input_key == "template_contract_path":
+                metadata.pop("canonical_contract_path", None)
+                metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            if input_key == "gsd_constraints_path":
+                metadata.pop("gsd_constraints_path", None)
+                metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             target = workspace / relative_path if relative_path.startswith(".hermes/") else workspace.parent / relative_path
             target.unlink()
             result = start_delivery_run.initialize_delivery_run(workspace)
