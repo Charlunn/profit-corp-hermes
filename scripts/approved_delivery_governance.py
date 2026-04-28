@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from scripts.append_approved_delivery_event import append_approved_delivery_event
+from scripts.check_template_conformance import PROTECTED_PATHS as CONFORMANCE_PROTECTED_PATHS
 from scripts.github_delivery_common import prepare_github_repository, sync_workspace_to_github
 from scripts.vercel_delivery_common import apply_env_contract, deploy_to_vercel, link_vercel_project
 
@@ -26,6 +28,16 @@ ALLOWED_CREDENTIAL_ACTIONS = (
 
 _GITHUB_ACTIONS = {"github_repository_prepare", "github_sync"}
 _VERCEL_ACTIONS = {"vercel_project_link", "vercel_env_apply", "vercel_deploy"}
+_PROTECTED_EXTRA_PATHS = (
+    "src/app/api/paypal/client-token/route.ts",
+)
+PROTECTED_SURFACE_PATHS = tuple(dict.fromkeys((*CONFORMANCE_PROTECTED_PATHS, *_PROTECTED_EXTRA_PATHS)))
+CLASSIFICATION_ALLOWED_VALUES = (
+    "product_only",
+    "protected_platform",
+    "blocked_for_missing_information",
+)
+WORKSPACE_CHANGES_EVIDENCE_NAME = "workspace-changes.json"
 
 
 Helper = Callable[..., dict[str, Any]]
@@ -80,7 +92,7 @@ def _status_and_outcome(result: dict[str, Any]) -> tuple[str, str]:
     if result.get("ok"):
         return "completed", "success"
     reason = str(result.get("block_reason", "")).strip()
-    if reason.startswith("missing_") or reason.endswith("_incomplete"):
+    if reason.startswith("missing_") or reason.endswith("_incomplete") or reason.endswith("_pending"):
         return "blocked", "blocked"
     return "failed", "failed"
 
@@ -120,6 +132,214 @@ def _write_json(path: Path, payload: dict[str, Any]) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path.as_posix()
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ApprovedDeliveryGovernanceError(f"invalid JSON artifact: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ApprovedDeliveryGovernanceError(f"JSON artifact root must be an object: {path}")
+    return payload
+
+
+def _normalize_workspace_relative_path(raw_path: str, workspace_root: Path) -> tuple[str, str]:
+    text = str(raw_path or "").strip().replace("\\", "/")
+    if not text:
+        return "", "blank touched path entry"
+    candidate = Path(text)
+    if candidate.is_absolute():
+        try:
+            text = candidate.resolve().relative_to(workspace_root.resolve()).as_posix()
+        except ValueError:
+            return "", f"path outside workspace: {candidate.as_posix()}"
+    return text.lstrip("./"), ""
+
+
+def _classification_reason(classification: str, *, protected_matches: list[str], unknown_paths: list[str], touched_paths: list[str]) -> str:
+    if classification == "blocked_for_missing_information":
+        if not touched_paths:
+            return "workspace change inventory missing or empty"
+        if unknown_paths:
+            return "workspace change inventory contains paths that cannot be normalized safely"
+    if classification == "protected_platform":
+        return f"protected platform surfaces touched: {', '.join(protected_matches)}"
+    return "touched paths remain within the product extension layer"
+
+
+def classify_workspace_changes(*, workspace_root: Path | str, touched_paths: list[str] | tuple[str, ...] | None) -> dict[str, Any]:
+    workspace = Path(workspace_root)
+    normalized_touched_paths: list[str] = []
+    unknown_paths: list[str] = []
+    reasons: list[str] = []
+
+    for raw_path in list(touched_paths or []):
+        normalized, reason = _normalize_workspace_relative_path(str(raw_path), workspace)
+        if normalized:
+            normalized_touched_paths.append(normalized)
+        else:
+            unknown_paths.append(str(raw_path))
+            if reason:
+                reasons.append(reason)
+
+    normalized_touched_paths = sorted(dict.fromkeys(normalized_touched_paths))
+    protected_matches = sorted(path for path in normalized_touched_paths if path in PROTECTED_SURFACE_PATHS)
+
+    classification = "product_only"
+    block_reason = ""
+    if not normalized_touched_paths and not unknown_paths:
+        classification = "blocked_for_missing_information"
+        block_reason = "missing_workspace_change_inventory"
+        reasons.append("no touched paths available for deterministic classification")
+    elif unknown_paths:
+        classification = "blocked_for_missing_information"
+        block_reason = "workspace_change_inventory_incomplete"
+    elif protected_matches:
+        classification = "protected_platform"
+
+    reason = _classification_reason(
+        classification,
+        protected_matches=protected_matches,
+        unknown_paths=unknown_paths,
+        touched_paths=normalized_touched_paths,
+    )
+    if reason and reason not in reasons:
+        reasons.insert(0, reason)
+
+    return {
+        "classification": classification,
+        "protected_matches": protected_matches,
+        "unknown_paths": unknown_paths,
+        "reasons": reasons,
+        "touched_paths": normalized_touched_paths,
+        "block_reason": block_reason,
+    }
+
+
+def _workspace_changes_evidence_path(workspace_root: Path) -> Path:
+    return workspace_root / ".hermes" / WORKSPACE_CHANGES_EVIDENCE_NAME
+
+
+def load_workspace_change_inventory(workspace_root: Path | str) -> dict[str, Any] | None:
+    path = _workspace_changes_evidence_path(Path(workspace_root))
+    if not path.exists():
+        return None
+    payload = _read_json(path)
+    touched_paths = payload.get("touched_paths", [])
+    if not isinstance(touched_paths, list):
+        raise ApprovedDeliveryGovernanceError("workspace change inventory touched_paths must be a list")
+    return payload
+
+
+def collect_workspace_touched_paths(workspace_root: Path | str) -> dict[str, Any]:
+    workspace = Path(workspace_root)
+    inventory = load_workspace_change_inventory(workspace)
+    if inventory is not None:
+        touched_paths = [str(item) for item in inventory.get("touched_paths", [])]
+        return {
+            "ok": True,
+            "source": "workspace_change_inventory",
+            "touched_paths": touched_paths,
+            "evidence_path": _workspace_changes_evidence_path(workspace).as_posix(),
+        }
+
+    git_dir = workspace / ".git"
+    if not git_dir.exists():
+        return {
+            "ok": False,
+            "source": "missing_inventory",
+            "touched_paths": [],
+            "evidence_path": "",
+            "block_reason": "missing_workspace_change_inventory",
+            "error": "workspace change inventory missing and workspace is not a git repository",
+        }
+
+    result = subprocess.run(
+        ["git", "-C", workspace.as_posix(), "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {
+            "ok": False,
+            "source": "git_status_failed",
+            "touched_paths": [],
+            "evidence_path": "",
+            "block_reason": "workspace_change_inventory_incomplete",
+            "error": result.stderr.strip() or result.stdout.strip() or "unable to inspect workspace changes",
+        }
+
+    touched_paths: list[str] = []
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            continue
+        payload = line[3:] if len(line) > 3 else ""
+        if " -> " in payload:
+            before, after = payload.split(" -> ", 1)
+            touched_paths.extend([before.strip(), after.strip()])
+        else:
+            touched_paths.append(payload.strip())
+
+    return {
+        "ok": True,
+        "source": "git_status_porcelain",
+        "touched_paths": touched_paths,
+        "evidence_path": "",
+    }
+
+
+def write_workspace_classification_report(
+    *,
+    workspace_root: Path | str,
+    stage: str,
+    collection: dict[str, Any],
+    classification: dict[str, Any],
+) -> str:
+    workspace = Path(workspace_root)
+    path = workspace / ".hermes" / f"protected-surface-classification-{stage.replace('_', '-')}.json"
+    payload = {
+        "stage": stage,
+        "workspace_path": workspace.as_posix(),
+        "inventory_source": str(collection.get("source", "")).strip(),
+        "inventory_evidence_path": str(collection.get("evidence_path", "")).strip(),
+        "classification": classification["classification"],
+        "protected_matches": list(classification.get("protected_matches", [])),
+        "unknown_paths": list(classification.get("unknown_paths", [])),
+        "reasons": list(classification.get("reasons", [])),
+        "touched_paths": list(classification.get("touched_paths", [])),
+        "block_reason": str(classification.get("block_reason", "")).strip(),
+        "protected_surface_paths": list(PROTECTED_SURFACE_PATHS),
+        "generated_at": _utc_timestamp(),
+    }
+    return _write_json(path, payload)
+
+
+def inspect_workspace_changes(*, workspace_root: Path | str, stage: str) -> dict[str, Any]:
+    collection = collect_workspace_touched_paths(workspace_root)
+    classification = classify_workspace_changes(
+        workspace_root=workspace_root,
+        touched_paths=collection.get("touched_paths", []),
+    )
+    if not collection.get("ok") and not classification.get("block_reason"):
+        classification["classification"] = "blocked_for_missing_information"
+        classification["block_reason"] = str(collection.get("block_reason", "missing_workspace_change_inventory")).strip() or "missing_workspace_change_inventory"
+        if collection.get("error"):
+            classification.setdefault("reasons", []).insert(0, str(collection["error"]).strip())
+    evidence_path = write_workspace_classification_report(
+        workspace_root=workspace_root,
+        stage=stage,
+        collection=collection,
+        classification=classification,
+    )
+    return {
+        **classification,
+        "inventory_source": str(collection.get("source", "")).strip(),
+        "inventory_evidence_path": str(collection.get("evidence_path", "")).strip(),
+        "evidence_path": evidence_path,
+    }
 
 
 def _build_audit_payload(
