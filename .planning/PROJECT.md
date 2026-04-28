@@ -2,23 +2,31 @@
 
 ## What This Is
 
-Profit-Corp Hermes is an AI-operated company management core built on a multi-profile Hermes runtime. It is designed to continuously discover user pain points from public discussions across the web, evaluate whether those signals are viable mini-SaaS opportunities, and turn that information into management-grade outputs for a founder/operator.
+Profit-Corp Hermes is an AI-operated company management core built on a multi-profile Hermes runtime. It continuously discovers user pain points from public discussions across the web, evaluates whether those signals are viable mini-SaaS opportunities, and now carries approved opportunities all the way into governed SaaS delivery.
 
-The system is not just a prompt collection: it aims to function like a real small company's management layer, with distinct roles, daily operating rhythm, shared state, governance rules, and auditable decision flow. The primary output is a recurring operating decision package that helps the operator choose which pain point to pursue, what to build quickly, and how to launch a paid mini-SaaS with supporting pricing, marketing, and execution guidance.
+The system is no longer just an analysis and management layer. It now spans the full path from signal discovery and operating decision support to template-governed project instantiation, specialist agent execution, GitHub/Vercel shipping, and operator-facing delivery handoff.
 
 ## Core Value
 
-Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build and launch next.
+Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build, launch, and operationalize next.
 
-## Current Milestone: v1.1 SaaS Delivery Factory
+## Current State
 
-**Goal:** Turn Hermes into an approved-to-delivery mini-SaaS factory that can take an approved opportunity through shared-template setup, agent-driven implementation, repository sync, and deployment handoff with minimal manual work.
+**Latest shipped milestone:** v1.1 SaaS Delivery Factory (shipped 2026-04-28)
 
-**Target features:**
-- Bring `standalone-saas-template` into Hermes as a governed reusable asset with explicit platform contracts and extension rules
-- Standardize a Claude Code-powered specialist development team with GSD constraints, reusable responsibilities, and a one-time owner approval gate
-- Build a post-approval delivery pipeline that can instantiate new SaaS projects, apply app-specific configuration, and start execution automatically
-- Push the delivery chain through GitHub sync and as much direct Vercel deployment automation as feasible while preserving shared Supabase platform rules
+Hermes now supports a full approved-to-delivery SaaS factory flow on top of the original operating core:
+- governed template asset registration and contract enforcement
+- shared Supabase backend guardrails
+- Claude Code specialist delivery-team orchestration
+- approved-project bootstrap, blocked-state tracking, resume, and handoff
+- constrained GitHub/Vercel automation with operator-visible audit artifacts
+
+## Next Milestone Goals
+
+- Define the next post-v1.1 milestone with fresh requirements instead of carrying active scope in the archived milestone docs
+- Decide whether to expand beyond solo-operator workflows into broader multi-user/team operations
+- Revisit deferred realtime visibility and internal telemetry once the delivery-factory baseline is stable
+- Evaluate whether domain/DNS automation, post-deploy canary checks, or reusable product presets should become first-class roadmap items
 
 ## Requirements
 
@@ -33,40 +41,38 @@ Turn noisy web-wide user pain signals into a clear, actionable operating view: w
 - ✓ Final outputs now provide management-grade conclusions, evidence links, and downstream derived artifacts — Validated in Phase 3: Decision Package Quality
 - ✓ Execution handoff now provides a stable Core 9 planning/delivery contract with lightweight ownership and readiness metadata — Validated in Phase 6: Execution Handoff and Team Readiness
 - ✓ Board briefing now provides a one-screen governance/risk/finance/required-attention contract aligned to the operating decision package — Validated in Phase 6: Execution Handoff and Team Readiness
+- ✓ `standalone-saas-template` is now a governed Hermes platform asset with canonical contract, protected-layer rules, and conformance enforcement — Validated in v1.1
+- ✓ Approved product opportunities can now move through governed workspace bootstrap, delivery orchestration, GitHub sync, Vercel deploy, and final handoff artifacts — Validated in v1.1
+- ✓ Platform-managed GitHub/Vercel delivery automation now runs through constrained, auditable governance paths instead of open-ended credential use — Validated in v1.1
 
 ### Active
 
-- [ ] Turn Hermes into an approved-to-delivery mini-SaaS factory that can move from opportunity selection to templated product build, repository sync, and deployment handoff with minimal manual work
-- [ ] Operationalize a shared-template platform contract so every new SaaS reuses the same Supabase/Auth/PayPal foundation instead of rebuilding infrastructure
-- [ ] Expand Hermes from solo operator support into a professional Claude Code-powered development team with explicit approval gates, role boundaries, and reusable delivery workflows
+- [ ] Define the next post-v1.1 milestone scope and success criteria
+- [ ] Decide which deferred factory-expansion capabilities should become the next active build target
 
 ### Out of Scope
 
-- Building product-specific end-user SaaS features inside this repo before the delivery factory is ready — this milestone is about platformized production capability, not shipping one customer app
-- Fully custom per-product infrastructure stacks — new SaaS projects should start from the shared template and shared Supabase platform contract unless the owner explicitly approves a platform change
-- Manual project-by-project developer setup as the default path — the goal is to make approved projects routable into a repeatable automated delivery workflow
+- Building product-specific end-user SaaS features inside this repo before a future milestone explicitly targets one customer app
+- Fully custom per-product infrastructure stacks as the default path — new SaaS projects should start from the shared template and shared Supabase platform contract unless the owner explicitly approves a platform change
+- Manual project-by-project developer setup as the default path — the system should continue pushing toward repeatable automated delivery workflows
 
 ## Context
 
-This repository is a Hermes-native migration target for an existing profit-corp operating model. The current codebase already contains role definitions, skill libraries, cron orchestration helpers, recovery scripts, state contracts, and a finance ledger with restricted mutation rules.
+This repository is a Hermes-native migration target for an existing profit-corp operating model. The codebase now contains both the original operating intelligence layer and a shipped v1.1 delivery-factory layer that can turn approved opportunities into governed, deployable SaaS workspaces.
 
-The user's goal is no longer only to improve management visibility. The next milestone expands Hermes into a mini-SaaS delivery factory: after Hermes identifies and the user approves a product opportunity, a professional agent development team should be able to stand up a new project quickly on top of a shared SaaS template and hand back deployable output.
+A standalone mini-SaaS template exists at `C:\Users\42236\Desktop\standalone-saas-template`. It uses Next.js with Supabase Auth, shared PayPal checkout/capture flows, entitlement helpers, and shared public tables (`users`, `orders`, `payments`, `subscriptions`). Hermes now treats that template as a governed platform asset rather than a loose external starting point.
 
-A standalone mini-SaaS template already exists at `C:\Users\42236\Desktop\standalone-saas-template`. It uses Next.js with Supabase Auth, shared PayPal checkout/capture flows, entitlement helpers, and shared public tables (`users`, `orders`, `payments`, `subscriptions`). The template contract requires product-specific business tables to use the `APP_KEY_` prefix and treats shared auth/payment/entitlement layers as stable platform primitives.
-
-The intended deployment model is Vercel for frontend delivery and a single shared Supabase project for all SaaS backends. New projects should isolate product data through the template's app-key conventions rather than by spinning up a separate backend per SaaS, unless the platform contract is intentionally revised.
-
-The user wants the post-approval path to be as automated as practical: once a product direction is approved, Hermes should be able to instantiate a project from the template, coordinate specialized development agents using Claude Code plus GSD controls, sync the result to GitHub, and, if feasible, push all the way through to Vercel deployment.
+The current deployment model remains Vercel for frontend delivery and a single shared Supabase project for SaaS backends. New projects isolate product data through app-key conventions and shared-boundary enforcement instead of spinning up a separate backend per SaaS by default.
 
 ## Constraints
 
-- **Existing foundation**: This is a brownfield repo with established roles, scripts, and governance docs — new work should extend the current system rather than replacing it wholesale
+- **Existing foundation**: This remains a brownfield repo with established roles, scripts, and governance docs — new work should extend the current system rather than replacing it wholesale
 - **Runtime model**: The system depends on Hermes profiles and cron orchestration — implementation choices should stay compatible with that operating model
 - **Governance**: Shared-state writes must respect `docs/STATE_CONTRACT.md` and the `assets/shared/manage_finance.py` write path
 - **Operator workflow**: The owner wants a one-time approval gate before delivery automation continues; downstream development should automate after approval, not require repeated manual orchestration by default
-- **Shared backend model**: Frontends should target Vercel while all SaaS products share one Supabase project, using template-enforced naming and boundary rules to isolate product data
-- **Template contract**: Shared auth, payment, entitlement, and core public table flows from `standalone-saas-template` should be reused as platform primitives rather than reimplemented per product
-- **Deployment ambition**: The target state is GitHub sync plus as much direct Vercel deployment automation as practical, which means credential, permission, and release boundaries must be designed explicitly
+- **Shared backend model**: Frontends should target Vercel while SaaS products share one Supabase project, using template-enforced naming and boundary rules to isolate product data
+- **Template contract**: Shared auth, payment, entitlement, and core public table flows from `standalone-saas-template` are platform primitives rather than per-product rebuild targets
+- **Deployment ambition**: GitHub sync and direct Vercel deployment are part of the intended operating path, so credential, permission, and release boundaries must remain explicit
 
 ## Key Decisions
 
@@ -75,13 +81,14 @@ The user wants the post-approval path to be as automated as practical: once a pr
 | Make the system an AI company management core, not a single-purpose planner | The user wants a structure that can work efficiently like a real company | — Pending |
 | Use operating decision package as the primary output | The user wants a management layer that turns signals into decisions | Validated in Phase 3 |
 | Support project execution packs and board-style briefings as secondary outputs | Management decisions need downstream execution and communication artifacts | Validated in Phase 6 |
-| Prioritize improving output quality and governance together | The user explicitly wants both more professional outputs and stronger company-like controls | Output quality validated in Phase 3; governance remains pending |
+| Prioritize improving output quality and governance together | The user explicitly wants both more professional outputs and stronger company-like controls | Output quality validated in Phase 3; governance validated in v1.1 |
 | Use daily operating rhythm as the main cycle | The user wants the system to function as an ongoing operating mechanism, not just on-demand analysis | — Pending |
 | Focus initial intelligence gathering on web-wide user pain signals, with competitor/trend research as optional support | The user wants flexible whole-web discovery rather than a fixed list of canonical sources | — Pending |
 | Optimize for solo operator visibility first, then team expansion | The system should be immediately useful now while remaining extensible later | Visibility validated in Phase 5; team-ready downstream contracts validated in Phase 6 |
-| Standardize new SaaS builds on a shared template and shared Supabase platform contract | The user wants approved products to move quickly through a repeatable build pipeline instead of starting infrastructure from scratch each time | — Pending |
-| Use a one-time owner approval gate before automatic delivery execution | The user wants human approval on product direction, but does not want repeated manual gating once a build is approved | — Pending |
-| Push Hermes toward automated GitHub sync and Vercel-ready deployment handoff | The goal is not just design guidance, but deployable SaaS outputs that can be launched rapidly after approval | — Pending |
+| Standardize new SaaS builds on a shared template and shared Supabase platform contract | The user wants approved products to move quickly through a repeatable build pipeline instead of starting infrastructure from scratch each time | Validated in v1.1 |
+| Use a one-time owner approval gate before automatic delivery execution | The user wants human approval on product direction, but does not want repeated manual gating once a build is approved | Validated in v1.1 |
+| Push Hermes toward automated GitHub sync and Vercel-ready deployment handoff | The goal is not just design guidance, but deployable SaaS outputs that can be launched rapidly after approval | Validated in v1.1 |
+| Use verification and live-UAT evidence as the only source of truth for milestone-close reconciliation | Canonical docs drifted during execution and needed one final evidence-backed normalization pass | Validated in Phase 13 |
 
 ## Evolution
 
@@ -94,7 +101,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? → Add to Key Decisions
 5. "What This Is" still accurate? → Update if drifted
 
-**Current state:** Phase 6 complete — execution handoff and board briefing contracts are now stable downstream operating artifacts. The next milestone shifts focus from analysis/readiness toward turning Hermes into an approved-to-delivery SaaS production system built around a shared template, shared Supabase backend model, and automated developer-team execution.
+**Current state:** v1.1 shipped — Hermes now spans both opportunity intelligence and governed SaaS delivery. The next milestone should define what to extend beyond the delivery-factory baseline rather than reopening already-closed v1.1 scope.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -103,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 after milestone v1.1 initialization*
+*Last updated: 2026-04-28 after v1.1 milestone close*
