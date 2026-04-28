@@ -18,21 +18,21 @@ Requirements for milestone v1.1 SaaS Delivery Factory.
 
 ### Shared Backend Contract
 
-- [ ] **BACK-01**: Hermes can enforce that new SaaS projects target a single shared Supabase backend model rather than creating a separate backend by default
-- [ ] **BACK-02**: Hermes can enforce that product-specific business tables use the `APP_KEY_` prefix
-- [ ] **BACK-03**: Hermes can detect and block creation of unprefixed product business tables in generated SaaS projects
-- [ ] **BACK-04**: Hermes can preserve the template’s shared-table boundary so only `users`, `orders`, `payments`, and `subscriptions` are treated as global platform tables
-- [ ] **BACK-05**: Hermes can require product implementations to reuse the shared auth, payment, and entitlement flows instead of replacing them by default
-- [ ] **BACK-06**: Hermes can validate that product code does not directly write shared payment or entitlement state from client-side code
+- [x] **BACK-01**: Hermes can enforce that new SaaS projects target a single shared Supabase backend model rather than creating a separate backend by default
+- [x] **BACK-02**: Hermes can enforce that product-specific business tables use the `APP_KEY_` prefix
+- [x] **BACK-03**: Hermes can detect and block creation of unprefixed product business tables in generated SaaS projects
+- [x] **BACK-04**: Hermes can preserve the template’s shared-table boundary so only `users`, `orders`, `payments`, and `subscriptions` are treated as global platform tables
+- [x] **BACK-05**: Hermes can require product implementations to reuse the shared auth, payment, and entitlement flows instead of replacing them by default
+- [x] **BACK-06**: Hermes can validate that product code does not directly write shared payment or entitlement state from client-side code
 
 ### Development Team Orchestration
 
-- [ ] **TEAM-01**: Hermes can define a specialist Claude Code-powered development team for post-approval SaaS delivery with explicit role responsibilities
-- [ ] **TEAM-02**: Hermes can define the required inputs, outputs, and handoff artifacts for each development role in the delivery workflow
-- [ ] **TEAM-03**: Hermes can give each delivery role access to the approved template rules, project brief, and GSD operating constraints before implementation starts
-- [ ] **TEAM-04**: Hermes can constrain delivery roles so they only operate within approved project scope unless the owner reopens scope
-- [ ] **TEAM-05**: Hermes can record which role performed each major delivery action for auditability
-- [ ] **TEAM-06**: Hermes can run a repeatable approved-project delivery workflow without requiring the owner to manually orchestrate every development step
+- [x] **TEAM-01**: Hermes can define a specialist Claude Code-powered development team for post-approval SaaS delivery with explicit role responsibilities
+- [x] **TEAM-02**: Hermes can define the required inputs, outputs, and handoff artifacts for each development role in the delivery workflow
+- [x] **TEAM-03**: Hermes can give each delivery role access to the approved template rules, project brief, and GSD operating constraints before implementation starts
+- [x] **TEAM-04**: Hermes can constrain delivery roles so they only operate within approved project scope unless the owner reopens scope
+- [x] **TEAM-05**: Hermes can record which role performed each major delivery action for auditability
+- [x] **TEAM-06**: Hermes can run a repeatable approved-project delivery workflow without requiring the owner to manually orchestrate every development step
 
 ### Approval and Delivery Pipeline
 
@@ -57,12 +57,12 @@ Requirements for milestone v1.1 SaaS Delivery Factory.
 
 ### Governance and Credential Control
 
-- [ ] **GOV-01**: Hermes can store and use platform-managed GitHub and Vercel automation credentials through a documented platform-controlled path
-- [ ] **GOV-02**: Hermes can restrict credential use to approved delivery actions instead of allowing open-ended arbitrary operations
-- [ ] **GOV-03**: Hermes can record an audit trail for repository creation, code sync, environment configuration, and deployment actions
-- [ ] **GOV-04**: Hermes can distinguish between platform-level changes and product-level changes so protected platform behavior is not silently altered during product delivery
-- [ ] **GOV-05**: Hermes can require explicit platform justification before shared template primitives or shared backend contracts are modified
-- [ ] **GOV-06**: Hermes can surface failed approvals, blocked deliveries, and deployment failures in an operator-visible review artifact
+- [x] **GOV-01**: Hermes can store and use platform-managed GitHub and Vercel automation credentials through a documented platform-controlled path
+- [x] **GOV-02**: Hermes can restrict credential use to approved delivery actions instead of allowing open-ended arbitrary operations
+- [x] **GOV-03**: Hermes can record an audit trail for repository creation, code sync, environment configuration, and deployment actions
+- [x] **GOV-04**: Hermes can distinguish between platform-level changes and product-level changes so protected platform behavior is not silently altered during product delivery
+- [x] **GOV-05**: Hermes can require explicit platform justification before shared template primitives or shared backend contracts are modified
+- [x] **GOV-06**: Hermes can surface failed approvals, blocked deliveries, and deployment failures in an operator-visible review artifact
 
 ## Future Requirements
 
@@ -94,18 +94,18 @@ Deferred to a future milestone.
 | TMPL-04 | Phase 7 | Complete |
 | TMPL-05 | Phase 7 | Complete |
 | TMPL-06 | Phase 7 | Complete |
-| BACK-01 | Phase 8 | Pending |
-| BACK-02 | Phase 8 | Pending |
-| BACK-03 | Phase 8 | Pending |
-| BACK-04 | Phase 8 | Pending |
-| BACK-05 | Phase 8 | Pending |
-| BACK-06 | Phase 8 | Pending |
-| TEAM-01 | Phase 9 | Pending |
-| TEAM-02 | Phase 9 | Pending |
-| TEAM-03 | Phase 9 | Pending |
-| TEAM-04 | Phase 9 | Pending |
-| TEAM-05 | Phase 9 | Pending |
-| TEAM-06 | Phase 9 | Pending |
+| BACK-01 | Phase 8 | Complete |
+| BACK-02 | Phase 8 | Complete |
+| BACK-03 | Phase 8 | Complete |
+| BACK-04 | Phase 8 | Complete |
+| BACK-05 | Phase 8 | Complete |
+| BACK-06 | Phase 8 | Complete |
+| TEAM-01 | Phase 9 | Complete |
+| TEAM-02 | Phase 9 | Complete |
+| TEAM-03 | Phase 9 | Complete |
+| TEAM-04 | Phase 9 | Complete |
+| TEAM-05 | Phase 9 | Complete |
+| TEAM-06 | Phase 9 | Complete |
 | PIPE-01 | Phase 10 | Complete |
 | PIPE-02 | Phase 10 | Complete |
 | PIPE-03 | Phase 10 | Complete |
@@ -121,12 +121,12 @@ Deferred to a future milestone.
 | SHIP-06 | Phase 11 | Complete |
 | SHIP-07 | Phase 11 | Complete |
 | SHIP-08 | Phase 11 | Complete |
-| GOV-01 | Phase 12 | Pending |
-| GOV-02 | Phase 12 | Pending |
-| GOV-03 | Phase 12 | Pending |
-| GOV-04 | Phase 12 | Pending |
-| GOV-05 | Phase 12 | Pending |
-| GOV-06 | Phase 12 | Pending |
+| GOV-01 | Phase 12 | Complete |
+| GOV-02 | Phase 12 | Complete |
+| GOV-03 | Phase 12 | Complete |
+| GOV-04 | Phase 12 | Complete |
+| GOV-05 | Phase 12 | Complete |
+| GOV-06 | Phase 12 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 39 total
@@ -135,4 +135,4 @@ Deferred to a future milestone.
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 after milestone v1.1 definition*
+*Last updated: 2026-04-28 after Phase 13 canonical reconciliation*
