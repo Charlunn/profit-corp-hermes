@@ -228,7 +228,7 @@ def render_approved_delivery_status(project_dir: Path) -> str:
     status_path = project_dir / STATUS_FILE_NAME
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status_path.write_text(markdown, encoding="utf-8")
-    final_review_path = Path(first_nonempty(get_nested(record, "artifacts", "final_review_path"), (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix()))
+    final_review_path = project_dir / "FINAL_OPERATOR_REVIEW.md"
     final_review_path.parent.mkdir(parents=True, exist_ok=True)
     final_review_path.write_text(markdown, encoding="utf-8")
     return markdown

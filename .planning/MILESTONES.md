@@ -5,7 +5,7 @@
 **Shipped:** 2026-04-28
 **Phases:** 7 | **Plans:** 20 | **Tasks:** 35
 **Timeline:** 2026-04-26 → 2026-04-28
-**Git range:** `da8143c` → `HEAD`
+**Git range:** `da8143c` → `9c01d1f`
 
 ### Delivered
 - Turned `standalone-saas-template` into a governed Hermes platform asset with a canonical contract and blocking conformance gate

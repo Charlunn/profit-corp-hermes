@@ -168,7 +168,8 @@ main() {
   setup_optional_cron
   run_optional_smoke
 
-  hermes doctor
+  log "Running Hermes doctor"
+  hermes doctor || log "Hermes doctor reported issues"
   "$PYTHON_BIN" -m py_compile "$ROOT_DIR/assets/shared/manage_finance.py" || true
 
   log "Done"

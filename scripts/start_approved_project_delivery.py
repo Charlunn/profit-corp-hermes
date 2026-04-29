@@ -421,10 +421,11 @@ def record_paths(authority_path: Path, record: dict[str, Any]) -> tuple[Path, Pa
     artifacts = record.setdefault("artifacts", {})
     events_path = Path(str(artifacts.get("events_path", project_dir / "approved-delivery-events.jsonl")))
     status_path = Path(str(artifacts.get("status_path", project_dir / "DELIVERY_PIPELINE_STATUS.md")))
+    final_review_path = project_dir / "FINAL_OPERATOR_REVIEW.md"
     artifacts["project_directory"] = project_dir.as_posix()
     artifacts["authority_record_path"] = authority_path.as_posix()
     artifacts["delivery_brief_path"] = (project_dir / "PROJECT_BRIEF.md").as_posix()
-    artifacts.setdefault("final_review_path", (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix())
+    artifacts["final_review_path"] = final_review_path.as_posix()
     artifacts["events_path"] = events_path.as_posix()
     artifacts["status_path"] = status_path.as_posix()
     return project_dir, events_path, status_path
