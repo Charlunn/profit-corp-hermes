@@ -294,6 +294,106 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         events = self.read_events(project_dir)
         self.assert_event_stages(events, PIPELINE_STAGES[:-2])
 
+    def test_bootstrap_recovery_from_blocked_github_sync_rewrites_authority_to_current_success_truth(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace_root = self.create_project_fixture()
+        workspace = self.seed_workspace_outputs(workspace_root)
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
+             mock.patch.object(start_module, "instantiate_workspace"), \
+             mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value={
+                 "ok": True,
+                 "workspace": workspace.as_posix(),
+                 "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+                 "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+                 "run_id": "delivery-lead-capture-copilot-001",
+             }), \
+             mock.patch.object(start_module, "prepare_github_repository", return_value={
+                 "ok": True,
+                 "repository_mode": "attach",
+                 "repository_owner": "profit-corp",
+                 "repository_name": "profit-corp/lead-capture-copilot",
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "remote_name": "origin",
+                 "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+             }), \
+             mock.patch.object(start_module, "run_github_sync", return_value={
+                 "ok": False,
+                 "block_reason": "github_sync_failed",
+                 "evidence_path": (workspace / ".hermes" / "github-sync-blocked.json").as_posix(),
+                 "error": "push failed",
+             }):
+            blocked_result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
+
+        self.assertFalse(blocked_result["ok"], msg=blocked_result)
+        self.assertEqual(blocked_result["stage"], "github_sync")
+
+        blocked_events = self.read_events(project_dir)
+        blocked_events[-1]["timestamp"] = "2026-04-27T08:35:30Z"
+        (project_dir / "approved-delivery-events.jsonl").write_text(
+            "\n".join(json.dumps(event, ensure_ascii=False) for event in blocked_events) + "\n",
+            encoding="utf-8",
+        )
+
+        blocked_record = self.read_json(authority_path)
+        blocked_record["pipeline"]["resume_from_stage"] = "github_sync"
+        blocked_record["shipping"]["github"].update(
+            {
+                "repository_owner": "stale-owner",
+                "repository_name": "stale-owner/stale-repo",
+                "repository_url": "https://github.com/stale-owner/stale-repo.git",
+                "default_branch": "stale-branch",
+                "last_sync_status": "blocked",
+                "synced_commit": "stale-commit",
+                "sync_evidence_path": (workspace / ".hermes" / "stale-github-sync.json").as_posix(),
+            }
+        )
+        authority_path.write_text(json.dumps(blocked_record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "run_github_sync", return_value={
+                 "ok": True,
+                 "repository_owner": "profit-corp",
+                 "repository_name": "profit-corp/lead-capture-copilot",
+                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                 "default_branch": "main",
+                 "synced_commit": "def5678",
+                 "evidence_path": (workspace / ".hermes" / "github-sync-success.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [{"transport": "ssh", "status": "ok"}],
+             }):
+            resumed_result = start_module.resume_approved_project_delivery(authority_path, workspace_root=workspace_root)
+
+        self.assertTrue(resumed_result["ok"], msg=resumed_result)
+        self.assertEqual(resumed_result["stage"], "vercel_linkage")
+
+        updated = self.read_json(authority_path)
+        github = updated["shipping"]["github"]
+        self.assertEqual(github["repository_owner"], "profit-corp")
+        self.assertEqual(github["repository_name"], "profit-corp/lead-capture-copilot")
+        self.assertEqual(github["repository_url"], "https://github.com/profit-corp/lead-capture-copilot.git")
+        self.assertEqual(github["default_branch"], "main")
+        self.assertEqual(github["synced_commit"], "def5678")
+        self.assertEqual(github["sync_evidence_path"], (workspace / ".hermes" / "github-sync-success.json").as_posix())
+        self.assertEqual(github["last_sync_status"], "completed")
+        self.assertEqual(updated["pipeline"]["stage"], "vercel_linkage")
+        self.assertEqual(updated["pipeline"]["status"], "ready")
+        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_linkage")
+        self.assertIsNone(updated["pipeline"]["block_reason"])
+        self.assertEqual(updated["pipeline"]["evidence_path"], (workspace / ".hermes" / "github-sync-success.json").as_posix())
+
+        events = self.read_events(project_dir)
+        self.assertEqual(events[-2]["stage"], "github_sync")
+        self.assertEqual(events[-2]["status"], "ready")
+        self.assertEqual(events[-2]["shipping"]["github"]["synced_commit"], "def5678")
+        self.assertEqual(events[-1]["stage"], "vercel_linkage")
+        self.assertEqual(events[-1]["resume_from_stage"], "vercel_linkage")
+
     def test_bootstrap_success_persists_authority_events_workspace_and_delivery_run(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()

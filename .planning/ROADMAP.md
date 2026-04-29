@@ -1,59 +1,48 @@
-# Roadmap: Profit-Corp Hermes
+# Profit-Corp Hermes
 
-## Milestones
+## Roadmap
 
-- ✅ **v1.0 milestone** — Phases 1-6 (shipped 2026-04-26) — see `.planning/milestones/v1.0-ROADMAP.md`
-- ✅ **v1.1 SaaS Delivery Factory** — Phases 7-13 (shipped 2026-04-28) — see `.planning/milestones/v1.1-ROADMAP.md`
-- 🔄 **v1.1.1 Delivery Pipeline Reliability Fixes** — Phases 14-17 (planning)
+### Phase 14: GitHub Auth and Repo Target Reliability
 
-## Current Milestone: v1.1.1 Delivery Pipeline Reliability Fixes
-
-**Goal:** Repair the approved-project GitHub/Vercel shipping path so the live operator environment can complete delivery without manual rescue and the authority/status surfaces converge to the true final state.
-
-## Phases
-
-### Phase 14: GitHub Auth and Repository Target Resolution
-
-**Goal**: Fix GitHub credential detection and repository targeting so a new approved project resolves the correct owner/repo and can enter the repository-preparation stage without manual env shims.
+**Goal:** Repair approved-project GitHub authentication detection and repository targeting so governed delivery uses the real authenticated operator identity and correct repo defaults.
 **Depends on**: Phase 13
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] 14-01: Unify GitHub auth source resolution across env-token and authenticated `gh` CLI flows
-- [ ] 14-02: Replace project-slug owner fallback with operator-controlled owner/repo derivation and canonical repo metadata writes
-- [ ] 14-03: Add regression coverage for create vs attach repository preparation against live-instance failure signatures
+- [x] 14-01: Fix GitHub credential detection and repository owner fallback in approved-project delivery
+- [x] 14-02: Add regression coverage and operator-surface validation for authenticated GitHub repository targeting
 
 **Success Criteria** (what must be TRUE):
-1. Approved delivery no longer blocks with `missing_github_auth` when `gh` is already authenticated for the operator machine.
-2. New approved projects derive GitHub owner, repository name, and canonical URL from valid operator-controlled inputs instead of falling back to the project slug as owner.
-3. Repository preparation evidence clearly shows which auth path and targeting metadata were used.
+1. Approved-project delivery can detect valid GitHub auth from the operator environment without requiring manual token export.
+2. New approved projects target the correct GitHub owner/repository instead of falling back to the project slug.
+3. Operator-facing artifacts and regressions prove the repaired GitHub targeting path is stable.
 
 ### Phase 15: GitHub Sync Reliability on Real Workspaces
 
-**Goal**: Make GitHub sync succeed on the real Windows + pnpm generated workspace shape by fixing snapshot filtering, remote convergence, and transport behavior.
+**Goal**: Make approved-project GitHub sync succeed reliably on real Windows + pnpm workspaces by hardening snapshot, path, and transport behavior.
 **Depends on**: Phase 14
 **Plans**: 3 plans
 
 Plans:
-- [x] 15-01: Define canonical workspace snapshot filters and generated-project `.gitignore` expectations for delivery sync
-- [x] 15-02: Harden git remote convergence, branch setup, and push transport behavior for the operator environment
-- [x] 15-03: Add regression validation for Windows long-path, dependency-tree, and remote-mismatch failure cases
+- [x] 15-01: Normalize GitHub sync workspace snapshots to source-only content for real workspaces
+- [x] 15-02: Repair sync transport/path handling for real operator Windows workspaces
+- [x] 15-03: Add end-to-end validation for GitHub sync on live-style workspaces
 
 **Success Criteria** (what must be TRUE):
-1. GitHub sync no longer stages `node_modules`, build outputs, or other non-source artifacts that caused the live long-path failure.
-2. GitHub sync can converge a mismatched remote and use a working push transport for the real operator machine.
-3. GitHub sync evidence distinguishes stage/add/commit/push failures so operators can see the true failure boundary.
+1. GitHub sync snapshots exclude lock/content that breaks real operator workspaces while preserving source truth.
+2. Sync can converge remotes and push successfully on the live Windows workspace using healthy transport fallbacks.
+3. Validator and tests prove real-workspace GitHub sync completes with authoritative evidence.
 
 ### Phase 16: Vercel Auth and Deploy Reliability
 
-**Goal**: Fix Vercel auth handling and deploy metadata capture so the approved-project pipeline can reuse the real operator auth path and record the actual linked/deployed project.
+**Goal**: Repair approved-project Vercel auth and deploy behavior so live operator environments can link and deploy without manual CLI rescue while preserving governed evidence.
 **Depends on**: Phase 15
 **Plans**: 3 plans
 
 Plans:
-- [x] 16-01: Unify Vercel auth source resolution across explicit token and locally authenticated CLI flows
-- [x] 16-02: Harden Vercel link/env/deploy execution so scope, project, and auth failures surface distinctly
-- [ ] 16-03: Capture real deployment metadata and evidence from the linked approved project instead of stale or inherited values
+- [x] 16-01: Restore Vercel auth detection and failure taxonomy across governed helper paths
+- [x] 16-02: Persist authoritative-only Vercel link/deploy metadata after real success and replace stale values on resume
+- [x] 16-03: Close the final Vercel regression envelope across helper, controller, governance, bootstrap, and resume seams
 
 **Success Criteria** (what must be TRUE):
 1. Approved delivery can proceed when the operator machine has a valid local Vercel login even if `VERCEL_TOKEN` was not manually exported.
@@ -67,9 +56,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 17-01: Normalize post-success authority updates for GitHub sync, Vercel link, and Vercel deploy stages
-- [ ] 17-02: Rework approved-delivery status rendering so current authority state overrides stale blocked history without hiding the audit trail
-- [ ] 17-03: Add end-to-end recovery validation proving a once-blocked live run can finish and render as completed in authority/status artifacts
+- [ ] 17-01-PLAN.md — Normalize post-success authority writes for recovered GitHub sync and Vercel success stages
+- [ ] 17-02-PLAN.md — Rework status rendering and validation so current authority truth overrides stale blocked state while preserving history
+- [ ] 17-03-PLAN.md — Add end-to-end recovered-run regression coverage across bootstrap, resume, and validator surfaces
 
 **Success Criteria** (what must be TRUE):
 1. After GitHub sync and Vercel deploy succeed, `APPROVED_PROJECT.json` reflects the true final repo/deploy metadata and completed pipeline state.
@@ -93,9 +82,3 @@ Plans:
 
 **Deferred:**
 - DNS/domain automation
-- post-deploy canary automation
-- broader multi-user/team operating workflows
-
----
-
-_For current project status, see .planning/PROJECT.md_

@@ -301,6 +301,22 @@ def validate_vercel_linkage(record: dict[str, Any], status_text: str) -> None:
             raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy evidence linkage")
 
 
+def validate_current_state_precedence(record: dict[str, Any], events: list[dict[str, Any]], status_text: str, final_review_text: str) -> None:
+    pipeline = get_nested(record, "pipeline") if isinstance(get_nested(record, "pipeline"), dict) else {}
+    status = first_nonempty(get_nested(pipeline, "status"))
+    stage = first_nonempty(get_nested(pipeline, "stage"))
+    combined = (status_text + "\n" + final_review_text).lower()
+
+    if status == "completed":
+        if "pipeline status" in combined and "blocked" in combined.split("pipeline status", 1)[1][:40]:
+            raise ApprovedDeliveryPipelineValidationError("status view still presents blocked current state after recovered completion")
+        if "handoff status" in combined and "completed" not in combined.split("handoff status", 1)[1][:40]:
+            raise ApprovedDeliveryPipelineValidationError("status view missing completed handoff current state")
+
+    if stage and stage.lower() not in combined:
+        raise ApprovedDeliveryPipelineValidationError("status view missing current pipeline stage")
+
+
 def validate_status_markdown(status_text: str, workspace: Path, final_handoff: Path) -> None:
     require_in_order(status_text, ["#", "Final"], STATUS_NAME)
     lowered = status_text.lower()
@@ -384,6 +400,7 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
 
     validate_status_markdown(status_text, workspace, final_handoff_path)
     validate_final_review(record, final_review_path, final_review_text)
+    validate_current_state_precedence(record, events, status_text, final_review_text)
     validate_github_linkage(record, status_text + "\n" + final_review_text)
     validate_vercel_linkage(record, status_text + "\n" + final_review_text)
     validate_blocked_prerequisite_visibility(record, events, status_text + "\n" + final_review_text)

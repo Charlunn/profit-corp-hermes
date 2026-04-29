@@ -347,10 +347,19 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
         self.assertEqual(updated["shipping"]["vercel"]["project_name"], "lead-capture-copilot-prod")
 
+    def test_resume_replaces_stale_blocked_vercel_truth_with_successful_link_and_deploy_state(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="vercel_linkage")
         authority = self.read_json(authority_path)
-        authority["pipeline"]["delivery_run_id"] = "delivery-lead-capture-copilot-001"
+        authority["pipeline"].update(
+            {
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+                "status": "blocked",
+                "block_reason": "vercel_linkage_failed",
+                "resume_from_stage": "vercel_linkage",
+                "evidence_path": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
+            }
+        )
         authority["shipping"] = {
             "github": {
                 "repository_mode": "attach",
@@ -360,14 +369,17 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                 "default_branch": "main",
                 "delivery_run_id": "delivery-lead-capture-copilot-001",
                 "last_sync_status": "completed",
+                "synced_commit": "abc1234",
             },
             "vercel": {
                 "project_id": "stale_project",
                 "project_name": "stale-project-prod",
                 "project_url": "https://vercel.com/old-team/stale-project-prod",
                 "team_scope": "old-team",
+                "linked": False,
                 "auth_source": "stale_source",
                 "auth_source_details": {"username": "stale-user"},
+                "link_evidence_path": (workspace / ".hermes" / "stale-vercel-link.json").as_posix(),
                 "env_contract_path": (workspace / ".hermes" / "stale-vercel-env-contract.json").as_posix(),
                 "env_contract": {"evidence_path": (workspace / ".hermes" / "stale-vercel-env-contract.json").as_posix()},
                 "required_env": {"platform_managed": ["OLD_SECRET"]},
@@ -380,6 +392,27 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             },
         }
         authority_path.write_text(json.dumps(authority, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        stale_block_event = {
+            "project_slug": "lead-capture-copilot",
+            "stage": "vercel_linkage",
+            "status": "blocked",
+            "action": "stage_blocked",
+            "timestamp": "2026-04-27T08:37:00Z",
+            "outcome": "blocked",
+            "authority_record_path": authority_path.as_posix(),
+            "brief_path": (project_dir / "PROJECT_BRIEF.md").as_posix(),
+            "workspace_path": workspace.as_posix(),
+            "delivery_run_id": "delivery-lead-capture-copilot-001",
+            "artifact": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
+            "block_reason": "vercel_linkage_failed",
+            "evidence_path": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
+            "resume_from_stage": "vercel_linkage",
+            "final_handoff_path": "",
+            "shipping": authority["shipping"],
+        }
+        (project_dir / "approved-delivery-events.jsonl").write_text(json.dumps(stale_block_event, ensure_ascii=False) + "\n", encoding="utf-8")
+
         final_handoff = workspace / ".hermes" / "FINAL_DELIVERY.md"
         final_handoff.write_text("# Final Delivery\n", encoding="utf-8")
 
@@ -424,14 +457,33 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         self.assertEqual(vercel["project_name"], "lead-capture-copilot-prod")
         self.assertEqual(vercel["project_url"], "https://vercel.com/profit-corp/lead-capture-copilot-prod")
         self.assertEqual(vercel["team_scope"], "profit-corp")
+        self.assertTrue(vercel["linked"])
         self.assertEqual(vercel["auth_source"], "vercel_cli_session")
         self.assertEqual(vercel["auth_source_details"]["username"], "operator")
         self.assertEqual(vercel["env_contract_path"], (workspace / ".hermes" / "vercel-env-contract.json").as_posix())
         self.assertEqual(vercel["deploy_url"], "https://lead-capture-copilot-prod.vercel.app")
         self.assertEqual(vercel["deploy_status"], "ready")
         self.assertEqual(vercel["deploy_evidence_path"], (workspace / ".hermes" / "vercel-deploy.json").as_posix())
+        self.assertEqual(updated["pipeline"]["stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["status"], "completed")
+        self.assertEqual(updated["pipeline"]["resume_from_stage"], "handoff")
+        self.assertIsNone(updated["pipeline"]["block_reason"])
+        self.assertEqual(updated["pipeline"]["evidence_path"], (workspace / ".hermes" / "vercel-deploy.json").as_posix())
+        self.assertEqual(updated["pipeline"]["final_handoff_path"], final_handoff.as_posix())
         self.assertNotEqual(vercel["project_name"], "stale-project-prod")
         self.assertNotEqual(vercel["team_scope"], "old-team")
+        self.assertNotEqual(vercel["deploy_url"], "https://stale-project.vercel.app")
+
+        events = self.read_events(project_dir)
+        self.assertEqual(events[0]["status"], "blocked")
+        self.assertEqual(events[0]["block_reason"], "vercel_linkage_failed")
+        self.assertEqual(events[-2]["stage"], "vercel_linkage")
+        self.assertEqual(events[-2]["status"], "ready")
+        self.assertEqual(events[-2]["shipping"]["vercel"]["project_name"], "lead-capture-copilot-prod")
+        self.assertEqual(events[-1]["stage"], "vercel_deploy")
+        self.assertEqual(events[-1]["status"], "completed")
+        self.assertEqual(events[-1]["final_handoff_path"], final_handoff.as_posix())
+        self.assertEqual(events[-1]["shipping"]["vercel"]["deploy_url"], "https://lead-capture-copilot-prod.vercel.app")
 
     def test_resume_returns_completed_handoff_without_replaying_pipeline(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)

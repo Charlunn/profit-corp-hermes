@@ -1310,9 +1310,16 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             blocked["blocked_downstream_stages"] = ["vercel_linkage", "vercel_deploy"]
             return blocked
         github_record = record.setdefault("shipping", {}).setdefault("github", {})
+        sync_repository_name = str(sync_result.get("repository_name", github_record.get("repository_name", ""))).strip()
+        sync_repository_url = str(sync_result.get("repository_url", github_record.get("repository_url", ""))).strip()
+        sync_owner, sync_repo = _parse_github_owner_repo(sync_repository_name, sync_repository_url)
+        if not sync_repo and "/" not in sync_repository_name and sync_repository_name:
+            sync_repo = sync_repository_name
         github_record.update(
             {
-                "repository_url": sync_result.get("repository_url", github_record.get("repository_url", "")),
+                "repository_owner": str(sync_result.get("repository_owner", sync_owner or github_record.get("repository_owner", ""))).strip(),
+                "repository_name": sync_repository_name or github_record.get("repository_name", ""),
+                "repository_url": sync_repository_url or github_record.get("repository_url", ""),
                 "default_branch": sync_result.get("default_branch", github_record.get("default_branch", "main")),
                 "synced_commit": sync_result.get("synced_commit", "HEAD"),
                 "sync_evidence_path": sync_result.get("evidence_path", sync_result.get("sync_evidence_path", "")),
@@ -1322,6 +1329,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "push_attempts": list(sync_result.get("push_attempts", github_record.get("push_attempts", []))),
             }
         )
+        record.setdefault("pipeline", {}).pop("blocked_downstream_stages", None)
         vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
         _remove_authoritative_vercel_success_fields(vercel_record)
         append_next_pipeline_event(
@@ -1337,6 +1345,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 timestamp="2026-04-27T08:36:00Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                evidence_path=str(github_record.get("sync_evidence_path", "")).strip(),
                 resume_from_stage="vercel_linkage",
             ),
         )
@@ -1353,6 +1362,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 timestamp="2026-04-27T08:36:30Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                evidence_path=str(github_record.get("sync_evidence_path", "")).strip(),
                 resume_from_stage="vercel_linkage",
             ),
         )
@@ -1360,7 +1370,9 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             record,
             stage="vercel_linkage",
             status="ready",
+            block_reason=None,
             workspace_path=workspace.as_posix(),
+            evidence_path=str(github_record.get("sync_evidence_path", "")).strip(),
             delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             resume_from_stage="vercel_linkage",
         )
@@ -1412,6 +1424,8 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "required_env": dict(vercel_result.get("required_env", {})),
             }
         )
+        record.setdefault("pipeline", {}).pop("blocked_downstream_stages", None)
+        linkage_evidence_path = str(vercel_record.get("link_evidence_path", "")).strip() or str(vercel_record.get("env_contract_path", "")).strip()
         append_next_pipeline_event(
             project_dir,
             make_event(
@@ -1425,6 +1439,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 timestamp="2026-04-27T08:37:00Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                evidence_path=linkage_evidence_path,
                 resume_from_stage="vercel_deploy",
             ),
         )
@@ -1432,7 +1447,9 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             record,
             stage="vercel_linkage",
             status="ready",
+            block_reason=None,
             workspace_path=workspace.as_posix(),
+            evidence_path=linkage_evidence_path,
             delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             resume_from_stage="vercel_deploy",
         )
@@ -1479,6 +1496,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "deployment_evidence_path": deploy_evidence_path,
             }
         )
+        record.setdefault("pipeline", {}).pop("blocked_downstream_stages", None)
         append_next_pipeline_event(
             project_dir,
             make_event(
@@ -1492,6 +1510,8 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 timestamp="2026-04-27T08:38:00Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+                evidence_path=deploy_evidence_path,
+                resume_from_stage="handoff",
                 final_handoff_path=final_handoff_path.as_posix(),
             ),
         )
@@ -1499,7 +1519,9 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             record,
             stage="vercel_deploy",
             status="completed",
+            block_reason=None,
             workspace_path=workspace.as_posix(),
+            evidence_path=deploy_evidence_path,
             delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             final_handoff_path=final_handoff_path.as_posix(),
             resume_from_stage="handoff",

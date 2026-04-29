@@ -163,6 +163,164 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("env contract", (result.stdout + result.stderr).lower())
 
+    def test_validator_passes_recovered_completed_state_while_preserving_blocked_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
+            approved_project.mkdir(parents=True)
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            hermes = workspace / ".hermes"
+            hermes.mkdir()
+
+            final_delivery = workspace / ".hermes" / "FINAL_DELIVERY.md"
+            manifest = workspace / ".hermes" / "delivery-run-manifest.json"
+            conformance = workspace / ".hermes" / "template-conformance.json"
+            downstream = workspace / ".hermes" / "release-prerequisites.json"
+            github_sync = workspace / ".hermes" / "github-sync.json"
+            github_sync_audit = workspace / ".hermes" / "github-sync-audit.json"
+            vercel_link = workspace / ".hermes" / "vercel-link.json"
+            vercel_env = workspace / ".hermes" / "vercel-env-contract.json"
+            vercel_deploy = workspace / ".hermes" / "vercel-deploy.json"
+            final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
+            self.write_text(final_delivery, "# Final delivery\n\n## 1) End-to-end Summary\n")
+            self.write_json(manifest, {"run_id": "run-1"})
+            self.write_json(conformance, {"ok": True})
+            self.write_json(downstream, {"ok": True})
+            self.write_json(github_sync, {"ok": True})
+            self.write_json(github_sync_audit, {"ok": True})
+            self.write_json(vercel_link, {"ok": True})
+            self.write_json(vercel_env, {"ok": True})
+            self.write_json(vercel_deploy, {"ok": True})
+            self.write_text(approved_project / "PROJECT_BRIEF.md", "# Brief\n")
+            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nRecovered completed state\nGitHub repository url present\nVercel deploy complete\n\n## Event History\nBlocked history preserved\n")
+
+            final_ref = final_delivery.as_posix()
+            self.write_json(
+                approved_project / "APPROVED_PROJECT.json",
+                {
+                    "project_slug": "demo-project",
+                    "workspace_path": workspace.as_posix(),
+                    "conformance_evidence_path": conformance.as_posix(),
+                    "phase9_delivery_run_manifest_path": manifest.as_posix(),
+                    "final_handoff": {"path": final_ref, "link": final_ref},
+                    "pipeline": {
+                        "stage": "vercel_deploy",
+                        "status": "completed",
+                        "block_reason": None,
+                        "resume_from_stage": "handoff",
+                        "workspace_path": workspace.as_posix(),
+                        "evidence_path": vercel_deploy.as_posix(),
+                        "final_handoff_path": final_ref,
+                    },
+                    "latest_blocked_prerequisite": {
+                        "path": downstream.as_posix(),
+                        "status": "resolved",
+                        "reason": "github_sync_failed",
+                    },
+                    "shipping": {
+                        "github": {
+                            "repository_mode": "attach",
+                            "repository_owner": "profit-corp",
+                            "repository_name": "profit-corp/demo-project",
+                            "repository_url": "https://github.com/profit-corp/demo-project.git",
+                            "default_branch": "main",
+                            "synced_commit": "abc1234",
+                            "sync_evidence_path": github_sync.as_posix(),
+                            "sync_audit_path": github_sync_audit.as_posix(),
+                            "last_sync_status": "completed",
+                        },
+                        "vercel": {
+                            "project_name": "demo-project-prod",
+                            "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                            "team_scope": "profit-corp",
+                            "env_contract_path": vercel_env.as_posix(),
+                            "linked": True,
+                            "deploy_status": "ready",
+                            "deploy_url": "https://demo-project.vercel.app",
+                            "deploy_evidence_path": vercel_deploy.as_posix(),
+                        },
+                    },
+                    "artifacts": {
+                        "final_review_path": final_review.as_posix(),
+                    },
+                },
+            )
+            self.write_jsonl(
+                approved_project / "approved-delivery-events.jsonl",
+                [
+                    {
+                        "stage": "github_sync",
+                        "status": "blocked",
+                        "outcome": "blocked",
+                        "block_reason": "github_sync_failed",
+                        "evidence_path": downstream.as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "vercel_deploy",
+                        "status": "completed",
+                        "outcome": "pass",
+                        "artifact": vercel_deploy.as_posix(),
+                        "evidence_path": vercel_deploy.as_posix(),
+                        "final_handoff_path": final_ref,
+                        "workspace_path": workspace.as_posix(),
+                        "shipping": {
+                            "github": {
+                                "repository_mode": "attach",
+                                "repository_owner": "profit-corp",
+                                "repository_name": "profit-corp/demo-project",
+                                "repository_url": "https://github.com/profit-corp/demo-project.git",
+                                "default_branch": "main",
+                                "synced_commit": "abc1234",
+                                "sync_evidence_path": github_sync.as_posix(),
+                                "sync_audit_path": github_sync_audit.as_posix(),
+                                "last_sync_status": "completed",
+                            },
+                            "vercel": {
+                                "project_name": "demo-project-prod",
+                                "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                                "team_scope": "profit-corp",
+                                "link_evidence_path": vercel_link.as_posix(),
+                                "env_contract_path": vercel_env.as_posix(),
+                                "linked": True,
+                                "deploy_status": "ready",
+                                "deploy_url": "https://demo-project.vercel.app",
+                                "deploy_evidence_path": vercel_deploy.as_posix(),
+                            },
+                        },
+                    },
+                ],
+            )
+            self.write_text(
+                approved_project / "DELIVERY_PIPELINE_STATUS.md",
+                "# Delivery Pipeline Status\n"
+                f"- **Authority Source**: `approved-delivery-events.jsonl`\n"
+                f"- **Authority Record**: `{(approved_project / 'APPROVED_PROJECT.json').as_posix()}`\n"
+                f"- **Final Operator Review**: `{final_review.as_posix()}`\n"
+                f"- **Project Slug**: `demo-project`\n"
+                f"- **Current Stage**: `vercel_deploy`\n"
+                f"- **Pipeline Status**: `completed`\n"
+                f"- **Latest Outcome**: `pass`\n"
+                f"- **Delivery Brief**: `{(approved_project / 'PROJECT_BRIEF.md').as_posix()}`\n"
+                f"- **Workspace Path**: `{workspace.as_posix()}`\n"
+                f"- **Delivery Run ID**: `not available`\n\n"
+                "## Final Operator Review\nRecovered final truth\n\n"
+                "## Action Required\n- No immediate operator action required; governed delivery surface is coherent.\n\n"
+                "## Approval Summary\n- Approval ID: `not available`\n- Approved At: `not available`\n- Approver: `not available`\n- Approval Evidence: `not available`\n- Approval Summary: `not available`\n\n"
+                f"## Blocked Prerequisites\n- Block Reason: `github_sync_failed`\n- Blocked Prerequisite Evidence: `{downstream.as_posix()}`\n- Resume From Stage: `handoff`\n- Blocked State Visible: `yes`\n\n"
+                f"## Credentialed Delivery Actions\n- GitHub Repository Mode: `attach`\n- GitHub Repository Owner: `profit-corp`\n- GitHub Repository Name: `profit-corp/demo-project`\n- GitHub Repository URL: `https://github.com/profit-corp/demo-project.git`\n- GitHub Default Branch: `main`\n- GitHub Synced Commit: `abc1234`\n- GitHub Sync Evidence Path: `{github_sync.as_posix()}`\n- GitHub Sync Audit Path: `{github_sync_audit.as_posix()}`\n- GitHub Sync Status: `completed`\n- Vercel Team Scope: `profit-corp`\n- Vercel Project ID: `not available`\n- Vercel Project Name: `demo-project-prod`\n- Vercel Project URL: `https://vercel.com/profit-corp/demo-project-prod`\n- Vercel Link Status: `yes`\n- Vercel Env Contract Path: `{vercel_env.as_posix()}`\n- Vercel Env Audit Path: `not available`\n- Vercel Deploy URL: `https://demo-project.vercel.app`\n- Vercel Deploy Status: `ready`\n- Vercel Deploy Evidence Path: `{vercel_deploy.as_posix()}`\n- Vercel Deploy Audit Path: `not available`\n\n"
+                "## Protected Change Review\n- Protected Change Classification: `not available`\n- Protected Change Status: `not available`\n- Protected Change Evidence: `not available`\n- Platform Justification Status: `not available`\n- Platform Justification Artifact: `not available`\n- Governance Action: `not available`\n\n"
+                f"## Deployment Outcome\n- Latest Stage Outcome: `pass`\n- Latest Artifact: `{vercel_deploy.as_posix()}`\n- Deployment Failure Visibility: `no`\n\n"
+                f"## Final Handoff\n- Final Handoff Path: `{final_ref}`\n- Handoff Status: `completed`\n\n"
+                "## Event History\n"
+                f"- stage=`github_sync` status=`blocked` outcome=`blocked` block_reason=`github_sync_failed` artifact=`not available` evidence=`{downstream.as_posix()}` handoff=`not available`\n"
+                f"- stage=`vercel_deploy` status=`completed` outcome=`pass` block_reason=`not available` artifact=`{vercel_deploy.as_posix()}` evidence=`{vercel_deploy.as_posix()}` handoff=`{final_ref}`\n\n"
+                "This latest view is derived from the append-only approved delivery event stream.\n",
+            )
+
+            result = self.run_validator(approved_project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_validator_passes_only_when_authority_workspace_events_and_status_agree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"

@@ -80,19 +80,17 @@ def normalize_flag(value: Any) -> str:
     return text or "not available"
 
 
-def summarize_action_required(latest: dict[str, Any], record: dict[str, Any], github: dict[str, Any], vercel: dict[str, Any], protected_change: dict[str, Any], justification: dict[str, Any]) -> list[str]:
+def summarize_action_required(current_stage: str, current_status: str, current_outcome: str, blocked_reason: str, evidence_path: str, github: dict[str, Any], vercel: dict[str, Any], protected_change: dict[str, Any], justification: dict[str, Any]) -> list[str]:
     lines: list[str] = []
-    latest_status = str(latest.get("status", "")).strip().lower()
-    latest_outcome = str(latest.get("outcome", "")).strip().lower()
-    block_reason = first_nonempty(latest.get("block_reason"), get_nested(record, "pipeline", "block_reason"))
-    evidence_path = first_nonempty(latest.get("evidence_path"), get_nested(record, "pipeline", "evidence_path"))
-    if latest_status == "blocked" or latest_outcome in {"blocked", "failed"}:
-        lines.append(f"- Investigate latest blocked/failed stage before retrying: `{block_reason or 'reason not available'}`")
-    if evidence_path:
-        lines.append(f"- Review evidence first: `{evidence_path}`")
-    if str(github.get("last_sync_status", "")).strip().lower() in {"blocked", "failed"}:
+    status_lower = current_status.strip().lower()
+    outcome_lower = current_outcome.strip().lower()
+    if status_lower == "blocked" or outcome_lower in {"blocked", "failed"}:
+        lines.append(f"- Investigate latest blocked/failed stage before retrying: `{blocked_reason or 'reason not available'}`")
+        if evidence_path:
+            lines.append(f"- Review evidence first: `{evidence_path}`")
+    if str(github.get("last_sync_status", "")).strip().lower() in {"blocked", "failed"} and status_lower == "blocked":
         lines.append("- Resolve GitHub sync failure before any Vercel retry.")
-    if str(vercel.get("deploy_status", vercel.get("deployment_status", "")).strip()).lower() in {"blocked", "failed"}:
+    if str(vercel.get("deploy_status", vercel.get("deployment_status", "")).strip()).lower() in {"blocked", "failed"} and status_lower == "blocked":
         lines.append("- Resolve Vercel deployment failure and rerun only the governed deploy stage.")
     if str(protected_change.get("status", "")).strip().lower() in {"blocked", "pending", "rejected"}:
         lines.append("- Protected platform changes need justification/governance resolution before shipping can continue.")
@@ -105,13 +103,15 @@ def summarize_action_required(latest: dict[str, Any], record: dict[str, Any], gi
 
 def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], project_dir: Path) -> str:
     latest = events[-1] if events else {}
+    blocked_events = [event for event in events if str(event.get("status", "")).strip().lower() == "blocked"]
+    latest_blocked_event = blocked_events[-1] if blocked_events else {}
     artifacts = record.get("artifacts", {}) if isinstance(record.get("artifacts"), dict) else {}
     pipeline = record.get("pipeline", {}) if isinstance(record.get("pipeline"), dict) else {}
     identity = record.get("project_identity", {}) if isinstance(record.get("project_identity"), dict) else {}
     approval = record.get("approval", {}) if isinstance(record.get("approval"), dict) else {}
-    shipping = latest.get("shipping", {}) if isinstance(latest.get("shipping"), dict) else {}
-    if not shipping and isinstance(record.get("shipping"), dict):
-        shipping = record.get("shipping", {})
+    shipping = record.get("shipping", {}) if isinstance(record.get("shipping"), dict) else {}
+    if not shipping and isinstance(latest.get("shipping"), dict):
+        shipping = latest.get("shipping", {})
     github = shipping.get("github", {}) if isinstance(shipping.get("github"), dict) else {}
     vercel = shipping.get("vercel", {}) if isinstance(shipping.get("vercel"), dict) else {}
     latest_blocked = record.get("latest_blocked_prerequisite", {}) if isinstance(record.get("latest_blocked_prerequisite"), dict) else {}
@@ -119,11 +119,17 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
     justification = record.get("platform_justification", {}) if isinstance(record.get("platform_justification"), dict) else {}
     final_handoff = record.get("final_handoff", {}) if isinstance(record.get("final_handoff"), dict) else {}
 
-    workspace_path = first_nonempty(latest.get("workspace_path"), get_nested(pipeline, "workspace_path"), artifacts.get("workspace_path"), record.get("workspace_path"))
-    final_handoff_path = first_nonempty(latest.get("final_handoff_path"), get_nested(pipeline, "final_handoff_path"), final_handoff.get("path"), final_handoff.get("link"))
+    current_stage = first_nonempty(pipeline.get("stage"), latest.get("stage")) or "not available"
+    current_status = first_nonempty(pipeline.get("status"), latest.get("status")) or "not available"
+    current_outcome = first_nonempty(latest.get("outcome"))
+    if not current_outcome:
+        current_outcome = "pass" if current_status == "completed" else current_status
+
+    workspace_path = first_nonempty(pipeline.get("workspace_path"), latest.get("workspace_path"), artifacts.get("workspace_path"), record.get("workspace_path"))
+    final_handoff_path = first_nonempty(pipeline.get("final_handoff_path"), final_handoff.get("path"), final_handoff.get("link"), latest.get("final_handoff_path"))
     final_review_path = first_nonempty(artifacts.get("final_review_path"), (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix())
-    blocked_reason = first_nonempty(latest.get("block_reason"), latest_blocked.get("reason"), pipeline.get("block_reason"))
-    blocked_evidence = first_nonempty(latest.get("evidence_path"), latest_blocked.get("path"), pipeline.get("evidence_path"))
+    blocked_reason = first_nonempty(pipeline.get("block_reason"), latest_blocked.get("reason"), latest_blocked_event.get("block_reason"))
+    blocked_evidence = first_nonempty(pipeline.get("evidence_path"), latest_blocked.get("path"), latest_blocked_event.get("evidence_path"))
 
     history_lines = []
     for event in events:
@@ -138,7 +144,7 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
             f"handoff=`{event.get('final_handoff_path', 'not available')}`"
         )
 
-    action_required_lines = summarize_action_required(latest, record, github, vercel, protected_change, justification)
+    action_required_lines = summarize_action_required(current_stage, current_status, current_outcome, blocked_reason, blocked_evidence, github, vercel, protected_change, justification)
 
     return "\n".join(
         [
@@ -146,13 +152,13 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
             f"- **Authority Source**: `{EVENTS_FILE_NAME}`",
             f"- **Authority Record**: `{(project_dir / APPROVED_RECORD_NAME).as_posix()}`",
             f"- **Final Operator Review**: `{final_review_path}`",
-            f"- **Project Slug**: `{first_nonempty(latest.get('project_slug'), identity.get('project_slug')) or 'not available'}`",
-            f"- **Current Stage**: `{first_nonempty(latest.get('stage'), pipeline.get('stage')) or 'not available'}`",
-            f"- **Pipeline Status**: `{first_nonempty(latest.get('status'), pipeline.get('status')) or 'not available'}`",
-            f"- **Latest Outcome**: `{first_nonempty(latest.get('outcome')) or 'not available'}`",
-            f"- **Delivery Brief**: `{first_nonempty(latest.get('brief_path'), artifacts.get('delivery_brief_path')) or 'not available'}`",
+            f"- **Project Slug**: `{first_nonempty(identity.get('project_slug'), latest.get('project_slug')) or 'not available'}`",
+            f"- **Current Stage**: `{current_stage}`",
+            f"- **Pipeline Status**: `{current_status}`",
+            f"- **Latest Outcome**: `{current_outcome or 'not available'}`",
+            f"- **Delivery Brief**: `{first_nonempty(artifacts.get('delivery_brief_path'), latest.get('brief_path')) or 'not available'}`",
             f"- **Workspace Path**: `{workspace_path or 'not available'}`",
-            f"- **Delivery Run ID**: `{first_nonempty(latest.get('delivery_run_id'), pipeline.get('delivery_run_id')) or 'not available'}`",
+            f"- **Delivery Run ID**: `{first_nonempty(pipeline.get('delivery_run_id'), latest.get('delivery_run_id')) or 'not available'}`",
             "",
             "## Final Operator Review",
             "This authority-layer review is the single operator-facing artifact for governed delivery inspection and resume.",
