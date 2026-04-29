@@ -4,7 +4,7 @@
 - **Final Operator Review**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/FINAL_OPERATOR_REVIEW.md`
 - **Project Slug**: `lead-capture-copilot`
 - **Current Stage**: `vercel_deploy`
-- **Pipeline Status**: `blocked`
+- **Pipeline Status**: `completed`
 - **Latest Outcome**: `blocked`
 - **Delivery Brief**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/PROJECT_BRIEF.md`
 - **Workspace Path**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot`
@@ -42,12 +42,12 @@ This authority-layer review is the single operator-facing artifact for governed 
 - GitHub Sync Status: `completed`
 - Vercel Team Scope: `charlunns-projects`
 - Vercel Project ID: ``
-- Vercel Project Name: `hermes-phase11-live-uat`
-- Vercel Project URL: `https://vercel.com/charlunns-projects/hermes-phase11-live-uat`
+- Vercel Project Name: `lead-capture-copilot`
+- Vercel Project URL: `https://vercel.com/charlunns-projects/lead-capture-copilot`
 - Vercel Link Status: `yes`
 - Vercel Env Contract Path: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-env-contract.json`
 - Vercel Env Audit Path: `not available`
-- Vercel Deploy URL: `https://hermes-phase11-live-uat.vercel.app`
+- Vercel Deploy URL: `https://lead-capture-copilot-4hbmtl2mq-charlunns-projects.vercel.app`
 - Vercel Deploy Status: `ready`
 - Vercel Deploy Evidence Path: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json`
 - Vercel Deploy Audit Path: `not available`
