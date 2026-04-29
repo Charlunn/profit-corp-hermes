@@ -357,43 +357,97 @@ class Phase11VercelFlowTests(unittest.TestCase):
     def read_record(self) -> dict:
         return json.loads(self.authority_path.read_text(encoding="utf-8"))
 
-    def test_vercel_linkage_requires_single_project_and_persists_env_contract_evidence(self) -> None:
-        self.write_record()
-        env_evidence = self.workspace / ".hermes" / "vercel-env-contract.json"
-        env_evidence.parent.mkdir(parents=True, exist_ok=True)
-        env_evidence.write_text("{}\n", encoding="utf-8")
+    def test_vercel_linkage_persists_auth_source_without_metadata_drift_for_both_auth_paths(self) -> None:
+        for auth_source, auth_details in [
+            ("vercel_cli_session", {"username": "operator"}),
+            ("vercel_token", {"token_supplied": True}),
+        ]:
+            with self.subTest(auth_source=auth_source):
+                self.write_record()
+                env_evidence = self.workspace / ".hermes" / f"{auth_source}-vercel-env-contract.json"
+                env_evidence.parent.mkdir(parents=True, exist_ok=True)
+                env_evidence.write_text("{}\n", encoding="utf-8")
 
-        with mock.patch.object(self.start_module, "link_vercel_project", return_value={
-            "ok": True,
-            "project_id": "prj_123",
-            "project_name": "demo-app-prod",
-            "project_url": "https://vercel.com/profit-corp/demo-app-prod",
-            "env_contract_path": env_evidence.as_posix(),
-            "required_env": {
-                "platform_managed": ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"],
-                "identity_derived": {
-                    "APP_KEY": "demo_app",
-                    "APP_NAME": "Demo App",
-                    "APP_URL": "https://demo.example.com",
+                with mock.patch.object(self.start_module, "link_vercel_project", return_value={
+                    "ok": True,
+                    "linked": True,
+                    "project_id": "prj_123",
+                    "project_name": "demo-app-prod",
+                    "project_url": "https://vercel.com/profit-corp/demo-app-prod",
+                    "team_scope": "profit-corp",
+                    "auth_source": auth_source,
+                    "auth_source_details": auth_details,
+                    "env_contract_path": env_evidence.as_posix(),
+                    "env_contract": {"evidence_path": env_evidence.as_posix()},
+                    "required_env": {
+                        "platform_managed": ["SUPABASE_SERVICE_ROLE_KEY"],
+                        "identity_derived": {"APP_KEY": "demo_app"},
+                    },
+                }):
+                    result = self.start_module.run_pipeline_from_stage(
+                        self.authority_path,
+                        self.read_record(),
+                        start_stage="vercel_linkage",
+                        workspace_root=self.root / "generated-workspaces",
+                    )
+
+                self.assertTrue(result["ok"], msg=result)
+                updated = self.read_record()
+                vercel = updated["shipping"]["vercel"]
+                self.assertEqual(vercel["project_name"], "demo-app-prod")
+                self.assertEqual(vercel["project_url"], "https://vercel.com/profit-corp/demo-app-prod")
+                self.assertEqual(vercel["team_scope"], "profit-corp")
+                self.assertEqual(vercel["auth_source"], auth_source)
+                self.assertEqual(vercel["auth_source_details"], auth_details)
+                self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
+
+    def test_vercel_deploy_failure_preserves_specific_block_reason_end_to_end(self) -> None:
+        self.write_record(
+            shipping={
+                "github": {
+                    "repository_mode": "create",
+                    "repository_name": "profit-corp/demo-app",
+                    "repository_url": "https://github.com/profit-corp/demo-app.git",
+                    "default_branch": "main",
+                    "delivery_run_id": "delivery-demo-001",
+                    "last_sync_status": "completed",
                 },
-            },
+                "vercel": {
+                    "project_id": "prj_123",
+                    "project_name": "demo-app-prod",
+                    "project_url": "https://vercel.com/profit-corp/demo-app-prod",
+                    "team_scope": "profit-corp",
+                    "env_contract_path": (self.workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                    "env_contract": {
+                        "platform_managed": ["SUPABASE_SERVICE_ROLE_KEY"],
+                        "identity_derived": {"APP_KEY": "demo_app"},
+                        "evidence_path": (self.workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                    },
+                },
+            }
+        )
+
+        with mock.patch.object(self.start_module, "run_vercel_deploy", return_value={
+            "ok": False,
+            "block_reason": "vercel_deploy_failed",
+            "error": "deployment failed after build",
+            "deploy_url": "",
+            "deploy_status": "failed",
+            "deploy_evidence_path": (self.workspace / ".hermes" / "vercel-deploy.json").as_posix(),
         }):
             result = self.start_module.run_pipeline_from_stage(
                 self.authority_path,
                 self.read_record(),
-                start_stage="vercel_linkage",
+                start_stage="vercel_deploy",
                 workspace_root=self.root / "generated-workspaces",
             )
 
-        self.assertTrue(result["ok"], msg=result)
+        self.assertFalse(result["ok"], msg=result)
+        self.assertEqual(result["block_reason"], "vercel_deploy_failed")
         updated = self.read_record()
-        self.assertEqual(updated["shipping"]["vercel"]["project_id"], "prj_123")
-        self.assertEqual(updated["shipping"]["vercel"]["project_name"], "demo-app-prod")
-        self.assertEqual(updated["shipping"]["vercel"]["env_contract_path"], env_evidence.as_posix())
-        self.assertEqual(updated["shipping"]["vercel"]["env_contract"]["evidence_path"], env_evidence.as_posix())
-        self.assertEqual(updated["shipping"]["vercel"]["required_env"]["platform_managed"], ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"])
-        self.assertEqual(updated["shipping"]["vercel"]["required_env"]["identity_derived"]["APP_KEY"], "demo_app")
-        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["status"], "blocked")
+        self.assertEqual(updated["pipeline"]["block_reason"], "vercel_deploy_failed")
 
     def test_missing_tool_auth_env_and_linkage_map_to_distinct_blocked_states(self) -> None:
         self.write_record()
