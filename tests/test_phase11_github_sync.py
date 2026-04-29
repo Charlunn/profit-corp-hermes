@@ -199,6 +199,181 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertEqual(result["auth_source_details"]["command"], "gh auth status")
         self.assertEqual(commands[0][:3], ["gh", "auth", "status"])
 
+    def test_sync_workspace_to_github_filters_generated_snapshot_paths_and_records_evidence(self) -> None:
+        (self.workspace / "src").mkdir(parents=True)
+        (self.workspace / "src" / "main.ts").write_text("export const demo = true;\n", encoding="utf-8")
+        (self.workspace / "dist").mkdir(parents=True)
+        (self.workspace / "dist" / "bundle.js").write_text("compiled\n", encoding="utf-8")
+        (self.workspace / "node_modules" / "pkg").mkdir(parents=True)
+        (self.workspace / "node_modules" / "pkg" / "index.js").write_text("module.exports = {}\n", encoding="utf-8")
+        commands: list[list[str]] = []
+
+        def runner(cmd: list[str], **kwargs):
+            commands.append(list(cmd))
+            if cmd[:3] == ["git", "rev-parse", "--is-inside-work-tree"]:
+                return CompletedProcessStub(stdout="true\n")
+            if cmd[:4] == ["git", "remote", "get-url", "origin"]:
+                return CompletedProcessStub(stdout="https://github.com/profit-corp/demo-app.git\n")
+            if cmd[:4] == ["git", "fetch", "origin", "main"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "checkout", "-B"]:
+                return CompletedProcessStub()
+            if cmd[:2] == ["git", "add"]:
+                return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(returncode=1, stderr="no commits yet")
+            if cmd[:3] == ["git", "status", "--short"]:
+                return CompletedProcessStub(stdout="A  src/main.ts\n")
+            if cmd[:3] == ["git", "commit", "-m"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "push", "-u"]:
+                return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--short", "HEAD"]:
+                return CompletedProcessStub(stdout="fedcba9\n")
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        result = self.helper_module.sync_workspace_to_github(
+            workspace_path=self.workspace,
+            repository_url="https://github.com/profit-corp/demo-app.git",
+            default_branch="main",
+            remote_name="origin",
+            runner=runner,
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        add_commands = [command for command in commands if command[:2] == ["git", "add"]]
+        self.assertEqual(len(add_commands), 1)
+        self.assertNotEqual(add_commands[0][:3], ["git", "add", "-A"])
+        self.assertEqual(add_commands[0][:3], ["git", "add", "--"])
+        self.assertIn("README.md", add_commands[0])
+        self.assertIn("src/main.ts", add_commands[0])
+        self.assertNotIn("dist/bundle.js", add_commands[0])
+        self.assertNotIn("node_modules/pkg/index.js", add_commands[0])
+        self.assertEqual(result["snapshot_mode"], "explicit_paths")
+        self.assertIn("dist", result["snapshot_excluded_categories"])
+        self.assertIn("node_modules", result["snapshot_excluded_categories"])
+
+        evidence = json.loads(Path(result["evidence_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(evidence["snapshot_mode"], "explicit_paths")
+        self.assertEqual(evidence["snapshot_policy"], "exclude_generated_directories")
+        self.assertIn("src/main.ts", evidence["snapshot_included_paths"])
+        self.assertNotIn("dist/bundle.js", evidence["snapshot_included_paths"])
+
+    def test_sync_workspace_to_github_retries_push_with_ssh_transport_and_restores_canonical_remote(self) -> None:
+        commands: list[list[str]] = []
+
+        def runner(cmd: list[str], **kwargs):
+            commands.append(list(cmd))
+            if cmd[:3] == ["git", "rev-parse", "--is-inside-work-tree"]:
+                return CompletedProcessStub(stdout="true\n")
+            if cmd[:4] == ["git", "remote", "get-url", "origin"]:
+                return CompletedProcessStub(stdout="https://github.com/profit-corp/demo-app.git\n")
+            if cmd[:4] == ["git", "fetch", "origin", "main"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "checkout", "-B"]:
+                return CompletedProcessStub()
+            if cmd[:2] == ["git", "add"]:
+                return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(returncode=1, stderr="no commits yet")
+            if cmd[:3] == ["git", "status", "--short"]:
+                return CompletedProcessStub(stdout=" M README.md\n")
+            if cmd[:3] == ["git", "commit", "-m"]:
+                return CompletedProcessStub()
+            if cmd[:5] == ["git", "remote", "set-url", "origin", "git@github.com:profit-corp/demo-app.git"]:
+                return CompletedProcessStub()
+            if cmd[:5] == ["git", "remote", "set-url", "origin", "https://github.com/profit-corp/demo-app.git"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "push", "-u"]:
+                remote_url = next((entry[4] for entry in commands if entry[:3] == ["git", "remote", "set-url"]), "")
+                if remote_url == "git@github.com:profit-corp/demo-app.git":
+                    return CompletedProcessStub()
+                return CompletedProcessStub(returncode=1, stderr="https transport unavailable")
+            if cmd[:4] == ["git", "rev-parse", "--short", "HEAD"]:
+                return CompletedProcessStub(stdout="abc9999\n")
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        result = self.helper_module.sync_workspace_to_github(
+            workspace_path=self.workspace,
+            repository_url="https://github.com/profit-corp/demo-app.git",
+            default_branch="main",
+            remote_name="origin",
+            runner=runner,
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["push_transport"], "ssh")
+        self.assertEqual(result["push_remote_url"], "git@github.com:profit-corp/demo-app.git")
+        self.assertEqual([attempt["transport"] for attempt in result["push_attempts"]], ["https", "ssh"])
+        self.assertEqual(result["push_attempts"][0]["status"], "failed")
+        self.assertEqual(result["push_attempts"][1]["status"], "ok")
+        self.assertIn(["git", "remote", "set-url", "origin", "git@github.com:profit-corp/demo-app.git"], commands)
+        self.assertIn(["git", "remote", "set-url", "origin", "https://github.com/profit-corp/demo-app.git"], commands)
+
+    def test_sync_workspace_to_github_reports_failed_step_for_commit_and_push_boundaries(self) -> None:
+        def commit_runner(cmd: list[str], **kwargs):
+            if cmd[:3] == ["git", "rev-parse", "--is-inside-work-tree"]:
+                return CompletedProcessStub(stdout="true\n")
+            if cmd[:4] == ["git", "remote", "get-url", "origin"]:
+                return CompletedProcessStub(stdout="https://github.com/profit-corp/demo-app.git\n")
+            if cmd[:4] == ["git", "fetch", "origin", "main"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "checkout", "-B"]:
+                return CompletedProcessStub()
+            if cmd[:2] == ["git", "add"]:
+                return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(returncode=1, stderr="no commits yet")
+            if cmd[:3] == ["git", "status", "--short"]:
+                return CompletedProcessStub(stdout=" M README.md\n")
+            if cmd[:3] == ["git", "commit", "-m"]:
+                return CompletedProcessStub(returncode=1, stderr="commit blocked")
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        commit_result = self.helper_module.sync_workspace_to_github(
+            workspace_path=self.workspace,
+            repository_url="https://github.com/profit-corp/demo-app.git",
+            default_branch="main",
+            remote_name="origin",
+            runner=commit_runner,
+        )
+        self.assertFalse(commit_result["ok"], msg=commit_result)
+        self.assertEqual(commit_result["failed_step"], "commit")
+        self.assertEqual(commit_result["attempted_command"], "git commit -m")
+
+        def push_runner(cmd: list[str], **kwargs):
+            if cmd[:3] == ["git", "rev-parse", "--is-inside-work-tree"]:
+                return CompletedProcessStub(stdout="true\n")
+            if cmd[:4] == ["git", "remote", "get-url", "origin"]:
+                return CompletedProcessStub(stdout="https://github.com/profit-corp/demo-app.git\n")
+            if cmd[:4] == ["git", "fetch", "origin", "main"]:
+                return CompletedProcessStub()
+            if cmd[:3] == ["git", "checkout", "-B"]:
+                return CompletedProcessStub()
+            if cmd[:2] == ["git", "add"]:
+                return CompletedProcessStub()
+            if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
+                return CompletedProcessStub(stdout="1234567\n")
+            if cmd[:3] == ["git", "status", "--short"]:
+                return CompletedProcessStub(stdout="")
+            if cmd[:3] == ["git", "push", "-u"]:
+                return CompletedProcessStub(returncode=1, stderr="push rejected")
+            if cmd[:3] == ["git", "remote", "set-url"]:
+                return CompletedProcessStub()
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        push_result = self.helper_module.sync_workspace_to_github(
+            workspace_path=self.workspace,
+            repository_url="https://github.com/profit-corp/demo-app.git",
+            default_branch="main",
+            remote_name="origin",
+            runner=push_runner,
+        )
+        self.assertFalse(push_result["ok"], msg=push_result)
+        self.assertEqual(push_result["failed_step"], "push")
+        self.assertEqual(push_result["attempted_command"], "git push")
+        self.assertEqual([attempt["transport"] for attempt in push_result["push_attempts"]], ["https", "ssh"])
+
     def test_sync_workspace_to_github_persists_detected_default_branch_instead_of_assuming_main(self) -> None:
         commands: list[list[str]] = []
 
@@ -214,7 +389,7 @@ class Phase11GithubSyncTests(unittest.TestCase):
                 return CompletedProcessStub()
             if cmd[:3] == ["git", "checkout", "-B"]:
                 return CompletedProcessStub()
-            if cmd[:3] == ["git", "add", "-A"]:
+            if cmd[:2] == ["git", "add"]:
                 return CompletedProcessStub()
             if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
                 return CompletedProcessStub(returncode=1, stderr="no commits yet")
@@ -256,7 +431,7 @@ class Phase11GithubSyncTests(unittest.TestCase):
                 return CompletedProcessStub()
             if cmd[:3] == ["git", "checkout", "-B"]:
                 return CompletedProcessStub()
-            if cmd[:3] == ["git", "add", "-A"]:
+            if cmd[:2] == ["git", "add"]:
                 return CompletedProcessStub()
             if cmd[:4] == ["git", "rev-parse", "--verify", "HEAD"]:
                 return CompletedProcessStub(returncode=1, stderr="no commits yet")

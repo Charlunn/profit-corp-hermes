@@ -1302,6 +1302,9 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "synced_commit": sync_result.get("synced_commit", "HEAD"),
                 "sync_evidence_path": sync_result.get("evidence_path", sync_result.get("sync_evidence_path", "")),
                 "last_sync_status": "completed",
+                "remote_action": sync_result.get("remote_action", github_record.get("remote_action", "")),
+                "push_transport": sync_result.get("push_transport", github_record.get("push_transport", "")),
+                "push_attempts": list(sync_result.get("push_attempts", github_record.get("push_attempts", []))),
             }
         )
         vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})

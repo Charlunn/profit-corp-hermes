@@ -21,12 +21,20 @@ Hermes now supports a full approved-to-delivery SaaS factory flow on top of the 
 - approved-project bootstrap, blocked-state tracking, resume, and handoff
 - constrained GitHub/Vercel automation with operator-visible audit artifacts
 
+## Current Milestone: v1.1.1 Delivery Pipeline Reliability Fixes
+
+**Goal:** Turn the approved-project delivery path back into a repeatable, self-converging automation flow by fixing the defects exposed during the live Hermes instance test.
+
+**Target features:**
+- Fix GitHub auth detection, owner fallback, and repo/sync defaults so new approved projects can create and sync their own repositories without manual rescue
+- Fix workspace snapshot behavior and transport/path handling so GitHub sync succeeds on the real Windows + pnpm environment used in live delivery
+- Fix Vercel auth handling and final authority/status convergence so a real successful deploy is reflected as a clean completed pipeline state
+
 ## Next Milestone Goals
 
-- Define the next post-v1.1 milestone with fresh requirements instead of carrying active scope in the archived milestone docs
-- Decide whether to expand beyond solo-operator workflows into broader multi-user/team operations
-- Revisit deferred realtime visibility and internal telemetry once the delivery-factory baseline is stable
-- Evaluate whether domain/DNS automation, post-deploy canary checks, or reusable product presets should become first-class roadmap items
+- Repair the specific GitHub/Vercel delivery defects found during the live end-to-end Hermes instance test
+- Preserve the one-approval automated delivery model while removing the manual recovery steps that were required to finish the test run
+- Make operator-facing authority/status artifacts converge to the true final state after successful shipping and deployment
 
 ## Requirements
 
@@ -44,11 +52,14 @@ Hermes now supports a full approved-to-delivery SaaS factory flow on top of the 
 - ✓ `standalone-saas-template` is now a governed Hermes platform asset with canonical contract, protected-layer rules, and conformance enforcement — Validated in v1.1
 - ✓ Approved product opportunities can now move through governed workspace bootstrap, delivery orchestration, GitHub sync, Vercel deploy, and final handoff artifacts — Validated in v1.1
 - ✓ Platform-managed GitHub/Vercel delivery automation now runs through constrained, auditable governance paths instead of open-ended credential use — Validated in v1.1
+- ✓ GitHub sync now stages a source-only canonical snapshot, converges workspace remotes, retries through operator-healthy transport paths, and persists granular sync evidence — Validated in Phase 15: GitHub Sync Reliability on Real Workspaces
 
 ### Active
 
-- [ ] Define the next post-v1.1 milestone scope and success criteria
-- [ ] Decide which deferred factory-expansion capabilities should become the next active build target
+- [ ] Restore automatic GitHub credential detection for approved-project delivery without requiring manual shell token export
+- [ ] Restore correct GitHub repository owner/repo targeting for new approved projects
+- [ ] Restore Vercel deployment automation so the pipeline can use the available operator auth path without manual CLI rescue
+- [ ] Restore authority/status artifact convergence so successful live delivery renders as completed instead of staying blocked
 
 ### Out of Scope
 
@@ -110,4 +121,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-28 after v1.1 milestone close*
+*Last updated: 2026-04-29 after v1.1.1 milestone kickoff*

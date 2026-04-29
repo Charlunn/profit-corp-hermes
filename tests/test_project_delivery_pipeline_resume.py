@@ -170,6 +170,12 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             result = start_module.resume_approved_project_delivery(authority_path)
 
@@ -207,6 +213,12 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             result = start_module.resume_approved_project_delivery(authority_path)
 
@@ -218,6 +230,9 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["repository_owner"], "profit-corp")
         self.assertEqual(updated["shipping"]["github"]["repository_name"], "profit-corp/lead-capture-copilot")
         self.assertEqual(updated["shipping"]["github"]["repository_url"], "https://github.com/profit-corp/lead-capture-copilot.git")
+        self.assertEqual(updated["shipping"]["github"]["remote_action"], "updated")
+        self.assertEqual(updated["shipping"]["github"]["push_transport"], "ssh")
+        self.assertEqual(updated["shipping"]["github"]["push_attempts"][0]["transport"], "https")
         events = self.read_events(project_dir)
         self.assertEqual([event["stage"] for event in events], ["workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
 
@@ -253,6 +268,12 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             result = start_module.resume_approved_project_delivery(authority_path)
 

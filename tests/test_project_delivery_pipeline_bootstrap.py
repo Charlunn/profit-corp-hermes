@@ -270,6 +270,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
 
@@ -334,6 +340,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
 
@@ -358,6 +370,9 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["repository_mode"], "attach")
         self.assertEqual(updated["shipping"]["github"]["default_branch"], "main")
         self.assertEqual(updated["shipping"]["github"]["synced_commit"], "abc1234")
+        self.assertEqual(updated["shipping"]["github"]["remote_action"], "updated")
+        self.assertEqual(updated["shipping"]["github"]["push_transport"], "ssh")
+        self.assertEqual(updated["shipping"]["github"]["push_attempts"][1]["transport"], "ssh")
         self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
 
     def test_blocking_paths_persist_block_reason_evidence_and_resume_stage(self) -> None:
@@ -697,6 +712,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             first_result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
             self.assertFalse(first_result["ok"], msg=first_result)
@@ -729,6 +750,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "synced_commit": "abc1234",
                  "evidence_path": (workspace / ".hermes" / "github-sync.json").as_posix(),
+                 "remote_action": "updated",
+                 "push_transport": "ssh",
+                 "push_attempts": [
+                     {"transport": "https", "status": "failed"},
+                     {"transport": "ssh", "status": "ok"},
+                 ],
              }):
             resumed_result = start_module.resume_approved_project_delivery(authority_path, workspace_root=workspace_root)
             self.assertTrue(resumed_result["ok"], msg=resumed_result)

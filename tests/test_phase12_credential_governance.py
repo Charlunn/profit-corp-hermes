@@ -142,8 +142,14 @@ class CredentialGovernanceContractTest(unittest.TestCase):
             stage="github_sync",
             helper=lambda **_: {
                 "ok": False,
-                "block_reason": "git_push_failed",
+                "block_reason": "github_sync_failed",
                 "error": "push rejected by remote",
+                "failed_step": "push",
+                "attempted_command": "git push",
+                "push_attempts": [
+                    {"transport": "https", "status": "failed"},
+                    {"transport": "ssh", "status": "failed"},
+                ],
                 "evidence_path": (self.workspace / ".hermes" / "github-sync.json").as_posix(),
                 "repository_url": "https://github.com/acme/demo-repo",
             },
@@ -152,7 +158,7 @@ class CredentialGovernanceContractTest(unittest.TestCase):
         self.assertFalse(result["ok"], msg=result)
         audit = json.loads(Path(result["audit_path"]).read_text(encoding="utf-8"))
         self.assertEqual(audit["outcome"], "failed")
-        self.assertEqual(audit["reason"], "git_push_failed")
+        self.assertEqual(audit["reason"], "github_sync_failed")
         self.assertEqual(audit["error"], "push rejected by remote")
         self.assertEqual(audit["target"]["repository_url"], "https://github.com/acme/demo-repo")
         self.assertTrue(Path(result["audit_path"]).exists())
@@ -160,7 +166,7 @@ class CredentialGovernanceContractTest(unittest.TestCase):
         events = self.read_events()
         self.assertEqual(events[-1]["status"], "failed")
         self.assertEqual(events[-1]["outcome"], "failed")
-        self.assertEqual(events[-1]["block_reason"], "git_push_failed")
+        self.assertEqual(events[-1]["block_reason"], "github_sync_failed")
         self.assertEqual(events[-1]["evidence_path"], (self.workspace / ".hermes" / "github-sync.json").as_posix())
 
 

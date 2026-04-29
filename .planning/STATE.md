@@ -1,34 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: SaaS Delivery Factory
-status: milestone_closed
+milestone: v1.1.1
+milestone_name: Delivery Pipeline Reliability Fixes
+status: executing
 stopped_at: v1.1 milestone archived and tagged
-last_updated: "2026-04-28T10:30:00.000Z"
-last_activity: 2026-04-28 -- v1.1 milestone archived and shipped
+last_updated: "2026-04-29T14:42:00Z"
+last_activity: 2026-04-29 -- Phase 15 verification completed
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-28)
+See: .planning/PROJECT.md (updated 2026-04-29)
 
-**Core value:** Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build and launch next.
-**Current focus:** Post-v1.1 milestone definition and next-scope selection
+**Core value:** Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build, launch, and operationalize next.
+**Current focus:** Phase 16 — Vercel Auth and Deploy Reliability
 
 ## Current Position
 
-Phase: Milestone Close — COMPLETE
-Plan: Archived
-Status: v1.1 shipped and archived
-Last activity: 2026-04-28 -- v1.1 milestone archived and shipped
+Phase: 16 — READY TO PLAN
+Plan: 0 of 3
+Status: Phase 15 verified complete; Phase 16 pending planning
+Last activity: 2026-04-29 -- Phase 15 verification completed
 
 Progress: [██████████] 100%
 
@@ -81,13 +81,13 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Define the next milestone with fresh requirements and roadmap scope.
-- Decide which deferred factory-expansion items, if any, should move into active planning.
+- Define requirements and roadmap for the v1.1.1 delivery-pipeline reliability milestone.
+- Fix the live-instance defects in GitHub auth detection, owner fallback, snapshot/sync behavior, Vercel auth handling, and authority/status convergence.
 
 ### Blockers/Concerns
 
-- No active execution blocker remains for the shipped v1.1 scope.
-- Next milestone scope is intentionally undefined until fresh planning begins.
+- Live approved-project delivery currently requires manual recovery to reach GitHub sync and Vercel deploy on the real operator machine.
+- Authority and status artifacts do not yet converge to the true successful end state after manual recovery.
 
 ## Deferred Items
 
