@@ -35,12 +35,9 @@
     "block_reason": null,
     "resume_from_stage": "handoff",
     "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot",
-    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
     "delivery_run_id": "delivery-lead-capture-copilot-001",
-    "blocked_downstream_stages": [
-      "vercel_linkage",
-      "vercel_deploy"
-    ],
+    "blocked_downstream_stages": [],
     "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md"
   },
   "artifacts": {
@@ -62,23 +59,23 @@
   "shipping": {
     "github": {
       "delivery_run_id": "delivery-lead-capture-copilot-001",
-      "repository_mode": "create",
+      "repository_mode": "attach",
       "repository_owner": "Charlunn",
-      "repository_name": "Charlunn/hermes-phase11-live-uat",
-      "repository_url": "https://github.com/Charlunn/hermes-phase11-live-uat.git",
+      "repository_name": "Charlunn/lead-capture-copilot",
+      "repository_url": "https://github.com/Charlunn/lead-capture-copilot.git",
       "default_branch": "main",
       "remote_name": "origin",
       "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot",
       "last_sync_status": "completed",
-      "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
+      "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
       "prepare_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json",
-      "prepare_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json",
-      "synced_commit": "70bc502",
+      "prepare_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json",
+      "synced_commit": "a33956c",
       "sync_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json"
     },
     "vercel": {
-      "project_name": "hermes-phase11-live-uat",
-      "project_url": "https://vercel.com/charlunns-projects/hermes-phase11-live-uat",
+      "project_name": "lead-capture-copilot",
+      "project_url": "https://vercel.com/charlunns-projects/lead-capture-copilot",
       "team_scope": "charlunns-projects",
       "env_contract_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-env-contract.json",
       "deploy_status": "ready",
@@ -103,9 +100,9 @@
           "PAYPAL_BRAND_NAME": "Lead Capture Copilot"
         }
       },
-      "deploy_url": "https://hermes-phase11-live-uat.vercel.app",
+      "deploy_url": "https://lead-capture-copilot-4hbmtl2mq-charlunns-projects.vercel.app",
       "deploy_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json",
-      "deployment_url": "https://hermes-phase11-live-uat.vercel.app",
+      "deployment_url": "https://lead-capture-copilot-4hbmtl2mq-charlunns-projects.vercel.app",
       "deployment_status": "ready",
       "deployment_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json"
     }

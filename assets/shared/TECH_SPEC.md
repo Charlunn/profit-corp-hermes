@@ -1,4 +1,4 @@
-# Technical Specification: Active Recent Comments Search Login Login 19 Hire based on the conversation abou
+# Technical Specification: . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th
 - **Stack**: Hermes prompts + Python triage/read-model pipeline + markdown shared-state artifacts
 - **File Tree**:
   ```
@@ -12,6 +12,6 @@
   assets/shared/CEO_RANKING.md
   ```
 - **MVP Features**: deterministic triage, shared shortlist generation, role-specific markdown handoffs, CEO ranking over the same shortlist
-- **Build Time**: 74
+- **Build Time**: 10
 - **Shared Shortlist Source**: `assets/shared/external_intelligence/triage/prioritized_signals.json`
 - **Chosen Idea ID**: IDEA-001

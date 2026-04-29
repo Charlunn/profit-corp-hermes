@@ -4,9 +4,9 @@
 - **Final Operator Review**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/FINAL_OPERATOR_REVIEW.md`
 - **Project Slug**: `lead-capture-copilot`
 - **Current Stage**: `vercel_deploy`
-- **Pipeline Status**: `completed`
-- **Latest Outcome**: `pass`
-- **Delivery Brief**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/PROJECT_BRIEF.md`
+- **Pipeline Status**: `blocked`
+- **Latest Outcome**: `blocked`
+- **Delivery Brief**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/PROJECT_BRIEF.md`
 - **Workspace Path**: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot`
 - **Delivery Run ID**: `delivery-lead-capture-copilot-001`
 
@@ -14,7 +14,8 @@
 This authority-layer review is the single operator-facing artifact for governed delivery inspection and resume.
 
 ## Action Required
-- Review evidence first: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json`
+- Investigate latest blocked/failed stage before retrying: `vercel_deploy_failed`
+- Review evidence first: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json`
 
 ## Approval Summary
 - Approval ID: `APR-2026-04-27-01`
@@ -24,20 +25,20 @@ This authority-layer review is the single operator-facing artifact for governed 
 - Approval Summary: `Approved after confirming market pull and template fit.`
 
 ## Blocked Prerequisites
-- Block Reason: `not available`
-- Blocked Prerequisite Evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json`
-- Resume From Stage: `handoff`
+- Block Reason: `vercel_deploy_failed`
+- Blocked Prerequisite Evidence: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json`
+- Resume From Stage: `vercel_deploy`
 - Blocked State Visible: `yes`
 
 ## Credentialed Delivery Actions
-- GitHub Repository Mode: `create`
+- GitHub Repository Mode: `attach`
 - GitHub Repository Owner: `Charlunn`
-- GitHub Repository Name: `Charlunn/hermes-phase11-live-uat`
-- GitHub Repository URL: `https://github.com/Charlunn/hermes-phase11-live-uat.git`
+- GitHub Repository Name: `Charlunn/lead-capture-copilot`
+- GitHub Repository URL: `https://github.com/Charlunn/lead-capture-copilot.git`
 - GitHub Default Branch: `main`
-- GitHub Synced Commit: `70bc502`
+- GitHub Synced Commit: `a33956c`
 - GitHub Sync Evidence Path: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json`
-- GitHub Sync Audit Path: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json`
+- GitHub Sync Audit Path: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json`
 - GitHub Sync Status: `completed`
 - Vercel Team Scope: `charlunns-projects`
 - Vercel Project ID: ``
@@ -60,8 +61,8 @@ This authority-layer review is the single operator-facing artifact for governed 
 - Governance Action: `not available`
 
 ## Deployment Outcome
-- Latest Stage Outcome: `pass`
-- Latest Artifact: `C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json`
+- Latest Stage Outcome: `blocked`
+- Latest Artifact: `C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json`
 - Deployment Failure Visibility: `no`
 
 ## Final Handoff
@@ -133,5 +134,32 @@ This authority-layer review is the single operator-facing artifact for governed 
 - stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`vercel_deploy_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` handoff=``
 - stage=`vercel_deploy` status=`completed` outcome=`success` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/assets/shared/approved-projects/lead-capture-copilot/credential-audit-vercel-deploy.json` evidence=`` handoff=``
 - stage=`vercel_deploy` status=`completed` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json` evidence=`` handoff=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md`
+- stage=`approval` status=`ready` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` evidence=`` handoff=``
+- stage=`brief_generation` status=`ready` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/PROJECT_BRIEF.md` evidence=`` handoff=``
+- stage=`workspace_instantiation` status=`ready` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot` evidence=`` handoff=``
+- stage=`conformance` status=`ready` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/conformance-report.md` evidence=`` handoff=``
+- stage=`delivery_run_bootstrap` status=`ready` outcome=`pass` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/delivery-run-manifest.json` evidence=`` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`missing_github_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`missing_github_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`missing_github_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`missing_github_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`failed` outcome=`failed` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`failed` outcome=`failed` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`failed` outcome=`failed` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`blocked` outcome=`blocked` block_reason=`github_repository_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`completed` outcome=`success` block_reason=`` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json` handoff=``
+- stage=`github_repository` status=`ready` outcome=`pass` block_reason=`` artifact=`https://github.com/Charlunn/lead-capture-copilot.git` evidence=`` handoff=``
+- stage=`github_sync` status=`failed` outcome=`failed` block_reason=`github_sync_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-sync.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` handoff=``
+- stage=`github_sync` status=`blocked` outcome=`blocked` block_reason=`github_sync_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` handoff=``
+- stage=`github_sync` status=`failed` outcome=`failed` block_reason=`github_sync_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-sync.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` handoff=``
+- stage=`github_sync` status=`blocked` outcome=`blocked` block_reason=`github_sync_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json` handoff=``
+- stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`missing_vercel_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-vercel-deploy.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json` handoff=``
+- stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`missing_vercel_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` handoff=``
+- stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`missing_vercel_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-vercel-deploy.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json` handoff=``
+- stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`missing_vercel_auth` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` handoff=``
+- stage=`vercel_deploy` status=`failed` outcome=`failed` block_reason=`vercel_deploy_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-vercel-deploy.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json` handoff=``
+- stage=`vercel_deploy` status=`blocked` outcome=`blocked` block_reason=`vercel_deploy_failed` artifact=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` evidence=`C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json` handoff=``
 
 This latest view is derived from the append-only approved delivery event stream.

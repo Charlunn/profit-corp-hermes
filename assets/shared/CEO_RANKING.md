@@ -1,8 +1,8 @@
 ## Top 3 Ranked Micro-SaaS Ideas (last 48h)
 | Rank | idea_id | Idea | TotalScore/100 | Urgency | Feasibility | Monetization | Evidence | Recency | Competition | MVP Hours |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | IDEA-001 | Active Recent Comments Search Login Login 19 Hire based on the conversation abou | 81.27 | 5.5 | 1 | 10 | 10 | 10 | 7 | 74 |
-| 2 | IDEA-002 | Martin Galway's music source files from 's Commodore games ( github.com/martinga | 75.27 | 7 | 6.25 | 5 | 10 | 10 | 7 | 30 |
+| 1 | IDEA-001 | . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th | 58.5 | 4 | 8.75 | 5 | 4 | 10 | 7 | 10 |
+| 2 | IDEA-002 | States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude | 58.5 | 4 | 8.75 | 5 | 4 | 10 | 7 | 10 |
 
 **Recommended**: IDEA-001 — highest shared-shortlist score with fresh evidence and the clearest bridge from pain signal to MVP.
 
