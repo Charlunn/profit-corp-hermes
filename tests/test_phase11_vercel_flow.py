@@ -30,7 +30,7 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.workspace = Path(self.tmp.name) / "workspace"
         self.workspace.mkdir(parents=True)
 
-    def test_missing_cli_and_missing_auth_produce_distinct_blocked_states(self) -> None:
+    def test_missing_cli_and_invalid_auth_produce_distinct_blocked_states(self) -> None:
         module = load_module("vercel_delivery_common_missing", VERCEL_COMMON_PATH)
 
         missing_cli = module.link_vercel_project(
@@ -43,15 +43,91 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.assertFalse(missing_cli["ok"], msg=missing_cli)
         self.assertEqual(missing_cli["block_reason"], "missing_vercel_cli")
 
-        missing_auth = module.link_vercel_project(
+        def failed_auth_probe(command, cwd, capture_output, text, check, env):
+            if command == ["vercel", "whoami"]:
+                return types.SimpleNamespace(
+                    returncode=1,
+                    stdout="",
+                    stderr="Error: Please login to Vercel before continuing.",
+                )
+            raise AssertionError(f"unexpected command: {command}")
+
+        invalid_auth = module.link_vercel_project(
             workspace_path=self.workspace,
             project_name="demo-app-prod",
             team_scope="profit-corp",
             env={},
             which=lambda name: "vercel",
+            runner=failed_auth_probe,
         )
-        self.assertFalse(missing_auth["ok"], msg=missing_auth)
-        self.assertEqual(missing_auth["block_reason"], "missing_vercel_auth")
+        self.assertFalse(invalid_auth["ok"], msg=invalid_auth)
+        self.assertEqual(invalid_auth["block_reason"], "invalid_vercel_auth")
+
+    def test_link_uses_local_cli_session_without_vercel_token(self) -> None:
+        module = load_module("vercel_delivery_common_cli_auth", VERCEL_COMMON_PATH)
+        commands: list[list[str]] = []
+
+        def fake_runner(command, cwd, capture_output, text, check, env):
+            commands.append(list(command))
+            if command == ["vercel", "whoami"]:
+                return types.SimpleNamespace(returncode=0, stdout="operator\n", stderr="")
+            if command[:3] == ["vercel", "link", "--yes"]:
+                return types.SimpleNamespace(returncode=0, stdout="linked", stderr="")
+            raise AssertionError(f"unexpected command: {command}")
+
+        result = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={},
+            which=lambda name: "vercel",
+            runner=fake_runner,
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["auth_source"], "vercel_cli_session")
+        self.assertEqual(result["auth_source_details"]["username"], "operator")
+        self.assertEqual(commands[0], ["vercel", "whoami"])
+        self.assertEqual(commands[1][:3], ["vercel", "link", "--yes"])
+
+    def test_explicit_token_remains_first_class_auth_for_link_and_deploy(self) -> None:
+        module = load_module("vercel_delivery_common_token_auth", VERCEL_COMMON_PATH)
+        commands: list[list[str]] = []
+
+        def fake_runner(command, cwd, capture_output, text, check, env):
+            commands.append(list(command))
+            if command[:3] == ["vercel", "link", "--yes"]:
+                return types.SimpleNamespace(returncode=0, stdout="linked", stderr="")
+            if command[:3] == ["vercel", "deploy", "--prod"]:
+                return types.SimpleNamespace(returncode=0, stdout="https://demo-app.vercel.app\n", stderr="")
+            raise AssertionError(f"unexpected command: {command}")
+
+        link_result = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=fake_runner,
+        )
+        self.assertTrue(link_result["ok"], msg=link_result)
+        self.assertEqual(link_result["auth_source"], "vercel_token")
+        self.assertEqual(link_result["auth_source_details"]["token_supplied"], True)
+
+        deploy_result = module.deploy_to_vercel(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            github_sync_ok=True,
+            vercel_link_ok=True,
+            env_contract_ok=True,
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=fake_runner,
+        )
+        self.assertTrue(deploy_result["ok"], msg=deploy_result)
+        self.assertEqual(deploy_result["auth_source"], "vercel_token")
+        self.assertNotIn(["vercel", "whoami"], commands)
 
     def test_project_linkage_records_one_linked_project(self) -> None:
         module = load_module("vercel_delivery_common_link", VERCEL_COMMON_PATH)
@@ -77,6 +153,72 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.assertEqual(result["project_name"], "demo-app-prod")
         self.assertEqual(result["team_scope"], "profit-corp")
         self.assertIn("evidence_path", result)
+
+    def test_link_and_deploy_classify_auth_scope_and_execution_failures(self) -> None:
+        module = load_module("vercel_delivery_common_failure_taxonomy", VERCEL_COMMON_PATH)
+
+        def invalid_auth_runner(command, cwd, capture_output, text, check, env):
+            if command[:3] == ["vercel", "link", "--yes"]:
+                return types.SimpleNamespace(
+                    returncode=1,
+                    stdout="",
+                    stderr="Error: Invalid token provided. Please login again.",
+                )
+            raise AssertionError(f"unexpected command: {command}")
+
+        invalid_auth = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=invalid_auth_runner,
+        )
+        self.assertFalse(invalid_auth["ok"], msg=invalid_auth)
+        self.assertEqual(invalid_auth["block_reason"], "invalid_vercel_auth")
+
+        def inaccessible_scope_runner(command, cwd, capture_output, text, check, env):
+            if command[:3] == ["vercel", "link", "--yes"]:
+                return types.SimpleNamespace(
+                    returncode=1,
+                    stdout="",
+                    stderr="Error: You do not have access to the requested scope profit-corp.",
+                )
+            raise AssertionError(f"unexpected command: {command}")
+
+        inaccessible_scope = module.link_vercel_project(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=inaccessible_scope_runner,
+        )
+        self.assertFalse(inaccessible_scope["ok"], msg=inaccessible_scope)
+        self.assertEqual(inaccessible_scope["block_reason"], "inaccessible_vercel_scope")
+
+        def deploy_failure_runner(command, cwd, capture_output, text, check, env):
+            if command[:3] == ["vercel", "deploy", "--prod"]:
+                return types.SimpleNamespace(
+                    returncode=1,
+                    stdout="",
+                    stderr="Build completed, but deployment failed with an unexpected runtime error.",
+                )
+            raise AssertionError(f"unexpected command: {command}")
+
+        deploy_failure = module.deploy_to_vercel(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            github_sync_ok=True,
+            vercel_link_ok=True,
+            env_contract_ok=True,
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=deploy_failure_runner,
+        )
+        self.assertFalse(deploy_failure["ok"], msg=deploy_failure)
+        self.assertEqual(deploy_failure["block_reason"], "vercel_deploy_failed")
 
     def test_env_contract_separates_platform_managed_and_identity_derived_values(self) -> None:
         module = load_module("vercel_delivery_common_env", VERCEL_COMMON_PATH)
