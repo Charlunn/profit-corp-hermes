@@ -24,8 +24,10 @@ Requirements for restoring delivery-pipeline reliability after the live Hermes i
 
 ### Vercel Delivery Reliability
 
-- [ ] **VERC-01**: Vercel linkage and deployment can use an available local authenticated Vercel CLI session when explicit `VERCEL_TOKEN` is absent but operator login is already valid
-- [ ] **VERC-02**: Vercel linkage and deployment can still use explicit `VERCEL_TOKEN` for non-interactive automation runs
+- [x] **VERC-01
+**: Vercel linkage and deployment can use an available local authenticated Vercel CLI session when explicit `VERCEL_TOKEN` is absent but operator login is already valid
+- [x] **VERC-02
+**: Vercel linkage and deployment can still use explicit `VERCEL_TOKEN` for non-interactive automation runs
 - [x] **VERC-03**: Vercel deploy records the real linked project name, scope, deploy URL, and deployment evidence for the approved project instead of stale values from previous runs
 - [x] **VERC-04**: Vercel delivery failures distinguish invalid token, inaccessible scope, missing CLI, and actual deployment failure as separate operator-visible outcomes
 
