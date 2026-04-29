@@ -114,10 +114,12 @@ def _target_for(action: str, record: dict[str, Any], result: dict[str, Any]) -> 
         project_name = str(result.get("project_name") or vercel.get("project_name") or "").strip()
         project_id = str(result.get("project_id") or vercel.get("project_id") or "").strip()
         project_url = str(result.get("project_url") or vercel.get("project_url") or "").strip()
+        team_scope = str(result.get("team_scope") or vercel.get("team_scope") or "").strip()
         return {
             "project_name": project_name,
             "project_id": project_id,
             "project_url": project_url,
+            "team_scope": team_scope,
         }
 
     return {}
@@ -364,6 +366,8 @@ def _build_audit_payload(
         "error": str(result.get("error", "")).strip(),
         "authority_record_path": authority_record_path.as_posix(),
         "project_slug": _project_slug(record, authority_record_path),
+        "auth_source": str(result.get("auth_source", "")).strip(),
+        "auth_source_details": dict(result.get("auth_source_details", {}) or {}),
     }
 
 
