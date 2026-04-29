@@ -92,6 +92,77 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             self.assertIn("block", output)
             self.assertIn("evidence", output)
 
+    def test_validator_rejects_vercel_metadata_without_authoritative_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
+            approved_project.mkdir(parents=True)
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            hermes = workspace / ".hermes"
+            hermes.mkdir()
+
+            final_delivery = workspace / ".hermes" / "FINAL_DELIVERY.md"
+            manifest = workspace / ".hermes" / "delivery-run-manifest.json"
+            conformance = workspace / ".hermes" / "template-conformance.json"
+            final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
+            self.write_text(final_delivery, "# Final delivery\n\n## 1) End-to-end Summary\n")
+            self.write_json(manifest, {"run_id": "run-1"})
+            self.write_json(conformance, {"ok": True})
+            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nVercel Deploy Audit: ok\n\n## Protected Change Review\nProtected change: none\n")
+            self.write_text(approved_project / "PROJECT_BRIEF.md", "# Brief\n")
+
+            final_ref = final_delivery.as_posix()
+            self.write_json(
+                approved_project / "APPROVED_PROJECT.json",
+                {
+                    "project_slug": "demo-project",
+                    "workspace_path": workspace.as_posix(),
+                    "conformance_evidence_path": conformance.as_posix(),
+                    "phase9_delivery_run_manifest_path": manifest.as_posix(),
+                    "final_handoff": {"path": final_ref, "link": final_ref},
+                    "shipping": {
+                        "vercel": {
+                            "project_name": "demo-project-prod",
+                            "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                            "team_scope": "profit-corp",
+                        }
+                    },
+                    "artifacts": {
+                        "final_review_path": final_review.as_posix(),
+                    },
+                },
+            )
+            self.write_jsonl(
+                approved_project / "approved-delivery-events.jsonl",
+                [
+                    {
+                        "stage": "handoff",
+                        "status": "completed",
+                        "final_handoff": {"path": final_ref, "link": final_ref},
+                        "workspace_path": workspace.as_posix(),
+                    }
+                ],
+            )
+            self.write_text(
+                approved_project / "DELIVERY_PIPELINE_STATUS.md",
+                "# Approved Delivery Status\n\n"
+                f"- Authority: approved-project\n"
+                f"- Workspace: {workspace.as_posix()}\n"
+                f"- Final handoff: {final_ref}\n"
+                f"- Final operator review: {final_review.as_posix()}\n"
+                f"- Protected change classification: not available\n"
+                f"- Platform justification status: not available\n"
+                f"- Governance action: not available\n"
+                f"- Blocked prerequisite evidence: not available\n"
+                f"- Vercel project name: demo-project-prod\n"
+                f"- Vercel project URL: https://vercel.com/profit-corp/demo-project-prod\n"
+                f"- Vercel team scope: profit-corp\n",
+            )
+
+            result = self.run_validator(approved_project)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("env contract", (result.stdout + result.stderr).lower())
+
     def test_validator_passes_only_when_authority_workspace_events_and_status_agree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
@@ -153,6 +224,8 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                         },
                         "vercel": {
                             "project_name": "demo-project-prod",
+                            "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                            "team_scope": "profit-corp",
                             "env_contract_path": vercel_env.as_posix(),
                             "env_audit_path": vercel_env_audit.as_posix(),
                             "deploy_status": "ready",
@@ -207,6 +280,7 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                 f"- GitHub sync evidence path: {github_sync.as_posix()}\n"
                 f"- GitHub sync audit path: {github_sync_audit.as_posix()}\n"
                 f"- Vercel project name: demo-project-prod\n"
+                f"- Vercel project URL: https://vercel.com/profit-corp/demo-project-prod\n"
                 f"- Vercel env contract path: {vercel_env.as_posix()}\n"
                 f"- Vercel env audit path: {vercel_env_audit.as_posix()}\n"
                 f"- Vercel deploy status: ready\n"

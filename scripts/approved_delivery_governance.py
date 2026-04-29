@@ -371,6 +371,55 @@ def _build_audit_payload(
     }
 
 
+def _merged_shipping_snapshot(record: dict[str, Any], result: dict[str, Any], stage: str) -> dict[str, Any]:
+    shipping = dict(record.get("shipping", {}))
+    github = dict(shipping.get("github", {}) if isinstance(shipping.get("github", {}), dict) else {})
+    vercel = dict(shipping.get("vercel", {}) if isinstance(shipping.get("vercel", {}), dict) else {})
+
+    if stage == "github_repository":
+        if result.get("repository_name"):
+            github["repository_name"] = str(result.get("repository_name", "")).strip()
+        if result.get("repository_url"):
+            github["repository_url"] = str(result.get("repository_url", "")).strip()
+    elif stage == "github_sync":
+        if result.get("repository_url"):
+            github["repository_url"] = str(result.get("repository_url", "")).strip()
+        if result.get("default_branch"):
+            github["default_branch"] = str(result.get("default_branch", "")).strip()
+        if result.get("synced_commit"):
+            github["synced_commit"] = str(result.get("synced_commit", "")).strip()
+        if result.get("evidence_path"):
+            github["sync_evidence_path"] = str(result.get("evidence_path", "")).strip()
+    elif stage in {"vercel_linkage", "vercel_deploy"}:
+        for key in ("project_name", "project_id", "project_url", "team_scope", "auth_source"):
+            if result.get(key):
+                vercel[key] = str(result.get(key, "")).strip()
+        if result.get("auth_source_details"):
+            vercel["auth_source_details"] = dict(result.get("auth_source_details", {}) or {})
+        if result.get("env_contract_path"):
+            vercel["env_contract_path"] = str(result.get("env_contract_path", "")).strip()
+        if result.get("env_contract"):
+            vercel["env_contract"] = dict(result.get("env_contract", {}) or {})
+        if result.get("deploy_url"):
+            vercel["deploy_url"] = str(result.get("deploy_url", "")).strip()
+        if result.get("deploy_status"):
+            vercel["deploy_status"] = str(result.get("deploy_status", "")).strip()
+        if result.get("deploy_evidence_path"):
+            vercel["deploy_evidence_path"] = str(result.get("deploy_evidence_path", "")).strip()
+        if result.get("deployment_url"):
+            vercel["deployment_url"] = str(result.get("deployment_url", "")).strip()
+        if result.get("deployment_status"):
+            vercel["deployment_status"] = str(result.get("deployment_status", "")).strip()
+        if result.get("deployment_evidence_path"):
+            vercel["deployment_evidence_path"] = str(result.get("deployment_evidence_path", "")).strip()
+
+    if github:
+        shipping["github"] = github
+    if vercel:
+        shipping["vercel"] = vercel
+    return shipping
+
+
 def _append_event(
     *,
     project_dir: Path,
@@ -398,7 +447,7 @@ def _append_event(
         "evidence_path": str(result.get("evidence_path", "")).strip(),
         "resume_from_stage": stage if status in {"blocked", "failed"} else "",
         "final_handoff_path": "",
-        "shipping": dict(record.get("shipping", {})),
+        "shipping": _merged_shipping_snapshot(record, result, stage),
     }
     append_approved_delivery_event(project_dir, event)
 

@@ -373,7 +373,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["remote_action"], "updated")
         self.assertEqual(updated["shipping"]["github"]["push_transport"], "ssh")
         self.assertEqual(updated["shipping"]["github"]["push_attempts"][1]["transport"], "ssh")
-        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_linkage")
         vercel_shipping = updated.get("shipping", {}).get("vercel", {})
         self.assertEqual(vercel_shipping, {}, "github sync must not prewrite authoritative Vercel metadata")
         pending_event = events[-1]

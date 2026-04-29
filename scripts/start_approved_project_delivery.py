@@ -1362,7 +1362,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             status="ready",
             workspace_path=workspace.as_posix(),
             delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
-            resume_from_stage="vercel_deploy",
+            resume_from_stage="vercel_linkage",
         )
         persist_and_render(authority_path, record)
         return {
@@ -1378,16 +1378,6 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
         approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or str(vercel_record.get("project_name", "")).strip() or f"{project_slug}-prod"
         approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or str(vercel_record.get("team_scope", "")).strip() or "profit-corp"
-        if initial_stage in {"approval", "brief_generation", "workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync"}:
-            _remove_authoritative_vercel_success_fields(vercel_record)
-            persist_and_render(authority_path, record)
-            return {
-                "ok": True,
-                "stage": "vercel_linkage",
-                "status": str(record.get("pipeline", {}).get("status", "ready")),
-                "workspace_path": workspace.as_posix(),
-                "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
-            }
         vercel_result = link_vercel_project(authority_path, workspace)
         if not vercel_result.get("ok"):
             return block_pipeline(

@@ -171,6 +171,10 @@ class CredentialGovernanceContractTest(unittest.TestCase):
         events = self.read_events()
         self.assertEqual(events[-1]["status"], "completed")
         self.assertEqual(events[-1]["outcome"], "success")
+        self.assertEqual(events[-1]["shipping"]["vercel"]["project_name"], "demo-web-prod")
+        self.assertEqual(events[-1]["shipping"]["vercel"]["team_scope"], "acme")
+        self.assertEqual(events[-1]["shipping"]["vercel"]["auth_source"], "vercel_cli_session")
+        self.assertEqual(events[-1]["shipping"]["vercel"]["auth_source_details"]["username"], "operator")
 
     def test_persists_vercel_deploy_failure_boundary_with_target_metadata(self) -> None:
         result = self.module.run_governed_action(

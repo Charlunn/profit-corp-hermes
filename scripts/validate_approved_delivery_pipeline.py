@@ -249,43 +249,45 @@ def validate_vercel_linkage(record: dict[str, Any], status_text: str) -> None:
         return
 
     lowered = status_text.lower()
-    has_link_success = bool(
+    link_evidence = first_nonempty(
+        vercel.get("link_evidence_path"),
+        vercel.get("env_contract_path"),
+        get_nested(vercel, "env_contract", "evidence_path"),
+    )
+    has_link_metadata = bool(
         first_nonempty(
             vercel.get("project_id"),
             vercel.get("project_name"),
             vercel.get("project_url"),
             vercel.get("team_scope"),
-            vercel.get("env_contract_path"),
-            get_nested(vercel, "env_contract", "evidence_path"),
         )
-        or vercel.get("linked") is True
     )
-    has_deploy_success = bool(
-        first_nonempty(
-            vercel.get("deploy_url"),
-            vercel.get("deployment_url"),
-            vercel.get("deploy_evidence_path"),
-            vercel.get("deployment_evidence_path"),
+    has_link_success = bool(link_evidence)
+    deploy_evidence = first_nonempty(vercel.get("deploy_evidence_path"), vercel.get("deployment_evidence_path"))
+    deploy_status = first_nonempty(vercel.get("deploy_status"), vercel.get("deployment_status"))
+    has_deploy_success = bool(deploy_evidence)
+
+    if has_link_metadata and not has_link_success:
+        raise ApprovedDeliveryPipelineValidationError(
+            "approved-project authority record has Vercel linkage metadata without authoritative env contract evidence"
         )
-        or first_nonempty(vercel.get("deploy_status"), vercel.get("deployment_status")).lower() in {"ready", "completed", "success"}
-    )
 
     if has_link_success:
         required_link_fields = {
             "project_name": "Vercel project name",
             "project_url": "Vercel project URL",
             "team_scope": "Vercel team scope",
-            "env_contract_path": "Vercel env contract path",
         }
         for key, label in required_link_fields.items():
-            value = first_nonempty(vercel.get(key), get_nested(vercel, "env_contract", "evidence_path") if key == "env_contract_path" else "")
+            value = first_nonempty(vercel.get(key))
             if not value:
                 raise ApprovedDeliveryPipelineValidationError(f"approved-project authority record missing {label}")
             if value.lower() not in lowered and Path(value).name.lower() not in lowered:
                 raise ApprovedDeliveryPipelineValidationError(f"status view missing {label} linkage")
+        if link_evidence.lower() not in lowered and Path(link_evidence).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError("status view missing Vercel env contract linkage")
 
     if has_deploy_success:
-        deploy_status = first_nonempty(vercel.get("deploy_status"), vercel.get("deployment_status"))
         if not deploy_status:
             raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing Vercel deploy status")
         if deploy_status.lower() not in lowered and Path(deploy_status).name.lower() not in lowered:
@@ -295,10 +297,8 @@ def validate_vercel_linkage(record: dict[str, Any], status_text: str) -> None:
             raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing Vercel deploy URL")
         if deploy_url.lower() not in lowered and Path(deploy_url).name.lower() not in lowered:
             raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy URL linkage")
-        deploy_evidence = first_nonempty(vercel.get("deploy_evidence_path"), vercel.get("deployment_evidence_path"))
-        if deploy_evidence:
-            if deploy_evidence.lower() not in lowered and Path(deploy_evidence).name.lower() not in lowered:
-                raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy evidence linkage")
+        if deploy_evidence.lower() not in lowered and Path(deploy_evidence).name.lower() not in lowered:
+            raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy evidence linkage")
 
 
 def validate_status_markdown(status_text: str, workspace: Path, final_handoff: Path) -> None:

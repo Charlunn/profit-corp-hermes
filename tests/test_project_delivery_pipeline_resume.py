@@ -287,7 +287,66 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         events = self.read_events(project_dir)
         self.assertEqual([event["stage"] for event in events], ["conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
 
-    def test_resume_replaces_stale_vercel_metadata_with_current_run_truth(self) -> None:
+    def test_resume_from_github_sync_restarts_at_vercel_linkage_before_deploy(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="github_sync")
+        authority = self.read_json(authority_path)
+        authority["pipeline"]["delivery_run_id"] = "delivery-lead-capture-copilot-001"
+        authority["pipeline"]["resume_from_stage"] = "vercel_linkage"
+        authority["shipping"] = {
+            "github": {
+                "repository_mode": "attach",
+                "repository_owner": "profit-corp",
+                "repository_name": "profit-corp/lead-capture-copilot",
+                "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                "default_branch": "main",
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+                "last_sync_status": "completed",
+            },
+            "vercel": {},
+        }
+        authority_path.write_text(json.dumps(authority, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        link_calls: list[str] = []
+        deploy_calls: list[str] = []
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "link_vercel_project", side_effect=lambda *args, **kwargs: link_calls.append("link") or {
+                 "ok": True,
+                 "linked": True,
+                 "project_id": "prj_current",
+                 "project_name": "lead-capture-copilot-prod",
+                 "project_url": "https://vercel.com/profit-corp/lead-capture-copilot-prod",
+                 "team_scope": "profit-corp",
+                 "auth_source": "vercel_cli_session",
+                 "auth_source_details": {"username": "operator"},
+                 "evidence_path": (workspace / ".hermes" / "vercel-link.json").as_posix(),
+                 "audit_path": (workspace / ".hermes" / "vercel-link-audit.json").as_posix(),
+                 "env_contract_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                 "env_contract": {"evidence_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix()},
+                 "required_env": {"platform_managed": ["SUPABASE_SERVICE_ROLE_KEY"]},
+             }), \
+             mock.patch.object(start_module, "run_vercel_deploy", side_effect=lambda *args, **kwargs: deploy_calls.append("deploy") or {
+                 "ok": True,
+                 "deploy_url": "https://lead-capture-copilot-prod.vercel.app",
+                 "deploy_status": "ready",
+                 "deploy_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                 "deploy_audit_path": (workspace / ".hermes" / "vercel-deploy-audit.json").as_posix(),
+                 "deployment_url": "https://lead-capture-copilot-prod.vercel.app",
+                 "deployment_status": "ready",
+                 "deployment_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                 "final_handoff_path": (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix(),
+             }):
+            result = start_module.resume_approved_project_delivery(authority_path)
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(link_calls, ["link"])
+        self.assertEqual(deploy_calls, [])
+        updated = self.read_json(authority_path)
+        self.assertEqual(updated["pipeline"]["stage"], "vercel_linkage")
+        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
+        self.assertEqual(updated["shipping"]["vercel"]["project_name"], "lead-capture-copilot-prod")
+
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="vercel_linkage")
         authority = self.read_json(authority_path)
