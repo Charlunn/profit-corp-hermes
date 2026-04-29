@@ -799,6 +799,8 @@ def link_vercel_project(authority_record_path: Path | str, workspace_path: Path 
         "project_name": str(link_result.get("project_name", project_name)).strip(),
         "project_url": str(link_result.get("project_url", "")).strip(),
         "team_scope": str(link_result.get("team_scope", team_scope)).strip(),
+        "auth_source": str(link_result.get("auth_source", "")).strip(),
+        "auth_source_details": dict(link_result.get("auth_source_details", {})),
         "evidence_path": str(link_result.get("evidence_path", "")).strip(),
         "audit_path": str(link_result.get("audit_path", "")).strip(),
         "env_contract": dict(env_result.get("env_contract", {})),
@@ -821,7 +823,7 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
     github_sync_ok = str(github.get("last_sync_status", "")).strip() == "completed"
     approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or str(vercel.get("project_name", "")).strip() or "approved-project-prod"
     approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or str(vercel.get("team_scope", "")).strip() or "profit-corp"
-    vercel_link_ok = bool(approved_vercel_project)
+    vercel_link_ok = bool(str(vercel.get("project_name", "")).strip() and str(vercel.get("team_scope", "")).strip())
     env_contract_ok = bool(vercel.get("env_contract_path")) or bool(
         isinstance(vercel.get("env_contract"), dict) and vercel.get("env_contract", {}).get("evidence_path")
     )
@@ -856,15 +858,28 @@ def run_vercel_deploy(authority_record_path: Path | str, workspace_path: Path | 
     }
 
 
-def _build_env_contract(required_env: dict[str, Any], env_contract_path: Path) -> dict[str, Any]:
-    contract = {
-        "platform_managed": list(required_env.get("platform_managed", [])),
-        "identity_derived": dict(required_env.get("identity_derived", {})),
-        "evidence_path": env_contract_path.as_posix(),
-    }
-    env_contract_path.parent.mkdir(parents=True, exist_ok=True)
-    env_contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return contract
+def _remove_authoritative_vercel_success_fields(vercel: dict[str, Any]) -> None:
+    for key in [
+        "project_id",
+        "project_name",
+        "project_url",
+        "team_scope",
+        "linked",
+        "auth_source",
+        "auth_source_details",
+        "env_contract",
+        "env_contract_path",
+        "env_audit_path",
+        "required_env",
+        "deploy_url",
+        "deploy_status",
+        "deploy_evidence_path",
+        "deploy_audit_path",
+        "deployment_url",
+        "deployment_status",
+        "deployment_evidence_path",
+    ]:
+        vercel.pop(key, None)
 
 
 def block_pipeline(
@@ -1308,14 +1323,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             }
         )
         vercel_record = record.setdefault("shipping", {}).setdefault("vercel", {})
-        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
-        approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or f"{project_slug}-prod"
-        approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or "profit-corp"
-        vercel_record["project_name"] = approved_vercel_project
-        vercel_record["project_url"] = f"https://vercel.com/{approved_vercel_team}/{approved_vercel_project}"
-        vercel_record["team_scope"] = approved_vercel_team
-        vercel_record.setdefault("env_contract_path", (workspace / ".hermes" / "vercel-env-contract.json").as_posix())
-        vercel_record.setdefault("deploy_status", "pending")
+        _remove_authoritative_vercel_success_fields(vercel_record)
         append_next_pipeline_event(
             project_dir,
             make_event(
@@ -1341,7 +1349,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 status="ready",
                 action="vercel_linkage_pending",
                 outcome="pass",
-                artifact=vercel_record.get("env_contract_path", authority_path.as_posix()),
+                artifact=authority_path.as_posix(),
                 timestamp="2026-04-27T08:36:30Z",
                 workspace_path=workspace.as_posix(),
                 delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
@@ -1370,10 +1378,8 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
         approved_vercel_project = str(os.environ.get("VERCEL_PROJECT", "")).strip() or str(vercel_record.get("project_name", "")).strip() or f"{project_slug}-prod"
         approved_vercel_team = str(os.environ.get("VERCEL_TEAM", "")).strip() or str(vercel_record.get("team_scope", "")).strip() or "profit-corp"
-        vercel_record["project_name"] = approved_vercel_project
-        vercel_record["project_url"] = f"https://vercel.com/{approved_vercel_team}/{approved_vercel_project}"
-        vercel_record["team_scope"] = approved_vercel_team
         if initial_stage in {"approval", "brief_generation", "workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync"}:
+            _remove_authoritative_vercel_success_fields(vercel_record)
             persist_and_render(authority_path, record)
             return {
                 "ok": True,
@@ -1403,13 +1409,17 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "project_url": str(vercel_result.get("project_url", "")).strip(),
                 "team_scope": str(vercel_result.get("team_scope", "")).strip(),
                 "linked": bool(vercel_result.get("linked", True)),
+                "auth_source": str(vercel_result.get("auth_source", "")).strip(),
+                "auth_source_details": dict(vercel_result.get("auth_source_details", {})),
+                "link_evidence_path": str(vercel_result.get("evidence_path", "")).strip(),
+                "link_audit_path": str(vercel_result.get("audit_path", "")).strip(),
                 "env_contract": {
                     **dict(vercel_result.get("env_contract", {})),
                     "evidence_path": str(vercel_result.get("env_contract_path", "")).strip() or dict(vercel_result.get("env_contract", {})).get("evidence_path", ""),
                 },
                 "env_contract_path": str(vercel_result.get("env_contract_path", "")).strip(),
+                "env_audit_path": str(vercel_result.get("env_audit_path", "")).strip(),
                 "required_env": dict(vercel_result.get("required_env", {})),
-                "deploy_status": str(vercel_record.get("deploy_status", "pending") or "pending"),
             }
         )
         append_next_pipeline_event(
@@ -1473,6 +1483,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
                 "deploy_url": deploy_url,
                 "deploy_status": deploy_status,
                 "deploy_evidence_path": deploy_evidence_path,
+                "deploy_audit_path": str(deploy_result.get("deploy_audit_path", "")).strip(),
                 "deployment_url": deploy_url,
                 "deployment_status": deploy_status,
                 "deployment_evidence_path": deploy_evidence_path,
