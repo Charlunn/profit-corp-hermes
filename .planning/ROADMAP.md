@@ -51,8 +51,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01: Unify Vercel auth source resolution across explicit token and locally authenticated CLI flows
-- [ ] 16-02: Harden Vercel link/env/deploy execution so scope, project, and auth failures surface distinctly
+- [x] 16-01: Unify Vercel auth source resolution across explicit token and locally authenticated CLI flows
+- [x] 16-02: Harden Vercel link/env/deploy execution so scope, project, and auth failures surface distinctly
 - [ ] 16-03: Capture real deployment metadata and evidence from the linked approved project instead of stale or inherited values
 
 **Success Criteria** (what must be TRUE):
