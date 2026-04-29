@@ -287,7 +287,94 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         events = self.read_events(project_dir)
         self.assertEqual([event["stage"] for event in events], ["conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
 
-    def test_resume_after_handoff_does_not_duplicate_pipeline_or_workspace(self) -> None:
+    def test_resume_replaces_stale_vercel_metadata_with_current_run_truth(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="vercel_linkage")
+        authority = self.read_json(authority_path)
+        authority["pipeline"]["delivery_run_id"] = "delivery-lead-capture-copilot-001"
+        authority["shipping"] = {
+            "github": {
+                "repository_mode": "attach",
+                "repository_owner": "profit-corp",
+                "repository_name": "profit-corp/lead-capture-copilot",
+                "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
+                "default_branch": "main",
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+                "last_sync_status": "completed",
+            },
+            "vercel": {
+                "project_id": "stale_project",
+                "project_name": "stale-project-prod",
+                "project_url": "https://vercel.com/old-team/stale-project-prod",
+                "team_scope": "old-team",
+                "auth_source": "stale_source",
+                "auth_source_details": {"username": "stale-user"},
+                "env_contract_path": (workspace / ".hermes" / "stale-vercel-env-contract.json").as_posix(),
+                "env_contract": {"evidence_path": (workspace / ".hermes" / "stale-vercel-env-contract.json").as_posix()},
+                "required_env": {"platform_managed": ["OLD_SECRET"]},
+                "deploy_url": "https://stale-project.vercel.app",
+                "deploy_status": "failed",
+                "deploy_evidence_path": (workspace / ".hermes" / "stale-vercel-deploy.json").as_posix(),
+                "deployment_url": "https://stale-project.vercel.app",
+                "deployment_status": "failed",
+                "deployment_evidence_path": (workspace / ".hermes" / "stale-vercel-deploy.json").as_posix(),
+            },
+        }
+        authority_path.write_text(json.dumps(authority, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        final_handoff = workspace / ".hermes" / "FINAL_DELIVERY.md"
+        final_handoff.write_text("# Final Delivery\n", encoding="utf-8")
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "link_vercel_project", return_value={
+                 "ok": True,
+                 "linked": True,
+                 "project_id": "prj_current",
+                 "project_name": "lead-capture-copilot-prod",
+                 "project_url": "https://vercel.com/profit-corp/lead-capture-copilot-prod",
+                 "team_scope": "profit-corp",
+                 "auth_source": "vercel_cli_session",
+                 "auth_source_details": {"username": "operator"},
+                 "evidence_path": (workspace / ".hermes" / "vercel-link.json").as_posix(),
+                 "audit_path": (workspace / ".hermes" / "vercel-link-audit.json").as_posix(),
+                 "env_contract_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
+                 "env_contract": {"evidence_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix()},
+                 "required_env": {
+                     "platform_managed": ["SUPABASE_SERVICE_ROLE_KEY"],
+                     "identity_derived": {"APP_KEY": "lead_capture_copilot"},
+                 },
+             }), \
+             mock.patch.object(start_module, "run_vercel_deploy", return_value={
+                 "ok": True,
+                 "deploy_url": "https://lead-capture-copilot-prod.vercel.app",
+                 "deploy_status": "ready",
+                 "deploy_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                 "deploy_audit_path": (workspace / ".hermes" / "vercel-deploy-audit.json").as_posix(),
+                 "deployment_url": "https://lead-capture-copilot-prod.vercel.app",
+                 "deployment_status": "ready",
+                 "deployment_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                 "final_handoff_path": final_handoff.as_posix(),
+             }):
+            link_result = start_module.resume_approved_project_delivery(authority_path)
+            self.assertTrue(link_result["ok"], msg=link_result)
+            deploy_result = start_module.resume_approved_project_delivery(authority_path)
+            self.assertTrue(deploy_result["ok"], msg=deploy_result)
+
+        updated = self.read_json(authority_path)
+        vercel = updated["shipping"]["vercel"]
+        self.assertEqual(vercel["project_id"], "prj_current")
+        self.assertEqual(vercel["project_name"], "lead-capture-copilot-prod")
+        self.assertEqual(vercel["project_url"], "https://vercel.com/profit-corp/lead-capture-copilot-prod")
+        self.assertEqual(vercel["team_scope"], "profit-corp")
+        self.assertEqual(vercel["auth_source"], "vercel_cli_session")
+        self.assertEqual(vercel["auth_source_details"]["username"], "operator")
+        self.assertEqual(vercel["env_contract_path"], (workspace / ".hermes" / "vercel-env-contract.json").as_posix())
+        self.assertEqual(vercel["deploy_url"], "https://lead-capture-copilot-prod.vercel.app")
+        self.assertEqual(vercel["deploy_status"], "ready")
+        self.assertEqual(vercel["deploy_evidence_path"], (workspace / ".hermes" / "vercel-deploy.json").as_posix())
+        self.assertNotEqual(vercel["project_name"], "stale-project-prod")
+        self.assertNotEqual(vercel["team_scope"], "old-team")
+
+    def test_resume_returns_completed_handoff_without_replaying_pipeline(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="handoff", status="completed")
         final_handoff = workspace / ".hermes" / "FINAL_DELIVERY.md"

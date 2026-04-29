@@ -374,6 +374,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["push_transport"], "ssh")
         self.assertEqual(updated["shipping"]["github"]["push_attempts"][1]["transport"], "ssh")
         self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_deploy")
+        vercel_shipping = updated.get("shipping", {}).get("vercel", {})
+        self.assertEqual(vercel_shipping, {}, "github sync must not prewrite authoritative Vercel metadata")
+        pending_event = events[-1]
+        self.assertEqual(pending_event["stage"], "vercel_linkage")
+        pending_shipping_vercel = pending_event.get("shipping", {}).get("vercel", {})
+        self.assertEqual(pending_shipping_vercel, {}, "pending Vercel event must not claim linked project metadata")
 
     def test_blocking_paths_persist_block_reason_evidence_and_resume_stage(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
