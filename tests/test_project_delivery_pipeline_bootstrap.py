@@ -261,6 +261,8 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+                 "prepare_auth_source": "gh_cli",
+                 "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": True,
@@ -277,8 +279,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["artifacts"]["project_directory"], project_dir.as_posix())
         self.assertEqual(updated["artifacts"]["authority_record_path"], authority_path.as_posix())
         self.assertEqual(updated["artifacts"]["delivery_brief_path"], (project_dir / "PROJECT_BRIEF.md").as_posix())
-        self.assertEqual(updated["shipping"]["github"]["repository_name"], "lead-capture-copilot/lead-capture-copilot")
+        self.assertEqual(updated["shipping"]["github"]["repository_owner"], "profit-corp")
+        self.assertEqual(updated["shipping"]["github"]["repository_name"], "profit-corp/lead-capture-copilot")
         self.assertEqual(updated["shipping"]["github"]["repository_url"], "https://github.com/profit-corp/lead-capture-copilot.git")
+        self.assertEqual(updated["shipping"]["github"]["prepare_evidence_path"], (workspace / ".hermes" / "github-repository-prepare.json").as_posix())
+        self.assertEqual(updated["shipping"]["github"]["prepare_auth_source"], "gh_cli")
+        self.assertEqual(updated["shipping"]["github"]["prepare_auth_source_details"]["login"], "profit-corp")
         events = self.read_events(project_dir)
         self.assert_event_stages(events, PIPELINE_STAGES[:-2])
 
@@ -319,6 +325,8 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "default_branch": "main",
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
+                 "prepare_auth_source": "gh_cli",
+                 "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": True,

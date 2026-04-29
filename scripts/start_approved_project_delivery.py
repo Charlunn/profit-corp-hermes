@@ -177,6 +177,64 @@ def normalize_project_identity(project_name: str, project_url: str) -> dict[str,
     }
 
 
+def _parse_github_owner_repo(repository_name: str, repository_url: str) -> tuple[str, str]:
+    name_value = str(repository_name).strip()
+    if "/" in name_value:
+        owner, repo = name_value.split("/", 1)
+        owner = owner.strip()
+        repo = repo.strip()
+        if owner and repo:
+            return owner, repo
+    url_value = str(repository_url).strip()
+    if url_value:
+        parsed = urlparse(url_value)
+        path_parts = [part for part in parsed.path.strip("/").split("/") if part]
+        if len(path_parts) >= 2:
+            owner = path_parts[0].strip()
+            repo = path_parts[1].strip()
+            if repo.endswith(".git"):
+                repo = repo[:-4]
+            if owner and repo:
+                return owner, repo
+    return "", ""
+
+
+def resolve_github_repository_identity(record: dict[str, Any]) -> dict[str, Any]:
+    identity = dict(record.get("project_identity", {}))
+    shipping = record.setdefault("shipping", {})
+    github = shipping.setdefault("github", {})
+    project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
+
+    env_owner = str(os.environ.get("APPROVED_DELIVERY_GITHUB_OWNER", "")).strip()
+    env_repo = str(os.environ.get("APPROVED_DELIVERY_GITHUB_REPO", "")).strip()
+    existing_owner, existing_repo = _parse_github_owner_repo(
+        str(github.get("repository_name", "")).strip(),
+        str(github.get("repository_url", "")).strip(),
+    )
+    metadata_owner = str(github.get("repository_owner", "")).strip() or existing_owner
+    metadata_repo = existing_repo
+    if not metadata_repo:
+        raw_name = str(github.get("repository_name", "")).strip()
+        if "/" not in raw_name and raw_name:
+            metadata_repo = raw_name
+
+    owner = env_owner or metadata_owner or "profit-corp"
+    repo = env_repo or metadata_repo or project_slug
+    repository_mode = str(github.get("repository_mode", "attach")).strip() or "attach"
+    default_branch = str(github.get("default_branch", "main")).strip() or "main"
+    remote_name = str(github.get("remote_name", "origin")).strip() or "origin"
+
+    return {
+        "repository_mode": repository_mode,
+        "repository_owner": owner,
+        "repository_repo": repo,
+        "repository_name": f"{owner}/{repo}",
+        "repository_url": f"https://github.com/{owner}/{repo}.git",
+        "default_branch": default_branch,
+        "remote_name": remote_name,
+    }
+
+
 def build_artifact_paths(
     project_slug: str,
     *,
@@ -644,8 +702,10 @@ def prepare_github_repository(
             "delivery_run_id": str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
             "workspace_path": workspace.as_posix(),
             "last_sync_status": github.get("last_sync_status", "pending"),
-            "prepare_evidence_path": helper_result.get("evidence_path", ""),
-            "prepare_audit_path": helper_result.get("audit_path", ""),
+            "prepare_evidence_path": helper_result.get("evidence_path", helper_result.get("prepare_evidence_path", "")),
+            "prepare_audit_path": helper_result.get("audit_path", helper_result.get("prepare_audit_path", "")),
+            "prepare_auth_source": helper_result.get("auth_source", github.get("prepare_auth_source", "")),
+            "prepare_auth_source_details": dict(helper_result.get("auth_source_details", github.get("prepare_auth_source_details", {}))),
         }
     )
     update_pipeline_state(
@@ -1137,15 +1197,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
         record.setdefault("artifacts", {})["delivery_manifest_path"] = manifest_path.as_posix()
         shipping = record.setdefault("shipping", {})
         github = shipping.setdefault("github", {})
-        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
-        github_owner = str(os.environ.get("APPROVED_DELIVERY_GITHUB_OWNER", "")).strip() or project_slug
-        github_repo = str(os.environ.get("APPROVED_DELIVERY_GITHUB_REPO", "")).strip() or project_slug
-        github.setdefault("repository_mode", "attach")
-        github["repository_owner"] = github_owner
-        github["repository_name"] = f"{github_owner}/{github_repo}"
-        github["repository_url"] = f"https://github.com/{github_owner}/{github_repo}.git"
-        github.setdefault("default_branch", "main")
-        github.setdefault("remote_name", "origin")
+        github.update(resolve_github_repository_identity(record))
         github.setdefault("delivery_run_id", delivery_run_id)
         github.setdefault("workspace_path", workspace.as_posix())
         github.setdefault("last_sync_status", "pending")
@@ -1155,12 +1207,7 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
 
     if start_stage == "github_repository":
         github_record = record.setdefault("shipping", {}).setdefault("github", {})
-        project_slug = str(identity.get("project_slug", "approved-project")).strip() or "approved-project"
-        github_owner = str(os.environ.get("APPROVED_DELIVERY_GITHUB_OWNER", "")).strip() or str(github_record.get("repository_owner", "")).strip() or project_slug
-        github_repo = str(os.environ.get("APPROVED_DELIVERY_GITHUB_REPO", "")).strip() or str(github_record.get("repository_name", "")).strip().split("/")[-1] or project_slug
-        github_record["repository_owner"] = github_owner
-        github_record["repository_name"] = f"{github_owner}/{github_repo}"
-        github_record["repository_url"] = f"https://github.com/{github_owner}/{github_repo}.git"
+        github_record.update(resolve_github_repository_identity(record))
         github_mode = str(github_record.get("repository_mode", "attach")).strip() or "attach"
         github_result = prepare_github_repository(
             authority_path,
@@ -1184,6 +1231,29 @@ def run_pipeline_from_stage(authority_path: Path, record: dict[str, Any], *, sta
             )
             blocked["blocked_downstream_stages"] = ["github_sync", "vercel_linkage", "vercel_deploy"]
             return blocked
+        github_record.update(
+            {
+                "repository_mode": github_result.get("repository_mode", github_mode),
+                "repository_owner": github_result.get("repository_owner", github_record.get("repository_owner", "")),
+                "repository_name": github_result.get("repository_name", github_record.get("repository_name", "")),
+                "repository_url": github_result.get("repository_url", github_record.get("repository_url", "")),
+                "default_branch": github_result.get("default_branch", github_record.get("default_branch", "main")),
+                "remote_name": github_result.get("remote_name", github_record.get("remote_name", "origin")),
+                "prepare_evidence_path": github_result.get("evidence_path", github_result.get("prepare_evidence_path", github_record.get("prepare_evidence_path", ""))),
+                "prepare_audit_path": github_result.get("audit_path", github_result.get("prepare_audit_path", github_record.get("prepare_audit_path", ""))),
+                "prepare_auth_source": github_result.get("auth_source", github_result.get("prepare_auth_source", github_record.get("prepare_auth_source", ""))),
+                "prepare_auth_source_details": dict(github_result.get("auth_source_details", github_result.get("prepare_auth_source_details", github_record.get("prepare_auth_source_details", {})))),
+            }
+        )
+        update_pipeline_state(
+            record,
+            stage="github_repository",
+            status="ready",
+            workspace_path=workspace.as_posix(),
+            delivery_run_id=str(record.get("pipeline", {}).get("delivery_run_id", "")).strip(),
+            resume_from_stage="github_sync",
+        )
+        persist_and_render(authority_path, record)
         record = load_json(authority_path)
         github_record = record.setdefault("shipping", {}).setdefault("github", {})
         append_next_pipeline_event(

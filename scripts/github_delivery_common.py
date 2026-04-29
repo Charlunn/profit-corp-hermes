@@ -123,6 +123,48 @@ def _github_identity(repository_owner: str, repository_name: str) -> str:
     return f"{repository_owner}/{repository_name}"
 
 
+def _resolve_github_auth(
+    workspace: Path,
+    *,
+    runner: Runner | None = None,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    source = dict(os.environ)
+    if env is not None:
+        source.update(dict(env))
+    if source.get("GH_TOKEN"):
+        return {
+            "ok": True,
+            "auth_source": "env_token",
+            "auth_source_details": {"source": "GH_TOKEN"},
+        }
+    if source.get("GITHUB_TOKEN"):
+        return {
+            "ok": True,
+            "auth_source": "env_token",
+            "auth_source_details": {"source": "GITHUB_TOKEN"},
+        }
+    try:
+        auth_status = _run_command(["gh", "auth", "status"], cwd=workspace, runner=runner)
+    except FileNotFoundError:
+        return {"ok": False}
+    if int(getattr(auth_status, "returncode", 1)) == 0:
+        summary = str(getattr(auth_status, "stdout", "")).strip()
+        login = ""
+        match = re.search(r"Logged in to github\.com as\s+([^\s]+)", summary)
+        if match:
+            login = match.group(1).strip()
+        return {
+            "ok": True,
+            "auth_source": "gh_cli",
+            "auth_source_details": {
+                "command": "gh auth status",
+                "login": login,
+            },
+        }
+    return {"ok": False}
+
+
 def _has_github_auth(env: Mapping[str, str] | None = None) -> bool:
     source = dict(os.environ)
     if env is not None:
@@ -135,7 +177,13 @@ def _run_command(command: list[str], *, cwd: Path, runner: Runner | None = None)
     return executor(command, cwd=str(cwd), capture_output=True, text=True, check=False)
 
 
-def _require_gh(workspace: Path, *, which: Which | None = None, env: Mapping[str, str] | None = None) -> dict[str, Any] | None:
+def _require_gh(
+    workspace: Path,
+    *,
+    which: Which | None = None,
+    env: Mapping[str, str] | None = None,
+    runner: Runner | None = None,
+) -> dict[str, Any] | None:
     locator = which or shutil.which
     if not locator("gh"):
         return _blocked(
@@ -144,14 +192,15 @@ def _require_gh(workspace: Path, *, which: Which | None = None, env: Mapping[str
             "missing_gh_cli",
             "GitHub CLI is required for repository preparation.",
         )
-    if not _has_github_auth(env):
+    auth_resolution = _resolve_github_auth(workspace, runner=runner, env=env)
+    if not auth_resolution.get("ok"):
         return _blocked(
             workspace,
             "github-repository-prepare.json",
             "missing_github_auth",
             "GitHub credentials are required for repository preparation.",
         )
-    return None
+    return auth_resolution
 
 
 def _parse_repo_view(stdout: str) -> dict[str, Any]:
@@ -177,8 +226,8 @@ def prepare_github_repository(
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     workspace = _ensure_workspace(workspace_path)
-    blocked = _require_gh(workspace, which=which, env=env)
-    if blocked:
+    blocked = _require_gh(workspace, which=which, env=env, runner=runner)
+    if blocked and not blocked.get("ok", False):
         return blocked
 
     if repository_mode not in {"create", "attach"}:
@@ -263,6 +312,8 @@ def prepare_github_repository(
                 "default_branch": default_branch,
                 "remote_name": remote,
                 "command": "gh repo create" if repository_mode == "create" else "gh repo view",
+                "auth_source": blocked.get("auth_source", ""),
+                "auth_source_details": dict(blocked.get("auth_source_details", {})),
             },
         )
         return {
@@ -275,6 +326,8 @@ def prepare_github_repository(
             "repository_url": canonical_url,
             "default_branch": default_branch,
             "remote_name": remote,
+            "auth_source": blocked.get("auth_source", ""),
+            "auth_source_details": dict(blocked.get("auth_source_details", {})),
         }
     except GithubDeliveryError:
         raise

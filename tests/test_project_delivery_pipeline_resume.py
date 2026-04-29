@@ -215,6 +215,9 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         updated = self.read_json(authority_path)
         self.assertEqual(updated["pipeline"]["workspace_path"], workspace.as_posix())
         self.assertEqual(updated["pipeline"]["delivery_run_id"], "delivery-lead-capture-copilot-001")
+        self.assertEqual(updated["shipping"]["github"]["repository_owner"], "profit-corp")
+        self.assertEqual(updated["shipping"]["github"]["repository_name"], "profit-corp/lead-capture-copilot")
+        self.assertEqual(updated["shipping"]["github"]["repository_url"], "https://github.com/profit-corp/lead-capture-copilot.git")
         events = self.read_events(project_dir)
         self.assertEqual([event["stage"] for event in events], ["workspace_instantiation", "conformance", "delivery_run_bootstrap", "github_repository", "github_sync", "vercel_linkage"])
 

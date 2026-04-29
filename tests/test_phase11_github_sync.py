@@ -76,6 +76,8 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertEqual(create_result["repository_name"], "profit-corp/demo-app")
         self.assertEqual(create_result["default_branch"], "trunk")
         self.assertEqual(create_result["remote_name"], "origin")
+        self.assertEqual(create_result["auth_source"], "env_token")
+        self.assertEqual(create_result["auth_source_details"]["source"], "GH_TOKEN")
         self.assertEqual(create_result["block_reason"], "")
 
         attach_result = self.helper_module.prepare_github_repository(
@@ -93,6 +95,8 @@ class Phase11GithubSyncTests(unittest.TestCase):
         self.assertEqual(attach_result["repository_name"], "profit-corp/existing-demo-app")
         self.assertEqual(attach_result["repository_url"], "https://github.com/profit-corp/existing-demo-app.git")
         self.assertEqual(attach_result["default_branch"], "release")
+        self.assertEqual(attach_result["auth_source"], "env_token")
+        self.assertEqual(attach_result["auth_source_details"]["source"], "GITHUB_TOKEN")
 
         self.assertEqual(commands[0][:4], ["git", "init", "-b", "main"])
         self.assertEqual(commands[1][:3], ["gh", "repo", "create"])
@@ -156,6 +160,44 @@ class Phase11GithubSyncTests(unittest.TestCase):
             env=None,
         )
         self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["auth_source"], "env_token")
+        self.assertEqual(result["auth_source_details"]["source"], "GH_TOKEN")
+
+    def test_authenticated_gh_cli_session_counts_as_github_auth_without_env_token(self) -> None:
+        commands: list[list[str]] = []
+        original_env = dict(self.helper_module.os.environ)
+        self.addCleanup(lambda: self.helper_module.os.environ.clear() or self.helper_module.os.environ.update(original_env))
+        self.helper_module.os.environ.clear()
+
+        def runner(cmd: list[str], **kwargs):
+            commands.append(list(cmd))
+            if cmd[:3] == ["gh", "auth", "status"]:
+                return CompletedProcessStub(returncode=0, stdout="github.com\n  Logged in to github.com as profit-corp\n")
+            if cmd[:3] == ["gh", "repo", "view"]:
+                return CompletedProcessStub(
+                    stdout=json.dumps(
+                        {
+                            "nameWithOwner": "profit-corp/demo-app",
+                            "url": "https://github.com/profit-corp/demo-app",
+                            "defaultBranchRef": {"name": "main"},
+                        }
+                    )
+                )
+            raise AssertionError(f"unexpected command: {cmd}")
+
+        result = self.helper_module.prepare_github_repository(
+            workspace_path=self.workspace,
+            repository_mode="attach",
+            repository_owner="profit-corp",
+            repository_name="demo-app",
+            runner=runner,
+            which=lambda _: "/usr/bin/gh",
+            env={},
+        )
+        self.assertTrue(result["ok"], msg=result)
+        self.assertEqual(result["auth_source"], "gh_cli")
+        self.assertEqual(result["auth_source_details"]["command"], "gh auth status")
+        self.assertEqual(commands[0][:3], ["gh", "auth", "status"])
 
     def test_sync_workspace_to_github_persists_detected_default_branch_instead_of_assuming_main(self) -> None:
         commands: list[list[str]] = []
