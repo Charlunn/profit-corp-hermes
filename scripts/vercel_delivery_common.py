@@ -24,6 +24,28 @@ PLATFORM_MANAGED_ENV_NAMES = [
     "PAYPAL_CLIENT_SECRET",
 ]
 IDENTITY_ENV_NAMES = ["APP_KEY", "APP_NAME", "APP_URL", "PAYPAL_BRAND_NAME"]
+AUTH_ERROR_PATTERNS = (
+    "invalid token",
+    "token invalid",
+    "not authenticated",
+    "unauthorized",
+    "forbidden",
+    "please login",
+    "please log in",
+    "login required",
+    "authentication required",
+    "run vercel login",
+    "log in to vercel",
+)
+SCOPE_ERROR_PATTERNS = (
+    "do not have access to the requested scope",
+    "scope not found",
+    "team not found",
+    "project not found",
+    "not authorized for this project",
+    "no access to project",
+    "permission denied for scope",
+)
 
 
 class VercelDeliveryError(Exception):
@@ -74,6 +96,16 @@ def _blocked(workspace: Path, evidence_name: str, block_reason: str, message: st
         "evidence_path": evidence_path,
         **extra,
     }
+
+
+
+def _classify_vercel_failure(stderr: str, stdout: str = "") -> str | None:
+    summary = _safe_summary(f"{stderr}\n{stdout}").lower()
+    if any(pattern in summary for pattern in AUTH_ERROR_PATTERNS):
+        return "invalid_vercel_auth"
+    if any(pattern in summary for pattern in SCOPE_ERROR_PATTERNS):
+        return "inaccessible_vercel_scope"
+    return None
 
 
 
@@ -162,30 +194,74 @@ def _resolve_vercel_command(which: Which | None = None) -> list[str] | None:
 
 
 
+def _resolve_vercel_auth(
+    workspace: Path,
+    command_prefix: list[str],
+    *,
+    env: Mapping[str, str] | None = None,
+    runner: Runner | None = None,
+    evidence_name: str,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    source = dict(env or {})
+    token = str(source.get("VERCEL_TOKEN", "")).strip()
+    if token:
+        return {
+            "auth_source": "vercel_token",
+            "auth_source_details": {
+                "token_supplied": True,
+            },
+        }, None
+
+    probe = _run_command([*command_prefix, "whoami"], cwd=workspace, runner=runner, env=env)
+    if int(getattr(probe, "returncode", 1)) == 0:
+        username = str(getattr(probe, "stdout", "")).strip().splitlines()
+        return {
+            "auth_source": "vercel_cli_session",
+            "auth_source_details": {
+                "username": username[-1].strip() if username else "",
+            },
+        }, None
+
+    stderr_summary = _safe_summary(getattr(probe, "stderr", ""))
+    stdout_summary = _safe_summary(getattr(probe, "stdout", ""))
+    failure_reason = _classify_vercel_failure(stderr_summary, stdout_summary) or "invalid_vercel_auth"
+    return None, _blocked(
+        workspace,
+        evidence_name,
+        failure_reason,
+        "Vercel authentication is required before project linkage or deploy automation can run.",
+        stderr_summary=stderr_summary,
+        stdout_summary=stdout_summary,
+    )
+
+
+
 def _require_vercel(
     workspace: Path,
     *,
     env: Mapping[str, str] | None = None,
+    runner: Runner | None = None,
     which: Which | None = None,
     evidence_name: str = "vercel-linkage.json",
-) -> tuple[list[str] | None, dict[str, Any] | None]:
+) -> tuple[list[str] | None, dict[str, Any] | None, dict[str, Any] | None]:
     command = _resolve_vercel_command(which=which)
     if not command:
-        return None, _blocked(
+        return None, None, _blocked(
             workspace,
             evidence_name,
             "missing_vercel_cli",
             "Vercel CLI is required for project linkage and deploy automation.",
         )
-    source = dict(env or {})
-    if not source.get("VERCEL_TOKEN"):
-        return None, _blocked(
-            workspace,
-            evidence_name,
-            "missing_vercel_auth",
-            "VERCEL_TOKEN is required for non-interactive Vercel automation.",
-        )
-    return command, None
+    auth_result, blocked = _resolve_vercel_auth(
+        workspace,
+        command,
+        env=env,
+        runner=runner,
+        evidence_name=evidence_name,
+    )
+    if blocked:
+        return None, None, blocked
+    return command, auth_result, None
 
 
 
@@ -224,7 +300,13 @@ def link_vercel_project(
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     workspace = _ensure_workspace(workspace_path)
-    command_prefix, blocked = _require_vercel(workspace, env=env, which=which, evidence_name="vercel-linkage.json")
+    command_prefix, auth_result, blocked = _require_vercel(
+        workspace,
+        env=env,
+        runner=runner,
+        which=which,
+        evidence_name="vercel-linkage.json",
+    )
     if blocked:
         return blocked
 
@@ -250,12 +332,15 @@ def link_vercel_project(
     ]
     result = _run_command(link_command, cwd=workspace, runner=runner, env=env)
     if int(getattr(result, "returncode", 1)) != 0:
+        stderr_summary = _safe_summary(getattr(result, "stderr", ""))
+        stdout_summary = _safe_summary(getattr(result, "stdout", ""))
         return _blocked(
             workspace,
             "vercel-linkage.json",
-            "vercel_linkage_failed",
+            _classify_vercel_failure(stderr_summary, stdout_summary) or "vercel_linkage_failed",
             "Vercel project linkage failed.",
-            stderr_summary=_safe_summary(getattr(result, "stderr", "")),
+            stderr_summary=stderr_summary,
+            stdout_summary=stdout_summary,
             project_name=validated_project_name,
             team_scope=validated_team_scope,
         )
@@ -267,6 +352,7 @@ def link_vercel_project(
         "project_name": validated_project_name,
         "team_scope": validated_team_scope,
         "project_url": f"https://vercel.com/{validated_team_scope}/{validated_project_name}",
+        **(auth_result or {}),
     }
     evidence_path = _write_json(_evidence_path(workspace, "vercel-linkage.json"), payload)
     payload["evidence_path"] = evidence_path
@@ -286,7 +372,13 @@ def apply_env_contract(
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     workspace = _ensure_workspace(workspace_path)
-    command_prefix, blocked = _require_vercel(workspace, env=env, which=which, evidence_name="vercel-env-contract.json")
+    command_prefix, auth_result, blocked = _require_vercel(
+        workspace,
+        env=env,
+        runner=runner,
+        which=which,
+        evidence_name="vercel-env-contract.json",
+    )
     if blocked:
         return blocked
 
@@ -317,12 +409,15 @@ def apply_env_contract(
             input_text=contract["identity_derived"][env_name] + "\n",
         )
         if int(getattr(result, "returncode", 1)) != 0:
+            stderr_summary = _safe_summary(getattr(result, "stderr", ""))
+            stdout_summary = _safe_summary(getattr(result, "stdout", ""))
             return _blocked(
                 workspace,
                 "vercel-env-contract.json",
-                "missing_vercel_env_contract",
+                _classify_vercel_failure(stderr_summary, stdout_summary) or "missing_vercel_env_contract",
                 f"Failed to apply Vercel env contract for {env_name}.",
-                stderr_summary=_safe_summary(getattr(result, "stderr", "")),
+                stderr_summary=stderr_summary,
+                stdout_summary=stdout_summary,
                 project_name=validated_project_name,
                 team_scope=validated_team_scope,
             )
@@ -337,6 +432,7 @@ def apply_env_contract(
             "platform_managed": contract["platform_managed"],
             "identity_derived": contract["identity_derived"],
         },
+        **(auth_result or {}),
     }
     evidence_path = _write_json(_evidence_path(workspace, "vercel-env-apply.json"), payload)
     payload["evidence_path"] = evidence_path
@@ -357,7 +453,13 @@ def deploy_to_vercel(
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     workspace = _ensure_workspace(workspace_path)
-    command_prefix, blocked = _require_vercel(workspace, env=env, which=which, evidence_name="vercel-deploy.json")
+    command_prefix, auth_result, blocked = _require_vercel(
+        workspace,
+        env=env,
+        runner=runner,
+        which=which,
+        evidence_name="vercel-deploy.json",
+    )
     if blocked:
         return blocked
 
@@ -396,12 +498,15 @@ def deploy_to_vercel(
     ]
     result = _run_command(deploy_command, cwd=workspace, runner=runner, env=env)
     if int(getattr(result, "returncode", 1)) != 0:
+        stderr_summary = _safe_summary(getattr(result, "stderr", ""))
+        stdout_summary = _safe_summary(getattr(result, "stdout", ""))
         return _blocked(
             workspace,
             "vercel-deploy.json",
-            "vercel_deploy_failed",
+            _classify_vercel_failure(stderr_summary, stdout_summary) or "vercel_deploy_failed",
             "Vercel deployment failed.",
-            stderr_summary=_safe_summary(getattr(result, "stderr", "")),
+            stderr_summary=stderr_summary,
+            stdout_summary=stdout_summary,
             project_name=validated_project_name,
         )
 
@@ -420,6 +525,7 @@ def deploy_to_vercel(
         "deployment_status": "ready",
         "deployment_url": deploy_url,
         "deployment_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+        **(auth_result or {}),
     }
     evidence_path = _write_json(_evidence_path(workspace, "vercel-deploy.json"), payload)
     payload["deploy_evidence_path"] = evidence_path
