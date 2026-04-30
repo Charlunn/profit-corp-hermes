@@ -13,7 +13,8 @@
 - `assets/shared/PAIN_POINTS.md`
 - `assets/shared/MARKET_PLAN.md`
 - `assets/shared/TECH_SPEC.md`
-- 管理方式：按角色责任写入，CEO 负责时序编排
+- `assets/shared/external_intelligence/`（含 `SOURCES.yaml`、`raw/`、`history/`、`LATEST_SUMMARY.md`）
+- 管理方式：按角色责任写入，CEO 负责时序编排；外部情报采集产物由 external-intelligence collector workflow 写入，所有 profile 可读
 
 ### L3 — Governance & Learning Artifacts
 - `assets/shared/CORP_CULTURE.md`
@@ -29,6 +30,7 @@
 | `PAIN_POINTS.md` | scout | ceo (fallback) | all profiles |
 | `MARKET_PLAN.md` | cmo | ceo (fallback) | all profiles |
 | `TECH_SPEC.md` | arch | ceo (fallback) | all profiles |
+| `external_intelligence/` artifacts | external-intelligence collector workflow | ceo (fallback for summaries only) | all profiles |
 | `CORP_CULTURE.md` | ceo/accountant | none | all profiles |
 | `KNOWLEDGE_BASE.md` | ceo/accountant | role owner for domain cards | all profiles |
 | `POST_MORTEM.md` | accountant | ceo | all profiles |
@@ -41,8 +43,9 @@
 1. Scout 产出 `PAIN_POINTS.md`
 2. CMO 产出 `MARKET_PLAN.md`
 3. Arch 产出 `TECH_SPEC.md`
-4. CEO 决策并写 `CORP_CULTURE.md`
-5. Accountant 审计并更新 ledger（通过脚本）
+4. 外部情报采集流程更新 `assets/shared/external_intelligence/raw/`、`history/` 与 `LATEST_SUMMARY.md`
+5. CEO 决策并写 `CORP_CULTURE.md`
+6. Accountant 审计并更新 ledger（通过脚本）
 
 若任一步失败：
 - 不推进到下一步
@@ -57,6 +60,7 @@
 2. 文档写入冲突
 - 同一业务文档同时仅允许一个角色写入
 - CEO 负责编排顺序；并行只用于不同文档
+- `assets/shared/external_intelligence/` 下的 raw/history/latest-summary 由 collector workflow 串行写入，不与 ledger 写入路径混用
 
 3. 回滚策略
 - 错误写入后优先追加修正记录，不做静默覆盖
@@ -67,6 +71,9 @@
 - `/revenue` 当 `amt >= 1000` 必须 `/confirm`
 - `/bounty` 当 `amount >= 500` 必须 `/confirm`
 - `/archive` 永远需要 `/confirm`
+- Phase 4 起，高影响 finance / archive / fallback takeover / state transition 动作必须先生成治理事件，再由 `scripts/enforce_governed_action.py` 放行后才可执行。
+- CEO fallback 接管 `PAIN_POINTS.md` / `MARKET_PLAN.md` / `TECH_SPEC.md` 时，必须使用 `fallback.takeover.*` 类型治理动作，并在事件中记录 `primary_writer`、原因与 decision package backlink。
+- `LEDGER.json` 的治理放行不改变权威写路径：即使审批通过，也只能继续调用 `manage_finance.py`，不得直接写 ledger 文件。
 
 ## 6. Skill Mapping to State Rules
 

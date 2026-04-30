@@ -1,0 +1,41 @@
+version: 1
+sources:
+  - id: trend-public-01
+    category: trend
+    kind: rss
+    display_name: Trend Source Placeholder
+    base_url: ""
+    collection_method: rss
+    enabled: false
+    poll_window_hours: 24
+    dedupe_key_fields:
+      - url
+      - title
+      - published_at
+    notes: Replace with an approved public trend source URL before enabling.
+  - id: competitor-public-01
+    category: competitor
+    kind: page
+    display_name: Competitor Source Placeholder
+    base_url: ""
+    collection_method: page
+    enabled: false
+    poll_window_hours: 24
+    dedupe_key_fields:
+      - url
+      - title
+      - published_at
+    notes: Replace with an approved public competitor source URL before enabling.
+  - id: complaint-public-01
+    category: complaint
+    kind: page
+    display_name: Complaint Source Placeholder
+    base_url: ""
+    collection_method: page
+    enabled: false
+    poll_window_hours: 24
+    dedupe_key_fields:
+      - url
+      - title
+      - published_at
+    notes: Replace with an approved public complaint/community source URL before enabling.

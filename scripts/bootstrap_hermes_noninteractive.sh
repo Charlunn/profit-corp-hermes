@@ -43,6 +43,23 @@ install_hermes_if_missing() {
   command -v hermes >/dev/null 2>&1 || err "Hermes not found after install"
 }
 
+install_ui_ux_pro_max() {
+  if ! command -v npm >/dev/null 2>&1; then
+    log "npm not found; skipping UI/UX Pro Max install"
+    return 0
+  fi
+
+  if ! command -v uipro >/dev/null 2>&1; then
+    log "Installing UI/UX Pro Max CLI"
+    npm install -g uipro-cli || err "Failed to install uipro-cli"
+  else
+    log "UI/UX Pro Max CLI already installed"
+  fi
+
+  (cd "$ROOT_DIR" && uipro init --ai claude)
+  log "UI/UX Pro Max skill installed for Claude Code"
+}
+
 copy_default_config() {
   mkdir -p "$HERMES_HOME_DEFAULT"
 
@@ -143,6 +160,7 @@ main() {
   resolve_python
 
   install_hermes_if_missing
+  install_ui_ux_pro_max
   copy_default_config
   setup_profiles
   ensure_ceo_default_profile
@@ -150,7 +168,8 @@ main() {
   setup_optional_cron
   run_optional_smoke
 
-  hermes doctor
+  log "Running Hermes doctor"
+  hermes doctor || log "Hermes doctor reported issues"
   "$PYTHON_BIN" -m py_compile "$ROOT_DIR/assets/shared/manage_finance.py" || true
 
   log "Done"

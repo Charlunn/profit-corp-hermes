@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-04-29T04:49:06Z",
+  "run_id": "decision-package-20260429",
+  "operating_package_path": "assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md",
+  "derived_from": {
+    "prioritized_shortlist_path": "assets/shared/external_intelligence/triage/prioritized_signals.json",
+    "role_outputs": [
+      "assets/shared/PAIN_POINTS.md",
+      "assets/shared/MARKET_PLAN.md",
+      "assets/shared/TECH_SPEC.md",
+      "assets/shared/CEO_RANKING.md"
+    ]
+  },
+  "judgment_links": [
+    {
+      "judgment_id": "opp-idea-001",
+      "idea_id": "IDEA-001",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    },
+    {
+      "judgment_id": "opp-idea-002",
+      "idea_id": "IDEA-002",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-002",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    },
+    {
+      "judgment_id": "risk-idea-001-scope",
+      "idea_id": "IDEA-001",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    },
+    {
+      "judgment_id": "risk-idea-001-breadth",
+      "idea_id": "IDEA-001",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    },
+    {
+      "judgment_id": "action-idea-001-interviews",
+      "idea_id": "IDEA-001",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    },
+    {
+      "judgment_id": "action-idea-001-prototype",
+      "idea_id": "IDEA-001",
+      "upstream_paths": [
+        "assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001",
+        "assets/shared/external_intelligence/history/signals.jsonl",
+        "assets/shared/external_intelligence/triage/clusters.json"
+      ],
+      "role_artifacts": [
+        "assets/shared/PAIN_POINTS.md",
+        "assets/shared/MARKET_PLAN.md",
+        "assets/shared/TECH_SPEC.md",
+        "assets/shared/CEO_RANKING.md"
+      ]
+    }
+  ]
+}

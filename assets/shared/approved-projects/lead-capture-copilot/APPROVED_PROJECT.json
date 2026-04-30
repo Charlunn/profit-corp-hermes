@@ -1,0 +1,115 @@
+{
+  "approval": {
+    "approval_id": "APR-2026-04-27-01",
+    "approved_at": "2026-04-27T08:30:00Z",
+    "approver": "owner",
+    "evidence": {
+      "decision_record": "assets/shared/CORP_CULTURE.md#greenlight-2026-04-27",
+      "summary": "Approved after confirming market pull and template fit."
+    }
+  },
+  "project_identity": {
+    "project_slug": "lead-capture-copilot",
+    "app_key": "lead_capture_copilot",
+    "app_name": "Lead Capture Copilot",
+    "app_url": "https://lead-capture.example.com"
+  },
+  "approved_scope": [
+    "capture inbound lead notes",
+    "score urgency and intent",
+    "show daily follow-up queue"
+  ],
+  "target_user": "Solo operators who need to qualify inbound leads quickly.",
+  "mvp_framing": "Turn incoming lead notes into ranked follow-up actions.",
+  "constraints": [
+    "reuse shared Supabase auth and payments",
+    "keep delivery scope approved-brief-only"
+  ],
+  "acceptance_gates": [
+    "brief generated",
+    "workspace bootstrap ready"
+  ],
+  "pipeline": {
+    "stage": "vercel_deploy",
+    "status": "completed",
+    "block_reason": null,
+    "resume_from_stage": "handoff",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
+    "delivery_run_id": "delivery-lead-capture-copilot-001",
+    "blocked_downstream_stages": [],
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md"
+  },
+  "artifacts": {
+    "project_directory": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot",
+    "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
+    "delivery_brief_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/PROJECT_BRIEF.md",
+    "template_contract_path": "docs/platform/standalone-saas-template-contract.md",
+    "project_metadata_path": ".hermes/project-metadata.json",
+    "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
+    "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+    "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+    "final_review_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/FINAL_OPERATOR_REVIEW.md",
+    "events_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/approved-delivery-events.jsonl",
+    "status_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/DELIVERY_PIPELINE_STATUS.md",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot",
+    "delivery_manifest_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/delivery-run-manifest.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md"
+  },
+  "shipping": {
+    "github": {
+      "delivery_run_id": "delivery-lead-capture-copilot-001",
+      "repository_mode": "attach",
+      "repository_owner": "Charlunn",
+      "repository_name": "Charlunn/lead-capture-copilot",
+      "repository_url": "https://github.com/Charlunn/lead-capture-copilot.git",
+      "default_branch": "main",
+      "remote_name": "origin",
+      "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot",
+      "last_sync_status": "completed",
+      "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/APPROVED_PROJECT.json",
+      "prepare_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-repository-prepare.json",
+      "prepare_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/lead-capture-copilot/credential-audit-github-repository-prepare.json",
+      "synced_commit": "a33956c",
+      "sync_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/github-sync.json"
+    },
+    "vercel": {
+      "project_name": "lead-capture-copilot",
+      "project_url": "https://vercel.com/charlunns-projects/lead-capture-copilot",
+      "team_scope": "charlunns-projects",
+      "env_contract_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-env-contract.json",
+      "deploy_status": "ready",
+      "project_id": "",
+      "linked": true,
+      "env_contract": {
+        "platform_managed": [],
+        "identity_derived": {
+          "APP_KEY": "lead_capture_copilot",
+          "APP_NAME": "Lead Capture Copilot",
+          "APP_URL": "https://lead-capture.example.com",
+          "PAYPAL_BRAND_NAME": "Lead Capture Copilot"
+        },
+        "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-env-contract.json"
+      },
+      "required_env": {
+        "platform_managed": [],
+        "identity_derived": {
+          "APP_KEY": "lead_capture_copilot",
+          "APP_NAME": "Lead Capture Copilot",
+          "APP_URL": "https://lead-capture.example.com",
+          "PAYPAL_BRAND_NAME": "Lead Capture Copilot"
+        }
+      },
+      "deploy_url": "https://lead-capture-copilot-4hbmtl2mq-charlunns-projects.vercel.app",
+      "deploy_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json",
+      "deployment_url": "https://lead-capture-copilot-4hbmtl2mq-charlunns-projects.vercel.app",
+      "deployment_status": "ready",
+      "deployment_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/vercel-deploy.json"
+    }
+  },
+  "final_handoff": {
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md",
+    "link": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot/.hermes/FINAL_DELIVERY.md"
+  },
+  "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/.claude/worktrees/agent-ae15860b/generated-workspaces/lead-capture-copilot"
+}

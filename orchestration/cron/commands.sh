@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DAILY_PROMPT_FILE="$ROOT_DIR/orchestration/cron/daily_pipeline.prompt.md"
 HEALTH_PROMPT_FILE="$ROOT_DIR/orchestration/cron/health_check.prompt.md"
+EXTERNAL_INTELLIGENCE_PROMPT_FILE="$ROOT_DIR/orchestration/cron/external_intelligence.prompt.md"
 
 DAILY_NAME="ProfitCorp Daily Pipeline"
 HEALTH_NAME="ProfitCorp Health Check"
+ANALYSIS_LOOP_NAME="ProfitCorp Analysis Loop"
 ACTION="${1:-list}"
 
 log() { printf '[cron] %s\n' "$*"; }
@@ -106,6 +108,149 @@ run_daily() {
   hermes -p ceo cron run "$id"
 }
 
+run_intelligence() {
+  bash "$ROOT_DIR/scripts/run_external_intelligence.sh"
+}
+
+run_analysis_loop() {
+  bash "$ROOT_DIR/scripts/run_signal_analysis_loop.sh"
+}
+
+run_decision_packages() {
+  python "$ROOT_DIR/scripts/generate_decision_package.py"
+  python "$ROOT_DIR/scripts/derive_execution_package.py"
+  python "$ROOT_DIR/scripts/derive_board_briefing.py"
+  python "$ROOT_DIR/scripts/generate_operating_visibility.py"
+}
+
+run_visibility() {
+  python "$ROOT_DIR/scripts/generate_operating_visibility.py"
+}
+
+run_governed_action() {
+  [ "$#" -ge 2 ] || { echo "Usage: bash orchestration/cron/commands.sh run-governed-action <action-id> <command...>"; return 1; }
+  local action_id="$1"
+  shift
+  python "$ROOT_DIR/scripts/enforce_governed_action.py" --action-id "$action_id" --command "$@"
+}
+
+start_delivery_run() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_delivery_run.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh start-delivery-run <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_delivery_run.py" --workspace-path "$1"
+}
+
+append_delivery_event_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/append_delivery_event.py" --help
+    return 0
+  fi
+  [ "$#" -ge 2 ] || { echo "Usage: bash orchestration/cron/commands.sh append-delivery-event <workspace-path> <event-json>"; return 1; }
+  python "$ROOT_DIR/scripts/append_delivery_event.py" --workspace-path "$1" --event-json "$2"
+}
+
+render_delivery_status_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/render_delivery_status.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh render-delivery-status <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/render_delivery_status.py" --workspace-path "$1"
+}
+
+request_scope_reopen_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/request_scope_reopen.py" --help
+    return 0
+  fi
+  [ "$#" -ge 6 ] || { echo "Usage: bash orchestration/cron/commands.sh request-scope-reopen <workspace-path> <run-id> <stage> <role> <target-artifact> <reason>"; return 1; }
+  python "$ROOT_DIR/scripts/request_scope_reopen.py" --workspace-path "$1" --run-id "$2" --stage "$3" --role "$4" --target-artifact "$5" --reason "$6"
+}
+
+validate_delivery_handoff_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/validate_delivery_handoff.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh validate-delivery-handoff <workspace-path>"; return 1; }
+  python "$ROOT_DIR/scripts/validate_delivery_handoff.py" --workspace-path "$1"
+}
+
+resume_approved_delivery() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh resume-approved-delivery <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
+start_approved_delivery() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh start-approved-delivery <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1"
+}
+
+render_approved_delivery_status_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/render_approved_delivery_status.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh render-approved-delivery-status <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/render_approved_delivery_status.py" --project-dir "$1"
+}
+
+validate_approved_delivery_pipeline_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/validate_approved_delivery_pipeline.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh validate-approved-delivery-pipeline <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/validate_approved_delivery_pipeline.py" --approved-project-path "$1"
+}
+
+prepare_approved_delivery_github() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh prepare-approved-delivery-github <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
+sync_approved_delivery_github() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh sync-approved-delivery-github <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
+link_approved_delivery_vercel() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh link-approved-delivery-vercel <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
+deploy_approved_delivery_vercel() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh deploy-approved-delivery-vercel <approved-project-path>"; return 1; }
+  python "$ROOT_DIR/scripts/start_approved_project_delivery.py" --authority-record-path "$1" --resume
+}
+
 pause_all() {
   local id
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
@@ -124,9 +269,69 @@ case "$ACTION" in
   list) list_jobs ;;
   status) status_jobs ;;
   run-daily) run_daily ;;
+  run-intelligence) run_intelligence ;;
+  run-analysis-loop) run_analysis_loop ;;
+  run-decision-packages) run_decision_packages ;;
+  run-visibility) run_visibility ;;
+  run-governed-action)
+    shift
+    run_governed_action "$@"
+    ;;
+  start-delivery-run)
+    shift
+    start_delivery_run "$@"
+    ;;
+  append-delivery-event)
+    shift
+    append_delivery_event_cmd "$@"
+    ;;
+  render-delivery-status)
+    shift
+    render_delivery_status_cmd "$@"
+    ;;
+  request-scope-reopen)
+    shift
+    request_scope_reopen_cmd "$@"
+    ;;
+  validate-delivery-handoff)
+    shift
+    validate_delivery_handoff_cmd "$@"
+    ;;
+  start-approved-delivery)
+    shift
+    start_approved_delivery "$@"
+    ;;
+  render-approved-delivery-status)
+    shift
+    render_approved_delivery_status_cmd "$@"
+    ;;
+  validate-approved-delivery-pipeline)
+    shift
+    validate_approved_delivery_pipeline_cmd "$@"
+    ;;
+  resume-approved-delivery)
+    shift
+    resume_approved_delivery "$@"
+    ;;
+  prepare-approved-delivery-github)
+    shift
+    prepare_approved_delivery_github "$@"
+    ;;
+  sync-approved-delivery-github)
+    shift
+    sync_approved_delivery_github "$@"
+    ;;
+  link-approved-delivery-vercel)
+    shift
+    link_approved_delivery_vercel "$@"
+    ;;
+  deploy-approved-delivery-vercel)
+    shift
+    deploy_approved_delivery_vercel "$@"
+    ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|start-approved-delivery|render-approved-delivery-status|validate-approved-delivery-pipeline|resume-approved-delivery|prepare-approved-delivery-github|sync-approved-delivery-github|link-approved-delivery-vercel|deploy-approved-delivery-vercel|pause-all]"
     exit 1
     ;;
 esac

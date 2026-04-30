@@ -1,0 +1,59 @@
+{
+  "asset_id": "standalone-saas-template",
+  "governance_scope": "single-template-first",
+  "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
+  "source": {
+    "repo_path": "C:/Users/42236/Desktop/standalone-saas-template",
+    "intended_use": "Hermes-approved mini-SaaS project bootstrap"
+  },
+  "supported_stack": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@supabase/supabase-js": "^2.49.1",
+    "typescript": "^5.6.3"
+  },
+  "governance": {
+    "status": "canonical",
+    "owner": "Hermes platform",
+    "contract_path": "docs/platform/standalone-saas-template-contract.md"
+  },
+  "shared_backend": {
+    "description": "shared backend governance for the single shared Supabase delivery model",
+    "mode": "shared-supabase",
+    "allow_independent_backend": false,
+    "shared_tables": [
+      "users",
+      "orders",
+      "payments",
+      "subscriptions"
+    ],
+    "business_table_prefix": "APP_KEY_",
+    "protected_paths": [
+      "src/lib/auth.ts",
+      "src/lib/supabase-browser.ts",
+      "src/lib/supabase-server.ts",
+      "src/lib/paypal.ts",
+      "src/lib/entitlement.ts",
+      "src/lib/db-guards.ts",
+      "src/app/api/auth/session/route.ts",
+      "src/app/api/paypal/checkout/route.ts",
+      "src/app/api/paypal/capture/route.ts",
+      "supabase/migrations/20260423112500_create_shared_public_tables.sql"
+    ],
+    "client_write_blocked_tables": [
+      "users",
+      "orders",
+      "payments",
+      "subscriptions"
+    ]
+  },
+  "canonical_refs": {
+    "upstream": [
+      "README.md",
+      "ARCHITECTURE.md",
+      "BUILDING_RULES.md"
+    ],
+    "operational_truth": "docs/platform/standalone-saas-template-contract.md"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "generated_at": "2026-04-29T04:49:05.837361Z",
+  "window_hours": 48,
+  "source_history": "assets/shared/external_intelligence/history/signals.jsonl",
+  "cluster_count": 2,
+  "clusters": [
+    {
+      "cluster_id": "cluster-001",
+      "lead_signal_id": "0aaf6396b12769e7",
+      "representative_title": ". Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th",
+      "problem_summary": ". Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns the code Claude Code wrote?",
+      "member_signal_ids": [
+        "0aaf6396b12769e7"
+      ],
+      "member_count": 1,
+      "evidence_count": 1,
+      "evidence_links": [
+        "https://news.ycombinator.com/"
+      ],
+      "source_ids": [
+        "web-discovery-default-2"
+      ],
+      "latest_signal_at": "2026-04-29T04:39:14Z",
+      "oldest_signal_at": "2026-04-29T04:39:14Z",
+      "keywords": [
+        "claude",
+        "code",
+        "hide",
+        "intel",
+        "owns",
+        "points",
+        "pugetsystems",
+        "review",
+        "wrote"
+      ],
+      "confidence": 6.0,
+      "generated_at": "2026-04-29T04:49:05.837361Z"
+    },
+    {
+      "cluster_id": "cluster-002",
+      "lead_signal_id": "2a91c98a88e5e06b",
+      "representative_title": "States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude",
+      "problem_summary": "States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude Wrote?",
+      "member_signal_ids": [
+        "2a91c98a88e5e06b"
+      ],
+      "member_count": 1,
+      "evidence_count": 1,
+      "evidence_links": [
+        "https://lobste.rs/"
+      ],
+      "source_ids": [
+        "web-discovery-default-1"
+      ],
+      "latest_signal_at": "2026-04-29T04:39:11Z",
+      "oldest_signal_at": "2026-04-29T04:39:11Z",
+      "keywords": [
+        "ajdecon",
+        "buttondown",
+        "claude",
+        "code",
+        "formalmethods",
+        "hillelwayne",
+        "owns",
+        "states",
+        "wrote"
+      ],
+      "confidence": 6.0,
+      "generated_at": "2026-04-29T04:49:05.837361Z"
+    }
+  ]
+}

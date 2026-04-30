@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-04-29T04:49:05.837361Z",
+  "window_hours": 48,
+  "source_history": "assets/shared/external_intelligence/history/signals.jsonl",
+  "prioritized_count": 2,
+  "prioritized_signals": [
+    {
+      "cluster_id": "cluster-001",
+      "lead_signal_id": "0aaf6396b12769e7",
+      "title": ". Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th",
+      "problem_summary": ". Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns the code Claude Code wrote?",
+      "target_user": "Developers and technical operators",
+      "evidence_links": [
+        "https://news.ycombinator.com/"
+      ],
+      "evidence_count": 1,
+      "latest_evidence_age_hours": 0.16,
+      "source_ids": [
+        "web-discovery-default-2"
+      ],
+      "score_components": {
+        "urgency_pain": 4.0,
+        "evidence_strength": 4.0,
+        "recency": 10.0,
+        "monetization_signal": 5.0,
+        "competition_signal": 7.0,
+        "confidence": 6.0
+      },
+      "estimated_mvp_hours": 10,
+      "notes": "Derived from 1 clustered signals sharing title/url/keyword evidence.",
+      "generated_from": {
+        "history_path": "assets/shared/external_intelligence/history/signals.jsonl",
+        "cluster_path": "assets/shared/external_intelligence/triage/clusters.json",
+        "representative_url": "https://news.ycombinator.com/"
+      },
+      "generated_at": "2026-04-29T04:49:05.837361Z",
+      "total_score": 58.5,
+      "rank": 1,
+      "idea_id": "IDEA-001"
+    },
+    {
+      "cluster_id": "cluster-002",
+      "lead_signal_id": "2a91c98a88e5e06b",
+      "title": "States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude",
+      "problem_summary": "States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude Wrote?",
+      "target_user": "Developers and technical operators",
+      "evidence_links": [
+        "https://lobste.rs/"
+      ],
+      "evidence_count": 1,
+      "latest_evidence_age_hours": 0.17,
+      "source_ids": [
+        "web-discovery-default-1"
+      ],
+      "score_components": {
+        "urgency_pain": 4.0,
+        "evidence_strength": 4.0,
+        "recency": 10.0,
+        "monetization_signal": 5.0,
+        "competition_signal": 7.0,
+        "confidence": 6.0
+      },
+      "estimated_mvp_hours": 10,
+      "notes": "Derived from 1 clustered signals sharing title/url/keyword evidence.",
+      "generated_from": {
+        "history_path": "assets/shared/external_intelligence/history/signals.jsonl",
+        "cluster_path": "assets/shared/external_intelligence/triage/clusters.json",
+        "representative_url": "https://lobste.rs/"
+      },
+      "generated_at": "2026-04-29T04:49:05.837361Z",
+      "total_score": 58.5,
+      "rank": 2,
+      "idea_id": "IDEA-002"
+    }
+  ]
+}

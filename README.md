@@ -15,6 +15,7 @@ This repo keeps original `profit-corp` unchanged, and runs the system with:
 - `orchestration/cron/` — cron prompts and command helpers
 - `scripts/` — bootstrap, smoke test, and recovery scripts
 - `docs/` — migration, runbook, coordination, state contract, guardrails, operations
+- `docs/skill-governance/` — skill 标准化治理文档（playbook/routing/release/templates）
 
 ## Quick start (Linux)
 ```bash
@@ -40,6 +41,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_hermes.ps1 -SkipCro
 Project skill source:
 - `skills/common/` (available to all profiles)
 - `skills/ceo/` (CEO-specific directives)
+
+核心运行时规范技能（已激活到 `skills/common/`）：
+- `feature_planning`
+- `bugfix_safety`
+- `observability_check`
+- `migration_safety`
+- `release_readiness`
+- `test_strategy_planner`
+- `regression_planner`
+- `release_verification`
+- `rollback_decision_policy`
+
+完整规范库请查看：`skills/library/normalized/`。
 
 Bootstrap now syncs these into `~/.hermes/profiles/<role>/skills/` with overwrite confirmation.
 
@@ -71,3 +85,4 @@ bash orchestration/cron/commands.sh ensure
 - `docs/STATE_CONTRACT.md`
 - `docs/SELF_LEARNING_GUARDRAILS.md`
 - `docs/OPERATIONS.md`
+- `docs/skill-governance/README.md`
