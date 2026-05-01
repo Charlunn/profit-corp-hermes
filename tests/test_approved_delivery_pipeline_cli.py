@@ -163,7 +163,7 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("env contract", (result.stdout + result.stderr).lower())
 
-    def test_validator_passes_recovered_completed_state_while_preserving_blocked_history(self) -> None:
+    def test_validator_accepts_project_prefixed_relative_final_review_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
             approved_project.mkdir(parents=True)
@@ -241,8 +241,167 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                         },
                     },
                     "artifacts": {
-                        "final_review_path": final_review.as_posix(),
+                        "final_review_path": "assets/shared/approved-projects/demo-project/FINAL_OPERATOR_REVIEW.md",
                     },
+                },
+            )
+            self.write_jsonl(
+                approved_project / "approved-delivery-events.jsonl",
+                [
+                    {
+                        "stage": "github_sync",
+                        "status": "blocked",
+                        "outcome": "blocked",
+                        "block_reason": "github_sync_failed",
+                        "evidence_path": downstream.as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "vercel_deploy",
+                        "status": "completed",
+                        "outcome": "pass",
+                        "artifact": vercel_deploy.as_posix(),
+                        "evidence_path": vercel_deploy.as_posix(),
+                        "final_handoff_path": final_ref,
+                        "workspace_path": workspace.as_posix(),
+                        "shipping": {
+                            "github": {
+                                "repository_mode": "attach",
+                                "repository_owner": "profit-corp",
+                                "repository_name": "profit-corp/demo-project",
+                                "repository_url": "https://github.com/profit-corp/demo-project.git",
+                                "default_branch": "main",
+                                "synced_commit": "abc1234",
+                                "sync_evidence_path": github_sync.as_posix(),
+                                "sync_audit_path": github_sync_audit.as_posix(),
+                                "last_sync_status": "completed",
+                            },
+                            "vercel": {
+                                "project_name": "demo-project-prod",
+                                "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                                "team_scope": "profit-corp",
+                                "link_evidence_path": vercel_link.as_posix(),
+                                "env_contract_path": vercel_env.as_posix(),
+                                "linked": True,
+                                "deploy_status": "ready",
+                                "deploy_url": "https://demo-project.vercel.app",
+                                "deploy_evidence_path": vercel_deploy.as_posix(),
+                            },
+                        },
+                    },
+                ],
+            )
+            self.write_text(
+                approved_project / "DELIVERY_PIPELINE_STATUS.md",
+                "# Delivery Pipeline Status\n"
+                f"- **Authority Source**: `approved-delivery-events.jsonl`\n"
+                f"- **Authority Record**: `{(approved_project / 'APPROVED_PROJECT.json').as_posix()}`\n"
+                f"- **Final Operator Review**: `{final_review.as_posix()}`\n"
+                f"- **Project Slug**: `demo-project`\n"
+                f"- **Current Stage**: `vercel_deploy`\n"
+                f"- **Pipeline Status**: `completed`\n"
+                f"- **Latest Outcome**: `pass`\n"
+                f"- **Delivery Brief**: `{(approved_project / 'PROJECT_BRIEF.md').as_posix()}`\n"
+                f"- **Workspace Path**: `{workspace.as_posix()}`\n"
+                f"- **Delivery Run ID**: `not available`\n\n"
+                "## Final Operator Review\nRecovered final truth\n\n"
+                "## Action Required\n- No immediate operator action required; governed delivery surface is coherent.\n\n"
+                "## Approval Summary\n- Approval ID: `not available`\n- Approved At: `not available`\n- Approver: `not available`\n- Approval Evidence: `not available`\n- Approval Summary: `not available`\n\n"
+                f"## Blocked Prerequisites\n- Block Reason: `github_sync_failed`\n- Blocked Prerequisite Evidence: `{downstream.as_posix()}`\n- Resume From Stage: `handoff`\n- Blocked State Visible: `yes`\n\n"
+                f"## Credentialed Delivery Actions\n- GitHub Repository Mode: `attach`\n- GitHub Repository Owner: `profit-corp`\n- GitHub Repository Name: `profit-corp/demo-project`\n- GitHub Repository URL: `https://github.com/profit-corp/demo-project.git`\n- GitHub Default Branch: `main`\n- GitHub Synced Commit: `abc1234`\n- GitHub Sync Evidence Path: `{github_sync.as_posix()}`\n- GitHub Sync Audit Path: `{github_sync_audit.as_posix()}`\n- GitHub Sync Status: `completed`\n- Vercel Team Scope: `profit-corp`\n- Vercel Project ID: `not available`\n- Vercel Project Name: `demo-project-prod`\n- Vercel Project URL: `https://vercel.com/profit-corp/demo-project-prod`\n- Vercel Link Status: `yes`\n- Vercel Env Contract Path: `{vercel_env.as_posix()}`\n- Vercel Env Audit Path: `not available`\n- Vercel Deploy URL: `https://demo-project.vercel.app`\n- Vercel Deploy Status: `ready`\n- Vercel Deploy Evidence Path: `{vercel_deploy.as_posix()}`\n- Vercel Deploy Audit Path: `not available`\n\n"
+                "## Protected Change Review\n- Protected Change Classification: `not available`\n- Protected Change Status: `not available`\n- Protected Change Evidence: `not available`\n- Platform Justification Status: `not available`\n- Platform Justification Artifact: `not available`\n- Governance Action: `not available`\n\n"
+                f"## Deployment Outcome\n- Latest Stage Outcome: `pass`\n- Latest Artifact: `{vercel_deploy.as_posix()}`\n- Deployment Failure Visibility: `no`\n\n"
+                f"## Final Handoff\n- Final Handoff Path: `{final_ref}`\n- Handoff Status: `completed`\n\n"
+                "## Event History\n"
+                f"- stage=`github_sync` status=`blocked` outcome=`blocked` block_reason=`github_sync_failed` artifact=`not available` evidence=`{downstream.as_posix()}` handoff=`not available`\n"
+                f"- stage=`vercel_deploy` status=`completed` outcome=`pass` block_reason=`not available` artifact=`{vercel_deploy.as_posix()}` evidence=`{vercel_deploy.as_posix()}` handoff=`{final_ref}`\n\n"
+                "This latest view is derived from the append-only approved delivery event stream.\n",
+            )
+
+            result = self.run_validator(approved_project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_validator_accepts_project_prefixed_relative_conformance_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
+            approved_project.mkdir(parents=True)
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            hermes = workspace / ".hermes"
+            hermes.mkdir()
+
+            final_delivery = workspace / ".hermes" / "FINAL_DELIVERY.md"
+            manifest = workspace / ".hermes" / "delivery-run-manifest.json"
+            downstream = workspace / ".hermes" / "release-prerequisites.json"
+            github_sync = workspace / ".hermes" / "github-sync.json"
+            github_sync_audit = workspace / ".hermes" / "github-sync-audit.json"
+            vercel_link = workspace / ".hermes" / "vercel-link.json"
+            vercel_env = workspace / ".hermes" / "vercel-env-contract.json"
+            vercel_deploy = workspace / ".hermes" / "vercel-deploy.json"
+            final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
+            conformance = approved_project / "conformance-report.md"
+            self.write_text(final_delivery, "# Final delivery\n\n## 1) End-to-end Summary\n")
+            self.write_json(manifest, {"run_id": "run-1"})
+            self.write_json(downstream, {"ok": True})
+            self.write_json(github_sync, {"ok": True})
+            self.write_json(github_sync_audit, {"ok": True})
+            self.write_json(vercel_link, {"ok": True})
+            self.write_json(vercel_env, {"ok": True})
+            self.write_json(vercel_deploy, {"ok": True})
+            self.write_text(approved_project / "PROJECT_BRIEF.md", "# Brief\n")
+            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nRecovered completed state\nGitHub repository url present\nVercel deploy complete\n\n## Event History\nBlocked history preserved\n")
+            self.write_text(conformance, "# Conformance report\n\nStatus: ok\n")
+
+            final_ref = final_delivery.as_posix()
+            self.write_json(
+                approved_project / "APPROVED_PROJECT.json",
+                {
+                    "project_slug": "demo-project",
+                    "workspace_path": workspace.as_posix(),
+                    "phase9_delivery_run_manifest_path": manifest.as_posix(),
+                    "final_handoff": {"path": final_ref, "link": final_ref},
+                    "pipeline": {
+                        "stage": "vercel_deploy",
+                        "status": "completed",
+                        "block_reason": None,
+                        "resume_from_stage": "handoff",
+                        "workspace_path": workspace.as_posix(),
+                        "evidence_path": vercel_deploy.as_posix(),
+                        "final_handoff_path": final_ref,
+                    },
+                    "latest_blocked_prerequisite": {
+                        "path": downstream.as_posix(),
+                        "status": "resolved",
+                        "reason": "github_sync_failed",
+                    },
+                    "shipping": {
+                        "github": {
+                            "repository_mode": "attach",
+                            "repository_owner": "profit-corp",
+                            "repository_name": "profit-corp/demo-project",
+                            "repository_url": "https://github.com/profit-corp/demo-project.git",
+                            "default_branch": "main",
+                            "synced_commit": "abc1234",
+                            "sync_evidence_path": github_sync.as_posix(),
+                            "sync_audit_path": github_sync_audit.as_posix(),
+                            "last_sync_status": "completed",
+                        },
+                        "vercel": {
+                            "project_name": "demo-project-prod",
+                            "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                            "team_scope": "profit-corp",
+                            "env_contract_path": vercel_env.as_posix(),
+                            "linked": True,
+                            "deploy_status": "ready",
+                            "deploy_url": "https://demo-project.vercel.app",
+                            "deploy_evidence_path": vercel_deploy.as_posix(),
+                        },
+                    },
+                    "artifacts": {
+                        "final_review_path": final_review.as_posix(),
+                        "conformance_evidence_path": "assets/shared/approved-projects/demo-project/conformance-report.md",
+                    },
+                    "conformance_evidence_path": "assets/shared/approved-projects/demo-project/conformance-report.md",
                 },
             )
             self.write_jsonl(
@@ -344,7 +503,13 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             justification = approved_project / "PLATFORM_CHANGE_JUSTIFICATION.md"
             final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
             self.write_text(final_delivery, "# Final delivery\n\n## 1) End-to-end Summary\n")
-            self.write_json(manifest, {"run_id": "run-1", "stages": [{"stage": "design", "role": "designer", "artifact": ".hermes/stage-handoffs/01-design.md"}]})
+            self.write_json(manifest, {"run_id": "run-1", "stages": [
+                {"stage": "design", "role": "design-specialist", "artifact": ".hermes/stage-handoffs/01-design.md"},
+                {"stage": "development", "role": "development-specialist", "artifact": ".hermes/stage-handoffs/02-development.md"},
+                {"stage": "testing", "role": "testing-specialist", "artifact": ".hermes/stage-handoffs/03-testing.md"},
+                {"stage": "git versioning", "role": "git-versioning-specialist", "artifact": ".hermes/stage-handoffs/04-git-versioning.md"},
+                {"stage": "release readiness", "role": "release-readiness-specialist", "artifact": ".hermes/stage-handoffs/05-release-readiness.md"},
+            ]})
             self.write_json(conformance, {"ok": True})
             self.write_json(downstream, {"ok": True, "evidence": ["vercel", "github"]})
             self.write_json(github_sync, {"ok": True})
@@ -355,8 +520,12 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             self.write_json(vercel_deploy_audit, {"ok": True})
             self.write_json(protected_inventory, {"classification": "protected_platform_change"})
             self.write_text(justification, "# Platform change justification\n\nStatus: approved\n")
-            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nGitHub Sync Audit: ok\nVercel Deploy Audit: ok\n")
-            self.write_text(workspace / ".hermes" / "stage-handoffs" / "01-design.md", "placeholder")
+            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nGitHub Sync Audit: ok\nVercel Deploy Audit: ok\n## Specialist Delivery Stages\nClaude Code transcript recorded\nUI/UX preflight satisfied\n")
+            self.write_text(workspace / ".hermes" / "stage-handoffs" / "01-design.md", "# design\n")
+            self.write_text(workspace / ".hermes" / "stage-handoffs" / "02-development.md", "# development\n")
+            self.write_text(workspace / ".hermes" / "stage-handoffs" / "03-testing.md", "# testing\n")
+            self.write_text(workspace / ".hermes" / "stage-handoffs" / "04-git-versioning.md", "# git versioning\n")
+            self.write_text(workspace / ".hermes" / "stage-handoffs" / "05-release-readiness.md", "# release readiness\n")
 
             final_ref = final_delivery.as_posix()
             self.write_json(
@@ -417,6 +586,41 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                         "workspace_path": workspace.as_posix(),
                     },
                     {
+                        "stage": "design",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "01-design.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "development",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "02-development.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "development-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "testing",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "03-testing.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "testing-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "git_versioning",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "04-git-versioning.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "git-versioning-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "release_readiness",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "05-release-readiness.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "release-readiness-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
                         "stage": "handoff",
                         "status": "completed",
                         "final_handoff": {"path": final_ref, "link": final_ref},
@@ -451,6 +655,12 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                 f"- Platform justification artifact: {justification.as_posix()}\n"
                 f"- Governance action: gov-approval-001\n"
                 f"- Blocked prerequisite evidence: {downstream.as_posix()}\n"
+                "## Specialist Delivery Stages\n"
+                f"- design: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '01-design.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'design-claude-code.txt').as_posix()}`\n"
+                f"- development: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '02-development.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'development-claude-code.txt').as_posix()}`\n"
+                f"- testing: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '03-testing.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'testing-claude-code.txt').as_posix()}`\n"
+                f"- git_versioning: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '04-git-versioning.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'git-versioning-claude-code.txt').as_posix()}`\n"
+                f"- release_readiness: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '05-release-readiness.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'release-readiness-claude-code.txt').as_posix()}`\n"
                 f"- Final operator review: {final_review.as_posix()}\n",
             )
 
@@ -458,6 +668,166 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("validated approved delivery pipeline", result.stdout)
             self.assertIn("handoff", result.stdout)
+
+    def test_validator_accepts_resolved_block_history_when_current_handoff_truth_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
+            approved_project.mkdir(parents=True)
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            hermes = workspace / ".hermes"
+            hermes.mkdir()
+
+            final_delivery = workspace / ".hermes" / "FINAL_DELIVERY.md"
+            manifest = workspace / ".hermes" / "delivery-run-manifest.json"
+            conformance = workspace / ".hermes" / "template-conformance.json"
+            github_sync = workspace / ".hermes" / "github-sync.json"
+            vercel_env = workspace / ".hermes" / "vercel-env-contract.json"
+            vercel_deploy = workspace / ".hermes" / "vercel-deploy.json"
+            final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
+            status_path = approved_project / "DELIVERY_PIPELINE_STATUS.md"
+            self.write_text(final_delivery, "# Final delivery\n\n## 1) End-to-end Summary\n")
+            self.write_json(manifest, {"run_id": "run-1"})
+            self.write_json(conformance, {"ok": True})
+            self.write_json(github_sync, {"ok": True})
+            self.write_json(vercel_env, {"ok": True})
+            self.write_json(vercel_deploy, {"ok": True})
+            self.write_text(final_review, "# Final Operator Review\n\n## Credentialed Delivery Actions\nGitHub Sync Evidence Path: {}\nVercel Deploy Status: ready\n## Specialist Delivery Stages\nClaude Code transcript recorded\n".format(github_sync.as_posix()))
+
+            final_ref = final_delivery.as_posix()
+            self.write_json(
+                approved_project / "APPROVED_PROJECT.json",
+                {
+                    "pipeline": {
+                        "stage": "handoff",
+                        "status": "completed",
+                        "workspace_path": workspace.as_posix(),
+                        "resume_from_stage": "",
+                        "final_handoff_path": final_ref,
+                    },
+                    "artifacts": {
+                        "final_review_path": final_review.as_posix(),
+                    },
+                    "final_handoff": {"path": final_ref, "link": final_ref},
+                    "workspace_path": workspace.as_posix(),
+                    "conformance_evidence_path": conformance.as_posix(),
+                    "phase9_delivery_run_manifest_path": manifest.as_posix(),
+                    "latest_blocked_prerequisite": {
+                        "path": vercel_deploy.as_posix(),
+                        "status": "resolved",
+                        "reason": "vercel_deploy_completed",
+                    },
+                    "shipping": {
+                        "github": {
+                            "repository_mode": "attach",
+                            "repository_name": "profit-corp/demo-project",
+                            "repository_url": "https://github.com/profit-corp/demo-project.git",
+                            "default_branch": "main",
+                            "synced_commit": "abc1234",
+                            "sync_evidence_path": github_sync.as_posix(),
+                            "last_sync_status": "completed",
+                        },
+                        "vercel": {
+                            "project_name": "demo-project-prod",
+                            "project_url": "https://vercel.com/profit-corp/demo-project-prod",
+                            "team_scope": "profit-corp",
+                            "env_contract_path": vercel_env.as_posix(),
+                            "deploy_status": "ready",
+                            "deploy_url": "https://demo-project.vercel.app",
+                            "deploy_evidence_path": vercel_deploy.as_posix(),
+                        },
+                    },
+                },
+            )
+            self.write_text(approved_project / "PROJECT_BRIEF.md", "# Brief\n")
+            self.write_jsonl(
+                approved_project / "approved-delivery-events.jsonl",
+                [
+                    {
+                        "stage": "vercel_deploy",
+                        "status": "blocked",
+                        "outcome": "blocked",
+                        "block_reason": "vercel_deploy_failed",
+                        "evidence_path": vercel_deploy.as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "design",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "01-design.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "development",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "02-development.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "development-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "testing",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "03-testing.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "testing-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "git_versioning",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "04-git-versioning.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "git-versioning-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "release_readiness",
+                        "status": "ready",
+                        "artifact": (workspace / ".hermes" / "stage-handoffs" / "05-release-readiness.md").as_posix(),
+                        "evidence_path": (workspace / ".hermes" / "release-readiness-claude-code.txt").as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    },
+                    {
+                        "stage": "handoff",
+                        "status": "completed",
+                        "outcome": "pass",
+                        "final_handoff_path": final_ref,
+                        "workspace_path": workspace.as_posix(),
+                    },
+                ],
+            )
+            self.write_text(
+                status_path,
+                "# Delivery Pipeline Status\n\n"
+                "- Authority: approved-project\n"
+                f"- Workspace: {workspace.as_posix()}\n"
+                f"- Final handoff: {final_ref}\n"
+                "- Final operator review: FINAL_OPERATOR_REVIEW.md\n"
+                f"- Blocked prerequisite evidence: {vercel_deploy.as_posix()}\n"
+                "## Specialist Delivery Stages\n"
+                f"- design: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '01-design.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'design-claude-code.txt').as_posix()}`\n"
+                f"- development: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '02-development.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'development-claude-code.txt').as_posix()}`\n"
+                f"- testing: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '03-testing.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'testing-claude-code.txt').as_posix()}`\n"
+                f"- git_versioning: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '04-git-versioning.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'git-versioning-claude-code.txt').as_posix()}`\n"
+                f"- release_readiness: status=`ready` artifact=`{(workspace / '.hermes' / 'stage-handoffs' / '05-release-readiness.md').as_posix()}` evidence=`{(workspace / '.hermes' / 'release-readiness-claude-code.txt').as_posix()}`\n"
+                "- Protected change: not available\n"
+                "- Platform justification: not available\n"
+                "- GitHub repository mode: attach\n"
+                "- GitHub repository name: profit-corp/demo-project\n"
+                "- GitHub repository URL: https://github.com/profit-corp/demo-project.git\n"
+                "- GitHub default branch: main\n"
+                f"- GitHub synced commit: abc1234\n"
+                f"- GitHub sync evidence path: {github_sync.as_posix()}\n"
+                "- Vercel project name: demo-project-prod\n"
+                "- Vercel project URL: https://vercel.com/profit-corp/demo-project-prod\n"
+                "- Vercel team scope: profit-corp\n"
+                f"- Vercel env contract path: {vercel_env.as_posix()}\n"
+                f"- Vercel deploy status: ready\n"
+                f"- Vercel deploy URL: https://demo-project.vercel.app\n"
+                f"- Vercel deploy evidence path: {vercel_deploy.as_posix()}\n",
+            )
+
+            result = self.run_validator(approved_project)
+            self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_operations_and_ceo_docs_lock_start_inspect_block_resume_flow(self) -> None:
         operations = OPERATIONS_MD.read_text(encoding="utf-8")

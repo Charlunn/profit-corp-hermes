@@ -19,6 +19,11 @@ PIPELINE_STAGES = [
     "workspace_instantiation",
     "conformance",
     "delivery_run_bootstrap",
+    "design",
+    "development",
+    "testing",
+    "git_versioning",
+    "release_readiness",
     "github_repository",
     "github_sync",
     "vercel_linkage",
@@ -247,8 +252,20 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "canonical_contract": "docs/platform/standalone-saas-template-contract.md",
             }, root
 
+        def fake_copytree(src, dst, dirs_exist_ok=False, ignore=None):
+            ignored = set(ignore(str(src), ["node_modules", ".next", ".git", ".vercel", "src"]))
+            self.assertIn(".vercel", ignored)
+            workspace.mkdir(parents=True, exist_ok=True)
+            (workspace / "src").mkdir(parents=True, exist_ok=True)
+            (workspace / "README.md").write_text("# demo\n", encoding="utf-8")
+            (workspace / ".env").write_text("APP_KEY=demo\n", encoding="utf-8")
+            (workspace / "vercel.json").write_text("{}\n", encoding="utf-8")
+            (workspace / "src" / "lib").mkdir(parents=True, exist_ok=True)
+            (workspace / "src" / "lib" / "app-definition.ts").write_text("export const appDefinition = {} as const;\n", encoding="utf-8")
+
         with mock.patch.object(start_module, "ROOT_DIR", root), \
              mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
+             mock.patch.object(start_module.shutil, "copytree", side_effect=fake_copytree), \
              mock.patch.object(start_module, "instantiate_workspace", side_effect=fake_instantiate), \
              mock.patch.object(start_module, "check_template_conformance", side_effect=fake_conformance), \
              mock.patch.object(start_module, "initialize_delivery_run", side_effect=fake_start_run), \
@@ -264,6 +281,15 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "prepare_auth_source": "gh_cli",
                  "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
+             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
+             mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": True,
                  "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
@@ -293,6 +319,12 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["prepare_auth_source_details"]["login"], "profit-corp")
         events = self.read_events(project_dir)
         self.assert_event_stages(events, PIPELINE_STAGES[:-2])
+        specialist_event = next(event for event in events if event["stage"] == "design")
+        self.assertEqual(specialist_event["action"], "specialist_stage_completed")
+        self.assertTrue(
+            specialist_event["evidence_path"].endswith("design-claude-code.txt")
+            or specialist_event["evidence_path"].endswith("ui-ux-design-system.md")
+        )
 
     def test_bootstrap_recovery_from_blocked_github_sync_rewrites_authority_to_current_success_truth(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
@@ -310,16 +342,14 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
                  "run_id": "delivery-lead-capture-copilot-001",
              }), \
-             mock.patch.object(start_module, "prepare_github_repository", return_value={
-                 "ok": True,
-                 "repository_mode": "attach",
-                 "repository_owner": "profit-corp",
-                 "repository_name": "profit-corp/lead-capture-copilot",
-                 "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
-                 "default_branch": "main",
-                 "remote_name": "origin",
-                 "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
-             }), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
+             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
+             mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": False,
                  "block_reason": "github_sync_failed",
@@ -434,6 +464,15 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "prepare_auth_source": "gh_cli",
                  "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
+             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
+             mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": True,
                  "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
@@ -481,7 +520,30 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         pending_shipping_vercel = pending_event.get("shipping", {}).get("vercel", {})
         self.assertEqual(pending_shipping_vercel, {}, "pending Vercel event must not claim linked project metadata")
 
-    def test_blocking_paths_persist_block_reason_evidence_and_resume_stage(self) -> None:
+    def test_ui_specialist_stage_requires_ui_ux_artifact(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace_root = self.create_project_fixture()
+        workspace = self.seed_workspace_outputs(workspace_root)
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
+             mock.patch.object(start_module, "instantiate_workspace"), \
+             mock.patch.object(start_module, "check_template_conformance", return_value={"ok": True, "report_path": (project_dir / "conformance-report.md").as_posix()}), \
+             mock.patch.object(start_module, "initialize_delivery_run", return_value={
+                 "ok": True,
+                 "workspace": workspace.as_posix(),
+                 "manifest_path": (workspace / ".hermes" / "delivery-run-manifest.json").as_posix(),
+                 "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
+                 "run_id": "delivery-lead-capture-copilot-001",
+             }), \
+             mock.patch.object(start_module, "detect_delivery_surface", return_value="ui"), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=""):
+            result = start_module.start_approved_project_delivery(authority_path, workspace_root=workspace_root)
+
+        self.assertFalse(result["ok"], msg=result)
+        self.assertEqual(result["stage"], "design")
+        self.assertEqual(result["block_reason"], "missing_ui_ux_artifact")
+
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()
         blocked_workspace = self.seed_workspace_outputs(workspace_root, include_downstream_prereq_evidence=True)
@@ -608,6 +670,9 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 self.assertEqual(updated["pipeline"]["block_reason"], case["expected_reason"])
                 self.assertEqual(updated["pipeline"]["resume_from_stage"], case["expected_stage"])
                 self.assertEqual(updated["pipeline"]["evidence_path"], expected_evidence)
+                if case["expected_stage"] == "conformance" and case["expected_reason"] == "conformance_failed":
+                    self.assertEqual(updated["artifacts"]["conformance_evidence_path"], expected_evidence)
+                    self.assertEqual(updated["conformance_evidence_path"], expected_evidence)
 
                 events = self.read_events(project_dir)
                 self.assertEqual(events[-1]["outcome"], "blocked")
@@ -850,6 +915,15 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
              }), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
+             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
+             mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
                  "ok": True,
                  "repository_url": "https://github.com/profit-corp/lead-capture-copilot.git",
@@ -871,7 +945,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             self.assertTrue(finalized_result["ok"], msg=finalized_result)
 
         updated = self.read_json(authority_path)
-        final_handoff_path = (workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()
+        final_handoff_path = (project_dir / "FINAL_DELIVERY.md").as_posix()
         self.assertEqual(updated["pipeline"]["workspace_path"], workspace.as_posix())
         self.assertEqual(updated["artifacts"]["workspace_path"], workspace.as_posix())
         self.assertEqual(updated["workspace_path"], workspace.as_posix())
@@ -884,6 +958,8 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertTrue(validation["ok"], msg=validation)
         self.assertEqual(validation["workspace_path"], workspace.as_posix())
         self.assertEqual(validation["final_handoff_path"], final_handoff_path)
+        self.assertFalse(workspace.exists(), "successful handoff should clean the local workspace")
+        self.assertTrue((project_dir / "FINAL_DELIVERY.md").exists(), "authority-level final handoff snapshot should remain")
 
 
 if __name__ == "__main__":

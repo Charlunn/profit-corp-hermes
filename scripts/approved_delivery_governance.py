@@ -262,6 +262,8 @@ def collect_workspace_touched_paths(workspace_root: Path | str) -> dict[str, Any
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0:
         return {

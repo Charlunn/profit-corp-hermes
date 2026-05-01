@@ -17,11 +17,12 @@ ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,127}$")
 URL_RE = re.compile(r"^https://[^\s]+$")
 
 PLATFORM_MANAGED_ENV_NAMES = [
-    "SUPABASE_URL",
-    "SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    "PAYPAL_CLIENT_ID",
+    "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
     "PAYPAL_CLIENT_SECRET",
+    "PAYPAL_ENVIRONMENT",
 ]
 IDENTITY_ENV_NAMES = ["APP_KEY", "APP_NAME", "APP_URL", "PAYPAL_BRAND_NAME"]
 AUTH_ERROR_PATTERNS = (
@@ -135,6 +136,23 @@ def _validate_project_id(value: str) -> str:
 
 
 
+def _extract_vercel_deploy_url(stdout: str, stderr: str, project_name: str) -> str:
+    candidates = [str(stdout or ""), str(stderr or "")]
+    patterns = [
+        r'"url"\s*:\s*"(https://[^"\s]+)"',
+        r'\b(?:Production|Preview):\s*(https://[^\s]+)',
+        r'\b(?:Inspect|Deployment)[:]?\s*(https://[^\s]+)',
+        r'\b(https://[^\s]+\.vercel\.app)\b',
+    ]
+    for text in candidates:
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1).strip()
+    return f"https://{project_name}.vercel.app"
+
+
+
 def _validate_env_name(value: str) -> str:
     text = value.strip()
     if not ENV_NAME_RE.fullmatch(text):
@@ -173,6 +191,75 @@ def _run_command(
         kwargs["encoding"] = "utf-8"
         kwargs["errors"] = "replace"
     return executor(command, **kwargs)
+
+
+
+def _upsert_env_value(
+    *,
+    command_prefix: list[str],
+    workspace: Path,
+    env_name: str,
+    env_value: str,
+    team_scope: str,
+    runner: Runner | None = None,
+    env: Mapping[str, str] | None = None,
+) -> tuple[bool, str, str]:
+    add_command = [
+        *command_prefix,
+        "env",
+        "add",
+        env_name,
+        "production",
+        "--scope",
+        team_scope,
+        "--yes",
+    ]
+    add_result = _run_command(
+        add_command,
+        cwd=workspace,
+        runner=runner,
+        env=env,
+        input_text=env_value + "\n",
+    )
+    if int(getattr(add_result, "returncode", 1)) == 0:
+        return True, _safe_summary(getattr(add_result, "stdout", "")), _safe_summary(getattr(add_result, "stderr", ""))
+
+    stderr_summary = _safe_summary(getattr(add_result, "stderr", ""))
+    stdout_summary = _safe_summary(getattr(add_result, "stdout", ""))
+    summary_text = f"{stderr_summary}\n{stdout_summary}".lower()
+    if "already exists" not in summary_text:
+        return False, stdout_summary, stderr_summary
+
+    remove_command = [
+        *command_prefix,
+        "env",
+        "rm",
+        env_name,
+        "production",
+        "--scope",
+        team_scope,
+        "--yes",
+    ]
+    remove_result = _run_command(remove_command, cwd=workspace, runner=runner, env=env)
+    if int(getattr(remove_result, "returncode", 1)) != 0:
+        return (
+            False,
+            _safe_summary(getattr(remove_result, "stdout", "")),
+            _safe_summary(getattr(remove_result, "stderr", "")),
+        )
+
+    retry_result = _run_command(
+        add_command,
+        cwd=workspace,
+        runner=runner,
+        env=env,
+        input_text=env_value + "\n",
+    )
+    return (
+        int(getattr(retry_result, "returncode", 1)) == 0,
+        _safe_summary(getattr(retry_result, "stdout", "")),
+        _safe_summary(getattr(retry_result, "stderr", "")),
+    )
 
 
 
@@ -281,6 +368,10 @@ def build_env_contract(
         raise VercelDeliveryError(f"missing platform-managed env values: {', '.join(missing_platform)}")
     contract = {
         "platform_managed": platform_names,
+        "platform_values": {
+            name: str(platform_managed_env.get(name, "")).strip()
+            for name in platform_names
+        },
         "identity_derived": identity_values,
         "evidence_path": (workspace / ".hermes" / "vercel-env-contract.json").as_posix(),
     }
@@ -390,27 +481,39 @@ def apply_env_contract(
         identity_derived_env=identity_derived_env,
     )
 
-    for env_name in contract["identity_derived"].keys():
-        command = [
-            *command_prefix,
-            "env",
-            "add",
-            env_name,
-            "production",
-            "--scope",
-            validated_team_scope,
-            "--yes",
-        ]
-        result = _run_command(
-            command,
-            cwd=workspace,
+    for env_name in contract["platform_managed"]:
+        ok, stdout_summary, stderr_summary = _upsert_env_value(
+            command_prefix=command_prefix,
+            workspace=workspace,
+            env_name=env_name,
+            env_value=contract["platform_values"][env_name],
+            team_scope=validated_team_scope,
             runner=runner,
             env=env,
-            input_text=contract["identity_derived"][env_name] + "\n",
         )
-        if int(getattr(result, "returncode", 1)) != 0:
-            stderr_summary = _safe_summary(getattr(result, "stderr", ""))
-            stdout_summary = _safe_summary(getattr(result, "stdout", ""))
+        if not ok:
+            return _blocked(
+                workspace,
+                "vercel-env-contract.json",
+                _classify_vercel_failure(stderr_summary, stdout_summary) or "missing_vercel_env_contract",
+                f"Failed to apply Vercel env contract for {env_name}.",
+                stderr_summary=stderr_summary,
+                stdout_summary=stdout_summary,
+                project_name=validated_project_name,
+                team_scope=validated_team_scope,
+            )
+
+    for env_name in contract["identity_derived"].keys():
+        ok, stdout_summary, stderr_summary = _upsert_env_value(
+            command_prefix=command_prefix,
+            workspace=workspace,
+            env_name=env_name,
+            env_value=contract["identity_derived"][env_name],
+            team_scope=validated_team_scope,
+            runner=runner,
+            env=env,
+        )
+        if not ok:
             return _blocked(
                 workspace,
                 "vercel-env-contract.json",
@@ -491,7 +594,6 @@ def deploy_to_vercel(
     deploy_command = [
         *command_prefix,
         "deploy",
-        "--prod",
         "--yes",
         "--scope",
         validated_team_scope,
@@ -511,9 +613,8 @@ def deploy_to_vercel(
         )
 
     stdout = str(getattr(result, "stdout", "")).strip()
-    deploy_url = stdout.splitlines()[-1].strip() if stdout else f"https://{validated_project_name}.vercel.app"
-    if not deploy_url.startswith("https://"):
-        deploy_url = f"https://{validated_project_name}.vercel.app"
+    stderr = str(getattr(result, "stderr", "")).strip()
+    deploy_url = _extract_vercel_deploy_url(stdout, stderr, validated_project_name)
 
     payload = {
         "ok": True,

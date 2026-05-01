@@ -114,7 +114,7 @@ main() {
   run_check "cron helper run-decision-packages action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-decision-packages
   run_check "cron helper run-visibility action" bash "$ROOT_DIR/orchestration/cron/commands.sh" run-visibility
   run_check "cron helper list action" bash "$ROOT_DIR/orchestration/cron/commands.sh" list
-  run_check "ceo cron list command" hermes -p ceo cron list
+  run_check "ceo cron list command" env PYTHONIOENCODING=utf-8 PYTHONUTF8=1 hermes -p ceo cron list
   run_check "profile list command" hermes profile list
 
   if [ "$FAILED" -eq 0 ]; then

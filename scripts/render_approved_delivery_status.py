@@ -80,6 +80,31 @@ def normalize_flag(value: Any) -> str:
     return text or "not available"
 
 
+def summarize_specialist_stages(events: list[dict[str, Any]], record: dict[str, Any]) -> list[dict[str, str]]:
+    pipeline = record.get("pipeline", {}) if isinstance(record.get("pipeline"), dict) else {}
+    delivery_run_id = first_nonempty(pipeline.get("delivery_run_id"))
+    summary: list[dict[str, str]] = []
+    expected = [
+        ("design", "01-design.md"),
+        ("development", "02-development.md"),
+        ("testing", "03-testing.md"),
+        ("git_versioning", "04-git-versioning.md"),
+        ("release_readiness", "05-release-readiness.md"),
+    ]
+    for stage_name, artifact_name in expected:
+        matching = [event for event in events if str(event.get("stage", "")).strip() == stage_name]
+        latest = matching[-1] if matching else {}
+        summary.append(
+            {
+                "stage": stage_name,
+                "status": first_nonempty(latest.get("status")) or ("pending" if delivery_run_id else "not started"),
+                "artifact": first_nonempty(latest.get("artifact")) or artifact_name,
+                "evidence": first_nonempty(latest.get("evidence_path")) or "not available",
+            }
+        )
+    return summary
+
+
 def summarize_action_required(current_stage: str, current_status: str, current_outcome: str, blocked_reason: str, evidence_path: str, github: dict[str, Any], vercel: dict[str, Any], protected_change: dict[str, Any], justification: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     status_lower = current_status.strip().lower()
@@ -126,10 +151,23 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
         current_outcome = "pass" if current_status == "completed" else current_status
 
     workspace_path = first_nonempty(pipeline.get("workspace_path"), latest.get("workspace_path"), artifacts.get("workspace_path"), record.get("workspace_path"))
-    final_handoff_path = first_nonempty(pipeline.get("final_handoff_path"), final_handoff.get("path"), final_handoff.get("link"), latest.get("final_handoff_path"))
+    final_handoff_path = first_nonempty(
+        pipeline.get("final_handoff_path"),
+        final_handoff.get("path"),
+        final_handoff.get("link"),
+        latest.get("final_handoff_path"),
+    )
     final_review_path = first_nonempty(artifacts.get("final_review_path"), (project_dir / "FINAL_OPERATOR_REVIEW.md").as_posix())
-    blocked_reason = first_nonempty(pipeline.get("block_reason"), latest_blocked.get("reason"), latest_blocked_event.get("block_reason"))
-    blocked_evidence = first_nonempty(pipeline.get("evidence_path"), latest_blocked.get("path"), latest_blocked_event.get("evidence_path"))
+    blocked_reason = first_nonempty(
+        latest_blocked.get("reason"),
+        latest_blocked_event.get("block_reason"),
+        pipeline.get("block_reason"),
+    )
+    blocked_evidence = first_nonempty(
+        latest_blocked.get("path"),
+        latest_blocked_event.get("evidence_path"),
+        pipeline.get("evidence_path"),
+    )
 
     history_lines = []
     for event in events:
@@ -145,6 +183,10 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
         )
 
     action_required_lines = summarize_action_required(current_stage, current_status, current_outcome, blocked_reason, blocked_evidence, github, vercel, protected_change, justification)
+    specialist_stage_lines = [
+        f"- {item['stage']}: status=`{item['status']}` artifact=`{item['artifact']}` evidence=`{item['evidence']}`"
+        for item in summarize_specialist_stages(events, record)
+    ]
 
     return "\n".join(
         [
@@ -178,6 +220,9 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
             f"- Blocked Prerequisite Evidence: `{blocked_evidence or 'not available'}`",
             f"- Resume From Stage: `{first_nonempty(latest.get('resume_from_stage'), pipeline.get('resume_from_stage')) or 'not available'}`",
             f"- Blocked State Visible: `{normalize_flag(bool(blocked_reason or blocked_evidence))}`",
+            "",
+            "## Specialist Delivery Stages",
+            *specialist_stage_lines,
             "",
             "## Credentialed Delivery Actions",
             f"- GitHub Repository Mode: `{github.get('repository_mode', 'not available')}`",

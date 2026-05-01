@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from scripts.template_contract_common import (
     DEFAULT_REGISTRY_PATH,
     GENERATED_WORKSPACES_DIR,
+    LOCAL_PROJECTS_ROOT,
     TemplateContractError,
     build_identity_payload,
     ensure_allowed_workspace_path,
@@ -52,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--asset-id", default=DEFAULT_ASSET_ID, help="Template asset identifier.")
     parser.add_argument("--registry-path", default=str(DEFAULT_REGISTRY_PATH), help="Path to the template registry JSON.")
     parser.add_argument("--workspace-name", required=True, help="Workspace folder name under the workspace root.")
-    parser.add_argument("--workspace-root", default=str(GENERATED_WORKSPACES_DIR), help="Allowed Hermes workspace root.")
+    parser.add_argument("--workspace-root", default=str(LOCAL_PROJECTS_ROOT), help="Allowed Hermes workspace root.")
     parser.add_argument("--app-key", required=True, help="APP_KEY for the generated project.")
     parser.add_argument("--app-name", required=True, help="APP_NAME for the generated project.")
     parser.add_argument("--app-url", required=True, help="APP_URL for the generated project.")
@@ -86,8 +87,7 @@ def resolve_workspace(args: argparse.Namespace) -> tuple[Path, Path]:
 
 
 def update_env_file(env_path: Path, identity: dict[str, str]) -> None:
-    if not env_path.exists():
-        raise TemplateContractError(f"template .env file not found: {env_path}")
+    env_path.parent.mkdir(parents=True, exist_ok=True)
 
     values = dict(PLACEHOLDER_ENV_KEYS)
     values["PAYPAL_ENVIRONMENT"] = "sandbox"
@@ -96,6 +96,32 @@ def update_env_file(env_path: Path, identity: dict[str, str]) -> None:
 
     lines = [f"{key}={value}" for key, value in values.items()]
     env_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def write_vercel_config(workspace: Path) -> None:
+    vercel_config_path = workspace / "vercel.json"
+    payload = {
+        "$schema": "https://openapi.vercel.sh/vercel.json",
+        "framework": "nextjs",
+        "installCommand": "pnpm install",
+        "buildCommand": "pnpm run build",
+        "ignoreCommand": "python -c \"from pathlib import Path; import sys; sys.exit(1 if any((Path('.') / name).exists() for name in ['.hermes', '.vercel', 'node_modules']) else 0)\"",
+    }
+    vercel_config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def write_vercelignore(workspace: Path) -> None:
+    vercelignore_path = workspace / ".vercelignore"
+    content = "\n".join([
+        ".hermes",
+        ".vercel",
+        "node_modules",
+        ".next",
+        "coverage",
+        "dist",
+        "build",
+    ])
+    vercelignore_path.write_text(content + "\n", encoding="utf-8")
 
 
 def update_app_definition(app_definition_path: Path, identity: dict[str, str]) -> None:
@@ -174,6 +200,14 @@ def write_hermes_handoff(workspace: Path, metadata: dict[str, str]) -> None:
     brief_path.write_text(brief.rstrip() + "\n", encoding="utf-8")
 
 
+def refresh_workspace_managed_files(workspace: Path, identity: dict[str, str], metadata: dict[str, str]) -> None:
+    update_env_file(workspace / ".env", identity)
+    write_vercel_config(workspace)
+    write_vercelignore(workspace)
+    update_app_definition(workspace / "src" / "lib" / "app-definition.ts", identity)
+    write_hermes_handoff(workspace, metadata)
+
+
 def render_dry_run(workspace: Path, metadata: dict[str, str]) -> str:
     lines = [
         "DRY RUN - instantiate template project",
@@ -195,11 +229,9 @@ def instantiate_workspace(template_source: Path, workspace_root: Path, workspace
         template_source,
         workspace,
         dirs_exist_ok=False,
-        ignore=shutil.ignore_patterns("node_modules", ".next", ".git"),
+        ignore=shutil.ignore_patterns("node_modules", ".next", ".git", ".vercel"),
     )
-    update_env_file(workspace / ".env", identity)
-    update_app_definition(workspace / "src" / "lib" / "app-definition.ts", identity)
-    write_hermes_handoff(workspace, metadata)
+    refresh_workspace_managed_files(workspace, identity, metadata)
 
 
 def main() -> int:

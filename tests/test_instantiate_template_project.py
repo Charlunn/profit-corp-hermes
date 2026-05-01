@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.template_contract_common import (
     GENERATED_WORKSPACES_DIR,
+    LOCAL_PROJECTS_ROOT,
     TemplateContractError,
     build_identity_payload,
     ensure_allowed_workspace_path,
@@ -84,6 +85,7 @@ class TemplateContractCommonTests(unittest.TestCase):
 
         allowed_path = GENERATED_WORKSPACES_DIR / "guard-check"
         ensure_allowed_workspace_path(allowed_path)
+        ensure_allowed_workspace_path(LOCAL_PROJECTS_ROOT / "guard-check")
 
         with self.assertRaises(TemplateContractError):
             ensure_allowed_workspace_path(ROOT_DIR / "tmp" / "guard-check")
@@ -104,10 +106,11 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         )
 
     def create_fixture(self) -> tuple[Path, Path, Path]:
-        GENERATED_WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
-        temp_dir = Path(tempfile.mkdtemp(prefix="instantiate-template-", dir=str(GENERATED_WORKSPACES_DIR)))
+        temp_dir = Path(tempfile.mkdtemp(prefix="instantiate-template-"))
         self.addCleanupPath(temp_dir)
-        workspace_root = temp_dir
+        workspace_root = LOCAL_PROJECTS_ROOT / temp_dir.name / "projects-root"
+        self.addCleanupPath(workspace_root.parent)
+        workspace_root.mkdir(parents=True, exist_ok=True)
         registry_path = temp_dir / "standalone-saas-template.json"
         registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
         registry["source"]["repo_path"] = TEMPLATE_SOURCE.as_posix()
@@ -147,8 +150,16 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
         workspace = workspace_root / "lead-capture"
-        self.assertTrue(workspace.exists(), "workspace was not created")
-        self.assertIn("lead-capture", result.stdout)
+        self.assertFalse((workspace / ".vercel").exists(), "workspace should not copy source .vercel state")
+        vercel_config = json.loads((workspace / "vercel.json").read_text(encoding="utf-8"))
+        self.assertEqual(vercel_config["framework"], "nextjs")
+        self.assertEqual(vercel_config["installCommand"], "pnpm install")
+        self.assertEqual(vercel_config["buildCommand"], "pnpm run build")
+        self.assertIn("ignoreCommand", vercel_config)
+        vercelignore_text = (workspace / ".vercelignore").read_text(encoding="utf-8")
+        self.assertIn(".hermes", vercelignore_text)
+        self.assertIn(".vercel", vercelignore_text)
+        self.assertIn("node_modules", vercelignore_text)
 
         env_text = (workspace / ".env").read_text(encoding="utf-8")
         self.assertIn("APP_KEY=lead_capture", env_text)
@@ -245,6 +256,10 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("refusing to write outside allowed workspace roots", result.stderr)
+
+    def test_local_projects_root_is_default_runtime_pool(self) -> None:
+        instantiate_text = SCRIPT_PATH.read_text(encoding="utf-8")
+        self.assertIn("default=str(LOCAL_PROJECTS_ROOT)", instantiate_text)
 
 
 if __name__ == "__main__":

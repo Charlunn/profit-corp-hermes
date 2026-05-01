@@ -10,12 +10,17 @@ DAILY_NAME="ProfitCorp Daily Pipeline"
 HEALTH_NAME="ProfitCorp Health Check"
 ANALYSIS_LOOP_NAME="ProfitCorp Analysis Loop"
 ACTION="${1:-list}"
+HERMES_UTF8_ENV=(PYTHONIOENCODING=utf-8 PYTHONUTF8=1)
 
 log() { printf '[cron] %s\n' "$*"; }
 warn() { printf '[cron] WARN: %s\n' "$*"; }
 
+run_hermes_cron() {
+  env "${HERMES_UTF8_ENV[@]}" hermes -p ceo cron "$@"
+}
+
 cron_list_raw() {
-  hermes -p ceo cron list 2>/dev/null || true
+  run_hermes_cron list 2>/dev/null || true
 }
 
 has_job_named() {
@@ -34,11 +39,11 @@ first_job_id_named() {
 }
 
 create_daily_job() {
-  hermes -p ceo cron create "0 8 * * *" "$(cat "$DAILY_PROMPT_FILE")" --name "$DAILY_NAME"
+  run_hermes_cron create "0 8 * * *" "$(cat "$DAILY_PROMPT_FILE")" --name "$DAILY_NAME"
 }
 
 create_health_job() {
-  hermes -p ceo cron create "*/30 * * * *" "$(cat "$HEALTH_PROMPT_FILE")" --name "$HEALTH_NAME"
+  run_hermes_cron create "*/30 * * * *" "$(cat "$HEALTH_PROMPT_FILE")" --name "$HEALTH_NAME"
 }
 
 create_jobs() {
@@ -57,7 +62,7 @@ remove_duplicates_for_name() {
     [ -z "$id" ] && continue
     if [ "$id" != "$first" ]; then
       log "Removing duplicate job $id for '$name'"
-      hermes -p ceo cron remove "$id" || warn "Failed to remove duplicate $id"
+      run_hermes_cron remove "$id" || warn "Failed to remove duplicate $id"
     fi
   done <<< "$ids"
 }
@@ -72,7 +77,7 @@ resume_all() {
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
     id="$(first_job_id_named "$name")"
     [ -n "$id" ] || continue
-    hermes -p ceo cron resume "$id" || warn "Resume failed for $name ($id)"
+    run_hermes_cron resume "$id" || warn "Resume failed for $name ($id)"
   done
 }
 
@@ -86,26 +91,26 @@ recreate_jobs() {
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
     while IFS= read -r id; do
       [ -n "$id" ] || continue
-      hermes -p ceo cron remove "$id" || warn "Failed removing $id"
+      run_hermes_cron remove "$id" || warn "Failed removing $id"
     done <<< "$(job_ids_named "$name")"
   done
   create_jobs
 }
 
 list_jobs() {
-  hermes -p ceo cron list
+  run_hermes_cron list
 }
 
 status_jobs() {
-  hermes -p ceo cron status || true
-  hermes -p ceo cron list || true
+  run_hermes_cron status || true
+  run_hermes_cron list || true
 }
 
 run_daily() {
   local id
   id="$(first_job_id_named "$DAILY_NAME")"
   [ -n "$id" ] || { echo "Daily pipeline job not found"; return 1; }
-  hermes -p ceo cron run "$id"
+  run_hermes_cron run "$id"
 }
 
 run_intelligence() {
@@ -256,7 +261,7 @@ pause_all() {
   for name in "$DAILY_NAME" "$HEALTH_NAME"; do
     id="$(first_job_id_named "$name")"
     [ -n "$id" ] || continue
-    hermes -p ceo cron pause "$id" || warn "Pause failed for $name ($id)"
+    run_hermes_cron pause "$id" || warn "Pause failed for $name ($id)"
   done
 }
 
