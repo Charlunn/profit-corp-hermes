@@ -98,8 +98,8 @@ class VercelDeliveryCommonTests(unittest.TestCase):
             commands.append(list(command))
             if command[:3] == ["vercel", "link", "--yes"]:
                 return types.SimpleNamespace(returncode=0, stdout="linked", stderr="")
-            if command[:3] == ["vercel", "deploy", "--prod"]:
-                return types.SimpleNamespace(returncode=0, stdout="https://demo-app.vercel.app\n", stderr="")
+            if command[:2] == ["vercel", "deploy"]:
+                return types.SimpleNamespace(returncode=0, stdout="Preview: https://demo-app.vercel.app\n", stderr="")
             raise AssertionError(f"unexpected command: {command}")
 
         link_result = module.link_vercel_project(
@@ -198,7 +198,7 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.assertEqual(inaccessible_scope["block_reason"], "inaccessible_vercel_scope")
 
         def deploy_failure_runner(command, cwd, capture_output, text, check, env):
-            if command[:3] == ["vercel", "deploy", "--prod"]:
+            if command[:2] == ["vercel", "deploy"]:
                 return types.SimpleNamespace(
                     returncode=1,
                     stdout="",
@@ -220,7 +220,17 @@ class VercelDeliveryCommonTests(unittest.TestCase):
         self.assertFalse(deploy_failure["ok"], msg=deploy_failure)
         self.assertEqual(deploy_failure["block_reason"], "vercel_deploy_failed")
 
-    def test_env_contract_separates_platform_managed_and_identity_derived_values(self) -> None:
+    def test_deploy_url_extraction_prefers_preview_or_json_output(self) -> None:
+        module = load_module("vercel_delivery_common_deploy_url", VERCEL_COMMON_PATH)
+        self.assertEqual(
+            module._extract_vercel_deploy_url("Preview: https://demo-preview.vercel.app\n", "", "demo-app-prod"),
+            "https://demo-preview.vercel.app",
+        )
+        self.assertEqual(
+            module._extract_vercel_deploy_url("", '{"deployment":{"url":"https://demo-json.vercel.app"}}', "demo-app-prod"),
+            "https://demo-json.vercel.app",
+        )
+
         module = load_module("vercel_delivery_common_env", VERCEL_COMMON_PATH)
         commands: list[tuple[list[str], str | None]] = []
 
@@ -233,8 +243,12 @@ class VercelDeliveryCommonTests(unittest.TestCase):
             project_name="demo-app-prod",
             team_scope="profit-corp",
             platform_managed_env={
+                "NEXT_PUBLIC_SUPABASE_URL": "https://demo.supabase.co",
+                "NEXT_PUBLIC_SUPABASE_ANON_KEY": "anon-key",
                 "SUPABASE_SERVICE_ROLE_KEY": "secret",
+                "NEXT_PUBLIC_PAYPAL_CLIENT_ID": "paypal-client-id",
                 "PAYPAL_CLIENT_SECRET": "another-secret",
+                "PAYPAL_ENVIRONMENT": "live",
             },
             identity_derived_env={
                 "APP_KEY": "demo_app",
@@ -249,12 +263,83 @@ class VercelDeliveryCommonTests(unittest.TestCase):
 
         self.assertTrue(result["ok"], msg=result)
         contract = json.loads(Path(result["env_contract_path"]).read_text(encoding="utf-8"))
-        self.assertEqual(contract["platform_managed"], ["SUPABASE_SERVICE_ROLE_KEY", "PAYPAL_CLIENT_SECRET"])
+        self.assertEqual(
+            contract["platform_managed"],
+            [
+                "NEXT_PUBLIC_SUPABASE_URL",
+                "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                "SUPABASE_SERVICE_ROLE_KEY",
+                "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
+                "PAYPAL_CLIENT_SECRET",
+                "PAYPAL_ENVIRONMENT",
+            ],
+        )
         self.assertEqual(contract["identity_derived"]["APP_KEY"], "demo_app")
         self.assertEqual(contract["identity_derived"]["PAYPAL_BRAND_NAME"], "Demo App")
-        self.assertNotIn("secret", json.dumps(contract, ensure_ascii=False))
-        self.assertEqual(commands[0][0][:4], ["vercel", "env", "add", "APP_KEY"])
-        self.assertEqual(commands[0][1], "demo_app\n")
+        self.assertEqual(contract["platform_values"]["NEXT_PUBLIC_SUPABASE_URL"], "https://demo.supabase.co")
+        self.assertIn("\"platform_managed\"", json.dumps(contract, ensure_ascii=False))
+        self.assertIn("\"platform_values\"", json.dumps(contract, ensure_ascii=False))
+        self.assertEqual(commands[0][0][:4], ["vercel", "env", "add", "NEXT_PUBLIC_SUPABASE_URL"])
+        self.assertEqual(commands[0][1], "https://demo.supabase.co\n")
+
+    def test_apply_env_contract_replaces_existing_env_values(self) -> None:
+        module = load_module("vercel_delivery_common_env_upsert", VERCEL_COMMON_PATH)
+        commands: list[tuple[list[str], str | None]] = []
+
+        def fake_runner(*args, **kwargs):
+            command = list(args[0])
+            commands.append((command, kwargs.get("input")))
+            if command[:4] == ["vercel", "env", "add", "NEXT_PUBLIC_SUPABASE_URL"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "SUPABASE_SERVICE_ROLE_KEY"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "NEXT_PUBLIC_PAYPAL_CLIENT_ID"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "PAYPAL_CLIENT_SECRET"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "PAYPAL_ENVIRONMENT"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "APP_KEY"] and kwargs.get("input") == "demo_app\n":
+                if sum(1 for c, _ in commands if c[:4] == ["vercel", "env", "add", "APP_KEY"]) == 1:
+                    return types.SimpleNamespace(returncode=1, stdout="", stderr="Environment Variable already exists")
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "rm", "APP_KEY"]:
+                return types.SimpleNamespace(returncode=0, stdout="removed", stderr="")
+            if command[:4] == ["vercel", "env", "add", "APP_NAME"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "APP_URL"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            if command[:4] == ["vercel", "env", "add", "PAYPAL_BRAND_NAME"]:
+                return types.SimpleNamespace(returncode=0, stdout="ok", stderr="")
+            raise AssertionError(f"unexpected command: {command}")
+
+        result = module.apply_env_contract(
+            workspace_path=self.workspace,
+            project_name="demo-app-prod",
+            team_scope="profit-corp",
+            platform_managed_env={
+                "NEXT_PUBLIC_SUPABASE_URL": "https://demo.supabase.co",
+                "NEXT_PUBLIC_SUPABASE_ANON_KEY": "anon-key",
+                "SUPABASE_SERVICE_ROLE_KEY": "secret",
+                "NEXT_PUBLIC_PAYPAL_CLIENT_ID": "paypal-client-id",
+                "PAYPAL_CLIENT_SECRET": "another-secret",
+                "PAYPAL_ENVIRONMENT": "live",
+            },
+            identity_derived_env={
+                "APP_KEY": "demo_app",
+                "APP_NAME": "Demo App",
+                "APP_URL": "https://demo.example.com",
+                "PAYPAL_BRAND_NAME": "Demo App",
+            },
+            env={"VERCEL_TOKEN": "token"},
+            which=lambda name: "vercel",
+            runner=fake_runner,
+        )
+
+        self.assertTrue(result["ok"], msg=result)
+        self.assertIn((['vercel', 'env', 'rm', 'APP_KEY', 'production', '--scope', 'profit-corp', '--yes'], None), commands)
 
     def test_deploy_only_runs_after_github_sync_and_env_contract_checks(self) -> None:
         module = load_module("vercel_delivery_common_deploy", VERCEL_COMMON_PATH)

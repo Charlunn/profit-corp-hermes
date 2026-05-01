@@ -1,6 +1,8 @@
 model:
-  default: "anthropic/claude-opus-4.6"
-  provider: "auto"
+  default: "gpt-5.2"
+  provider: "custom"
+  base_url: "http://209.97.166.232:3000/v1"
+  api_key: "sk-kqoh35f5qXht8cEPlPtLREam2AmvDpSJf7sZ4kLo9609fcvI"
 
 terminal:
   backend: "local"

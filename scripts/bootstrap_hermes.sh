@@ -2,7 +2,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HERMES_HOME_DEFAULT="$HOME/.hermes"
+resolve_hermes_home() {
+  local raw_home="${HERMES_HOME:-$HOME/.hermes}"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -u "$raw_home" 2>/dev/null && return 0
+  fi
+  printf '%s\n' "${raw_home//\\//}"
+}
+HERMES_HOME_DEFAULT="$(resolve_hermes_home)"
 HERMES_CONFIG_FILE="$HERMES_HOME_DEFAULT/config.yaml"
 TEMPLATE_FILE="$ROOT_DIR/config/hermes.config.yaml.example"
 PROFILES=(ceo scout cmo arch accountant)
@@ -55,12 +62,12 @@ require_cmd() {
 }
 
 resolve_python() {
-  if command -v python3 >/dev/null 2>&1; then
+  if command -v python3 >/dev/null 2>&1 && python3 -V >/dev/null 2>&1; then
     PYTHON_BIN="python3"
     log "Python runtime: python3"
     return 0
   fi
-  if command -v python >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1 && python -V >/dev/null 2>&1; then
     PYTHON_BIN="python"
     log "Python runtime: python"
     return 0
@@ -317,7 +324,7 @@ run_smoke_test() {
 
 smoke_test() {
   log "Running Hermes doctor"
-  hermes doctor || warn "Hermes doctor reported issues"
+  env PYTHONIOENCODING=utf-8 PYTHONUTF8=1 hermes doctor || warn "Hermes doctor reported issues"
 
   log "Checking finance script syntax"
   "$PYTHON_BIN" -m py_compile "$ROOT_DIR/assets/shared/manage_finance.py" || warn "Ledger syntax check failed"
@@ -407,6 +414,12 @@ resolve_effective_hermes_home() {
       effective_home="$HOME/${effective_home#~/}"
       ;;
   esac
+
+  if command -v cygpath >/dev/null 2>&1; then
+    effective_home="$(cygpath -u "$effective_home" 2>/dev/null || printf '%s' "$effective_home")"
+  else
+    effective_home="${effective_home//\\//}"
+  fi
 
   printf '%s\n' "$effective_home"
 }

@@ -3,5 +3,21 @@ __pycache__/
 *.pyc
 *.pyo
 
-.vercel
+# Claude / local operator state
 .claude/
+
+# Generated local workspaces and temp snippets
+generated-workspaces/
+tmp_*.txt
+
+# Common app build/runtime artifacts
+.vercel/
+.next/
+out/
+dist/
+build/
+coverage/
+node_modules/
+.env
+.env.local
+.env.*.local

@@ -9,10 +9,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 SHARED_DIR = ROOT_DIR / "assets" / "shared"
 TEMPLATES_DIR = SHARED_DIR / "templates"
 DEFAULT_REGISTRY_PATH = TEMPLATES_DIR / "standalone-saas-template.json"
-GENERATED_WORKSPACES_DIR = ROOT_DIR / "assets" / "workspaces" / "projects"
-ALLOWED_WORKSPACE_ROOTS = (
-    GENERATED_WORKSPACES_DIR,
-)
+GENERATED_WORKSPACES_DIR = ROOT_DIR / "generated-workspaces"
+LOCAL_PROJECTS_ROOT = ROOT_DIR.parent / "profit-corp-projects"
 APP_KEY_PATTERN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 REQUIRED_IDENTITY_KEYS = (
     "APP_KEY",
@@ -28,6 +26,13 @@ REQUIRED_IDENTITY_KEYS = (
 
 class TemplateContractError(Exception):
     pass
+
+
+def allowed_workspace_roots() -> tuple[Path, ...]:
+    return (
+        GENERATED_WORKSPACES_DIR,
+        LOCAL_PROJECTS_ROOT,
+    )
 
 
 def load_registry(path: Path) -> dict[str, Any]:
@@ -51,7 +56,7 @@ def require_asset(registry: dict[str, Any], asset_id: str = "standalone-saas-tem
 
 def ensure_allowed_workspace_path(path: Path) -> None:
     resolved = path.resolve()
-    for directory in ALLOWED_WORKSPACE_ROOTS:
+    for directory in allowed_workspace_roots():
         try:
             resolved.relative_to(directory.resolve())
             return
@@ -97,7 +102,10 @@ def build_identity_payload(app_key: str, app_name: str, app_url: str) -> dict[st
 
 
 def relative(path: Path) -> str:
-    return path.relative_to(ROOT_DIR).as_posix()
+    try:
+        return path.relative_to(ROOT_DIR).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def write_text(path: Path, content: str) -> None:

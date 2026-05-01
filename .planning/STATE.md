@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Delivery Pipeline Reliability Fixes
-status: verifying
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-04-29T15:29:59.317Z"
-last_activity: 2026-04-29
+status: archived
+stopped_at: Milestone close archived v1.1.1
+last_updated: "2026-04-30T01:42:38.464Z"
+last_activity: 2026-04-30
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 4
+  total_plans: 10
+  completed_plans: 10
   percent: 100
 ---
 
@@ -21,14 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Turn noisy web-wide user pain signals into a clear, actionable operating view: which problems are worth pursuing, what matters most, what is risky, and what the company should build, launch, and operationalize next.
-**Current focus:** Phase 16 — Vercel Auth and Deploy Reliability
+**Current focus:** Next milestone definition and post-close live testing
 
 ## Current Position
 
-Phase: 16 — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-04-29
+Milestone: v1.1.1 — archived
+Status: Milestone archived; ready for post-close live testing and next milestone definition
+Last activity: 2026-04-30
 
 Progress: [██████████] 100%
 
@@ -58,8 +57,8 @@ Progress: [██████████] 100%
 
 **Recent Trend:**
 
-- Last 5 plans: 11-02, 11-03, 12-01, 12-02, 12-03
-- Trend: v1.1 shipped and archived; awaiting next milestone definition
+- Last 5 plans: 15-02, 15-03, 16-01, 16-02, 16-03
+- Trend: v1.1.1 reliability milestone completed; next step is live end-to-end testing against the repaired delivery path
 
 *Updated after each plan completion*
 | Phase 16 P02 | 18min | 3 tasks | 4 files |
@@ -80,20 +79,20 @@ Recent decisions affecting current work:
 - [Phase 6]: Board briefing now renders exactly one governance, risk, finance, and required-attention signal while preserving one-screen scanability
 - [Phase 13]: Phase 8/11 closure evidence now drives canonical roadmap, requirements, and state reconciliation in one final pass
 - [Milestone close]: v1.1 is archived as the first shipped approved-to-delivery SaaS factory milestone
-- Treat Vercel project, scope, URL, and deploy fields as authoritative only after governed helper success returns them.
-- Keep Phase 16 validator scope limited to success-gated presence checks instead of redesigning historical truth precedence.
-- Keep Phase 16 closure focused on regression and governance seams instead of reopening controller architecture.
-- Treat Vercel governance compatibility as additive metadata preservation only: keep the allowlist, append-only events, and existing outcome model intact.
+- Phase 14 accepted authenticated `gh` CLI sessions and canonical repository targeting as the governed GitHub baseline.
+- Phase 15 made GitHub sync resilient to real Windows + pnpm workspaces through source-only snapshots, remote convergence, transport fallback, and stage-specific evidence.
+- Phase 16 treated local Vercel CLI login as a governed auth source and preserved authoritative Vercel metadata plus failure taxonomy.
+- Phase 17 made recovered authority truth drive current-state rendering while preserving blocked history as audit evidence only.
 
 ### Pending Todos
 
-- Define requirements and roadmap for the v1.1.1 delivery-pipeline reliability milestone.
-- Fix the live-instance defects in GitHub auth detection, owner fallback, snapshot/sync behavior, Vercel auth handling, and authority/status convergence.
+- Run a fresh live end-to-end delivery test against the repaired GitHub/Vercel pipeline.
+- Define the next milestone after test evidence confirms the repaired path.
 
 ### Blockers/Concerns
 
-- Live approved-project delivery currently requires manual recovery to reach GitHub sync and Vercel deploy on the real operator machine.
-- Authority and status artifacts do not yet converge to the true successful end state after manual recovery.
+- The repaired delivery path still needs a fresh live validation run on the real operator machine after milestone close.
+- Legacy checked-in approved-project sample artifacts still contain environment-specific evidence-path drift outside the current code/test scope.
 
 ## Deferred Items
 
@@ -104,19 +103,20 @@ Items acknowledged and carried forward from previous milestone close:
 | Collaboration | Multi-user/team workflow surfaces | Deferred to later milestone | 2026-04-24 |
 | Real-time UX | Real-time dashboard-first experience | Deferred to later milestone | 2026-04-24 |
 | Internal telemetry | Internal metrics as primary input | Deferred to later milestone | 2026-04-24 |
+| UAT gap | Phase 11 / 11-HUMAN-UAT.md | Passed artifact acknowledged at v1.1.1 close | 2026-04-30 |
 
 ### Roadmap Evolution
 
-- Phase 13 closed the final Phase 8 verification gap, Phase 11 live UAT gap, and Phases 8-13 canonical planning-state drift.
-- v1.1 roadmap, requirements, and state surfaces are now aligned to the final verification and live-UAT evidence set.
-- v1.1 milestone is archived under `.planning/milestones/` and current roadmap surfaces have been collapsed for the next planning cycle.
+- Phase 14 through Phase 17 repaired the live delivery-path defects exposed after the first shipped SaaS factory milestone.
+- v1.1.1 roadmap, requirements, and state surfaces are now aligned to the repaired GitHub auth, sync, Vercel, and status-convergence evidence set.
+- v1.1.1 milestone is archived under `.planning/milestones/` and current roadmap surfaces have been collapsed for the next planning cycle.
 
 ## Session Continuity
 
-Last session: 2026-04-29T15:29:59.308Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-04-30T01:42:38.464Z
+Stopped at: Milestone close archived v1.1.1
 Resume file: None
 
-**Next Phase:** Define next milestone
+**Next Phase:** Fresh live testing
 
-**Planned Phase:** None — await new milestone planning
+**Planned Phase:** None — await post-close testing evidence and next milestone definition

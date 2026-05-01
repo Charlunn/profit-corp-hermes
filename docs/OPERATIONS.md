@@ -140,12 +140,35 @@ Skill-level policy:
 
 ## Approved project delivery pipeline
 
+### Recommended end-to-end operator path
+1. Bootstrap Hermes on the operator machine:
+   ```bash
+   bash scripts/bootstrap_hermes_noninteractive.sh
+   ```
+2. Run signal intake and role artifacts:
+   ```bash
+   bash scripts/run_external_intelligence.sh
+   bash scripts/run_signal_analysis_loop.sh --window-hours 48 --limit 3
+   ```
+3. Confirm the current role artifacts and decision package exist:
+   - `assets/shared/PAIN_POINTS.md`
+   - `assets/shared/MARKET_PLAN.md`
+   - `assets/shared/TECH_SPEC.md`
+   - `assets/shared/CEO_RANKING.md`
+   - `assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md`
+4. Generate a new approved-project bundle from the current decision package when you want to turn the top-ranked real pain point into a delivery candidate:
+   ```bash
+   python scripts/start_approved_project_delivery.py --approval-mode decision-package --decision-package-path assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md
+   ```
+5. Then drive that approved project through the governed delivery commands below.
+
 ### Start an approved delivery run
 - Start from the approved-project authority bundle, not ad-hoc workspace commands:
   ```bash
   bash orchestration/cron/commands.sh start-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
   ```
 - This wrapper reuses the existing Phase 10 controller and keeps the authority layer above the workspace layer.
+- Use `start-approved-delivery` only for a genuinely fresh baseline. If a workspace or authority bundle already exists, prefer `resume-approved-delivery` instead of trying to rebuild from scratch.
 
 ### Inspect latest status before any retry
 - Read the persisted latest view first:
@@ -176,6 +199,11 @@ Skill-level policy:
   bash orchestration/cron/commands.sh resume-approved-delivery assets/shared/approved-projects/<project>/APPROVED_PROJECT.json
   ```
 - Do not create a second workspace or rerun manual bootstrap steps unless the authority record explicitly tells you the original workspace path is invalid.
+
+### Runtime credential expectations
+- Keep GitHub / Vercel / PayPal / Supabase secrets in local environment or local Claude/Hermes settings only.
+- Do **not** write secrets into repo files, approved-project bundles, or `.env.example`.
+- For real PayPal validation, set `PAYPAL_ENVIRONMENT=live` only in local/private operator config.
 
 If Hermes workflow is unstable:
 1. Pause cron jobs (`pause-all`).

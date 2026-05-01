@@ -4,6 +4,8 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
+from os import PathLike
 from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlparse
@@ -22,6 +24,7 @@ SNAPSHOT_EXCLUDED_DIR_NAMES = {
     ".next",
     ".pnpm-store",
     ".turbo",
+    ".vercel",
     "coverage",
     "dist",
     "build",
@@ -135,6 +138,15 @@ def _github_identity(repository_owner: str, repository_name: str) -> str:
     return f"{repository_owner}/{repository_name}"
 
 
+def _looks_like_existing_repository_conflict(stderr: str, stdout: str = "") -> bool:
+    summary = _safe_summary(f"{stderr}\n{stdout}").lower()
+    return (
+        "name already exists on this account" in summary
+        or "repository already exists" in summary
+        or "createrepository" in summary and "already exists" in summary
+    )
+
+
 def _resolve_github_auth(
     workspace: Path,
     *,
@@ -184,9 +196,9 @@ def _has_github_auth(env: Mapping[str, str] | None = None) -> bool:
     return bool(source.get("GH_TOKEN") or source.get("GITHUB_TOKEN"))
 
 
-def _run_command(command: list[str], *, cwd: Path, runner: Runner | None = None) -> Any:
+def _run_command(command: list[str], *, cwd: Path, runner: Runner | None = None, env: Mapping[str, str] | None = None) -> Any:
     executor = runner or subprocess.run
-    return executor(command, cwd=str(cwd), capture_output=True, text=True, check=False)
+    return executor(command, cwd=str(cwd), capture_output=True, text=True, check=False, env=dict(env) if env is not None else None)
 
 
 def _normalize_github_transport(repository_url: str, *, scheme: str) -> str:
@@ -200,25 +212,34 @@ def _normalize_github_transport(repository_url: str, *, scheme: str) -> str:
     raise GithubDeliveryError("unsupported GitHub transport scheme")
 
 
+def _safe_relative_path(path: str | PathLike[str], workspace: Path) -> str | None:
+    try:
+        candidate = Path(path)
+        relative = candidate.relative_to(workspace)
+    except (TypeError, ValueError):
+        return None
+    parts = relative.parts
+    if any(part in SNAPSHOT_EXCLUDED_DIR_NAMES for part in parts[:-1]):
+        return None
+    return relative.as_posix()
+
+
 def _canonical_snapshot_paths(workspace: Path) -> list[str]:
     included: list[str] = []
-    for path in workspace.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            relative = path.relative_to(workspace)
-        except ValueError:
-            continue
-        parts = relative.parts
-        if any(part in SNAPSHOT_EXCLUDED_DIR_NAMES for part in parts[:-1]):
-            continue
-        included.append(relative.as_posix())
+    for root, dirnames, filenames in os.walk(workspace, topdown=True):
+        dirnames[:] = [name for name in dirnames if name not in SNAPSHOT_EXCLUDED_DIR_NAMES]
+        root_path = Path(root)
+        for filename in filenames:
+            relative = _safe_relative_path(root_path / filename, workspace)
+            if relative is None:
+                continue
+            included.append(relative)
     included.sort()
     return included
 
 
-def _stage_workspace_snapshot(workspace: Path, run_git: Callable[..., Any]) -> tuple[dict[str, Any], Any]:
-    included_paths = _canonical_snapshot_paths(workspace)
+def _stage_workspace_snapshot(workspace: Path, run_git: Callable[..., Any], included_paths: list[str] | None = None) -> tuple[dict[str, Any], Any]:
+    included_paths = list(included_paths) if included_paths is not None else _canonical_snapshot_paths(workspace)
     excluded_categories = sorted(name for name in SNAPSHOT_EXCLUDED_DIR_NAMES if (workspace / name).exists())
     evidence = {
         "snapshot_mode": "explicit_paths",
@@ -230,6 +251,86 @@ def _stage_workspace_snapshot(workspace: Path, run_git: Callable[..., Any]) -> t
         return evidence, None
     add_result = run_git("git", "add", "--", *included_paths)
     return evidence, add_result
+
+
+def _preserve_workspace_snapshot(workspace: Path, included_paths: list[str]) -> tuple[Path, list[str]]:
+    backup_root = Path(tempfile.mkdtemp(prefix="github-sync-snapshot-"))
+    restored_paths: list[str] = []
+    for relative in included_paths:
+        source = workspace / relative
+        if not source.is_file():
+            continue
+        destination = backup_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        restored_paths.append(relative)
+    return backup_root, restored_paths
+
+
+def _preserve_workspace_sidecars(workspace: Path) -> tuple[Path, list[str]]:
+    backup_root = Path(tempfile.mkdtemp(prefix="github-sync-sidecars-"))
+    preserved: list[str] = []
+    for name in sorted(SNAPSHOT_EXCLUDED_DIR_NAMES - {".git"}):
+        source = workspace / name
+        if not source.exists():
+            continue
+        destination = backup_root / name
+        shutil.move(source.as_posix(), destination.as_posix())
+        preserved.append(name)
+    return backup_root, preserved
+
+
+def _restore_workspace_sidecars(workspace: Path, backup_root: Path, preserved: list[str]) -> None:
+    for name in preserved:
+        source = backup_root / name
+        if not source.exists():
+            continue
+        destination = workspace / name
+        if destination.exists():
+            if destination.is_dir():
+                shutil.rmtree(destination)
+            else:
+                destination.unlink()
+        shutil.move(source.as_posix(), destination.as_posix())
+    if backup_root.exists():
+        shutil.rmtree(backup_root)
+
+
+def _restore_workspace_snapshot(workspace: Path, backup_root: Path, included_paths: list[str]) -> None:
+    for relative in included_paths:
+        source = backup_root / relative
+        if not source.is_file():
+            continue
+        destination = workspace / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    if backup_root.exists():
+        shutil.rmtree(backup_root)
+
+
+def _resolve_checkout_target(run_git: Callable[..., Any], remote: str, branch: str) -> tuple[str | None, Any]:
+    remote_ref = f"refs/remotes/{remote}/{branch}"
+    remote_head = run_git("git", "rev-parse", "--verify", remote_ref)
+    if int(getattr(remote_head, "returncode", 1)) == 0:
+        return remote_ref, remote_head
+    return None, remote_head
+
+
+def _commit_workspace_snapshot(workspace: Path, run_git: Callable[..., Any]) -> Any:
+    env = dict(os.environ)
+    author_name = str(env.get("APPROVED_DELIVERY_GIT_AUTHOR_NAME", env.get("GIT_AUTHOR_NAME", "Charlunn"))).strip() or "Charlunn"
+    author_email = str(env.get("APPROVED_DELIVERY_GIT_AUTHOR_EMAIL", env.get("GIT_AUTHOR_EMAIL", "184456842+Charlunn@users.noreply.github.com"))).strip() or "184456842+Charlunn@users.noreply.github.com"
+    env["GIT_AUTHOR_NAME"] = author_name
+    env["GIT_COMMITTER_NAME"] = str(env.get("GIT_COMMITTER_NAME", author_name)).strip() or author_name
+    env["GIT_AUTHOR_EMAIL"] = author_email
+    env["GIT_COMMITTER_EMAIL"] = str(env.get("GIT_COMMITTER_EMAIL", author_email)).strip() or author_email
+    return run_git(
+        "git",
+        "commit",
+        "-m",
+        "Bootstrap approved project delivery snapshot",
+        env=env,
+    )
 
 
 def _converge_remote(workspace: Path, run_git: Callable[..., Any], remote: str, repo_url: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -408,15 +509,22 @@ def prepare_github_repository(
                 "--private",
             ]
             create_result = _run_command(create_command, cwd=workspace, runner=runner)
+            create_stderr = _safe_summary(getattr(create_result, "stderr", ""))
+            create_stdout = _safe_summary(getattr(create_result, "stdout", ""))
+            reused_existing = False
             if int(getattr(create_result, "returncode", 1)) != 0:
-                return _blocked(
-                    workspace,
-                    "github-repository-prepare.json",
-                    "github_repository_failed",
-                    "GitHub repository creation failed.",
-                    command="gh repo create",
-                    stderr_summary=_safe_summary(getattr(create_result, "stderr", "")),
-                )
+                if _looks_like_existing_repository_conflict(create_stderr, create_stdout):
+                    reused_existing = True
+                else:
+                    return _blocked(
+                        workspace,
+                        "github-repository-prepare.json",
+                        "github_repository_failed",
+                        "GitHub repository creation failed.",
+                        command="gh repo create",
+                        stderr_summary=create_stderr,
+                        stdout_summary=create_stdout,
+                    )
             view_command = ["gh", "repo", "view", identity, "--json", "nameWithOwner,url,defaultBranchRef"]
             view_result = _run_command(view_command, cwd=workspace, runner=runner)
             if int(getattr(view_result, "returncode", 1)) != 0:
@@ -462,6 +570,7 @@ def prepare_github_repository(
                 "default_branch": default_branch,
                 "remote_name": remote,
                 "command": "gh repo create" if repository_mode == "create" else "gh repo view",
+                "remote_action": "reused_existing" if repository_mode == "create" and reused_existing else "created" if repository_mode == "create" else "attached",
                 "auth_source": blocked.get("auth_source", ""),
                 "auth_source_details": dict(blocked.get("auth_source_details", {})),
             },
@@ -476,6 +585,7 @@ def prepare_github_repository(
             "repository_url": canonical_url,
             "default_branch": default_branch,
             "remote_name": remote,
+            "remote_action": "reused_existing" if repository_mode == "create" and reused_existing else "created" if repository_mode == "create" else "attached",
             "auth_source": blocked.get("auth_source", ""),
             "auth_source_details": dict(blocked.get("auth_source_details", {})),
         }
@@ -496,8 +606,8 @@ def sync_workspace_to_github(
     branch = _validate_branch(default_branch)
     repo_url = _validate_repository_url(repository_url)
 
-    def run_git(*parts: str) -> Any:
-        return _run_command(list(parts), cwd=workspace, runner=runner)
+    def run_git(*parts: str, env: Mapping[str, str] | None = None) -> Any:
+        return _run_command(list(parts), cwd=workspace, runner=runner, env=env)
 
     try:
         inside = run_git("git", "rev-parse", "--is-inside-work-tree")
@@ -516,115 +626,149 @@ def sync_workspace_to_github(
         if remote_blocked:
             return remote_blocked
 
-        fetch_result = run_git("git", "fetch", remote, branch)
-        checkout_result = run_git("git", "checkout", "-B", branch)
-        if int(getattr(checkout_result, "returncode", 1)) != 0:
-            return _blocked(
-                workspace,
-                "github-sync.json",
-                "github_sync_failed",
-                "Failed to checkout canonical branch.",
-                failed_step="branch",
-                attempted_command="git checkout -B",
-                stderr_summary=_safe_summary(getattr(checkout_result, "stderr", "")),
-                fetch_stderr_summary=_safe_summary(getattr(fetch_result, "stderr", "")),
-                **remote_evidence,
-            )
-
-        snapshot_evidence, add_result = _stage_workspace_snapshot(workspace, run_git)
-        if add_result is not None and int(getattr(add_result, "returncode", 1)) != 0:
-            return _blocked(
-                workspace,
-                "github-sync.json",
-                "github_sync_failed",
-                "Failed to stage workspace snapshot.",
-                failed_step="stage",
-                attempted_command="git add -- <paths>",
-                stderr_summary=_safe_summary(getattr(add_result, "stderr", "")),
-                **remote_evidence,
-                **snapshot_evidence,
-            )
-
-        head_exists_result = run_git("git", "rev-parse", "--verify", "HEAD")
-        has_existing_commit = int(getattr(head_exists_result, "returncode", 1)) == 0
-
-        status_result = run_git("git", "status", "--short")
-        if int(getattr(status_result, "returncode", 1)) != 0:
-            return _blocked(
-                workspace,
-                "github-sync.json",
-                "github_sync_failed",
-                "Failed to inspect git status.",
-                failed_step="status",
-                attempted_command="git status --short",
-                stderr_summary=_safe_summary(getattr(status_result, "stderr", "")),
-                **remote_evidence,
-                **snapshot_evidence,
-            )
-
-        if str(getattr(status_result, "stdout", "")).strip() or not has_existing_commit:
-            commit_result = run_git("git", "commit", "-m", "Bootstrap approved project delivery snapshot")
-            if int(getattr(commit_result, "returncode", 1)) != 0:
+        snapshot_paths = _canonical_snapshot_paths(workspace)
+        snapshot_backup_root, preserved_paths = _preserve_workspace_snapshot(workspace, snapshot_paths)
+        sidecar_backup_root, preserved_sidecars = _preserve_workspace_sidecars(workspace)
+        snapshot_evidence = {
+            "snapshot_mode": "explicit_paths",
+            "snapshot_excluded_categories": sorted(name for name in SNAPSHOT_EXCLUDED_DIR_NAMES if (workspace / name).exists() or name in preserved_sidecars),
+            "snapshot_included_paths": snapshot_paths,
+            "snapshot_policy": "exclude_generated_directories",
+        }
+        try:
+            fetch_result = run_git("git", "fetch", remote, branch)
+            checkout_target, remote_head_result = _resolve_checkout_target(run_git, remote, branch)
+            checkout_command = ["git", "checkout", "-B", branch]
+            attempted_checkout_command = "git checkout -B"
+            if checkout_target:
+                checkout_command.append(checkout_target)
+                attempted_checkout_command = f"git checkout -B {branch} {checkout_target}"
+            checkout_result = run_git(*checkout_command)
+            if int(getattr(checkout_result, "returncode", 1)) != 0:
                 return _blocked(
                     workspace,
                     "github-sync.json",
                     "github_sync_failed",
-                    "Failed to create bootstrap commit.",
-                    failed_step="commit",
-                    attempted_command="git commit -m",
-                    stderr_summary=_safe_summary(getattr(commit_result, "stderr", "")),
+                    "Failed to checkout canonical branch.",
+                    failed_step="branch",
+                    attempted_command=attempted_checkout_command,
+                    stderr_summary=_safe_summary(getattr(checkout_result, "stderr", "")),
+                    fetch_stderr_summary=_safe_summary(getattr(fetch_result, "stderr", "")),
+                    remote_branch_found=checkout_target is not None,
+                    remote_branch_lookup_stderr_summary=_safe_summary(getattr(remote_head_result, "stderr", "")),
                     **remote_evidence,
                     **snapshot_evidence,
                 )
 
-        push_blocked, push_evidence = _push_with_transport_fallback(workspace, run_git, remote, branch, repo_url)
-        if push_blocked:
-            return {
-                **push_blocked,
-                **remote_evidence,
-                **snapshot_evidence,
-                **push_evidence,
-            }
+            _restore_workspace_snapshot(workspace, snapshot_backup_root, preserved_paths)
+            _restore_workspace_sidecars(workspace, sidecar_backup_root, preserved_sidecars)
 
-        head_result = run_git("git", "rev-parse", "--short", "HEAD")
-        if int(getattr(head_result, "returncode", 1)) != 0:
-            return _blocked(
-                workspace,
-                "github-sync.json",
-                "github_sync_failed",
-                "Failed to resolve synced commit hash.",
-                failed_step="commit_hash",
-                attempted_command="git rev-parse --short HEAD",
-                stderr_summary=_safe_summary(getattr(head_result, "stderr", "")),
-                **remote_evidence,
-                **snapshot_evidence,
-                **push_evidence,
+            snapshot_evidence, add_result = _stage_workspace_snapshot(workspace, run_git, snapshot_paths)
+            if add_result is not None and int(getattr(add_result, "returncode", 1)) != 0:
+                return _blocked(
+                    workspace,
+                    "github-sync.json",
+                    "github_sync_failed",
+                    "Failed to stage workspace snapshot.",
+                    failed_step="stage",
+                    attempted_command="git add -- <paths>",
+                    stderr_summary=_safe_summary(getattr(add_result, "stderr", "")),
+                    remote_branch_found=checkout_target is not None,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                )
+
+            head_exists_result = run_git("git", "rev-parse", "--verify", "HEAD")
+            has_existing_commit = int(getattr(head_exists_result, "returncode", 1)) == 0
+
+            status_result = run_git("git", "status", "--short")
+            if int(getattr(status_result, "returncode", 1)) != 0:
+                return _blocked(
+                    workspace,
+                    "github-sync.json",
+                    "github_sync_failed",
+                    "Failed to inspect git status.",
+                    failed_step="status",
+                    attempted_command="git status --short",
+                    stderr_summary=_safe_summary(getattr(status_result, "stderr", "")),
+                    remote_branch_found=checkout_target is not None,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                )
+
+            if str(getattr(status_result, "stdout", "")).strip() or not has_existing_commit:
+                commit_result = _commit_workspace_snapshot(workspace, run_git)
+                if int(getattr(commit_result, "returncode", 1)) != 0:
+                    return _blocked(
+                        workspace,
+                        "github-sync.json",
+                        "github_sync_failed",
+                        "Failed to create bootstrap commit.",
+                        failed_step="commit",
+                        attempted_command="git commit -m",
+                        stderr_summary=_safe_summary(getattr(commit_result, "stderr", "")),
+                        remote_branch_found=checkout_target is not None,
+                        **remote_evidence,
+                        **snapshot_evidence,
+                    )
+
+            push_blocked, push_evidence = _push_with_transport_fallback(workspace, run_git, remote, branch, repo_url)
+            if push_blocked:
+                return {
+                    **push_blocked,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                    **push_evidence,
+                    "remote_branch_found": checkout_target is not None,
+                }
+
+            head_result = run_git("git", "rev-parse", "--short", "HEAD")
+            if int(getattr(head_result, "returncode", 1)) != 0:
+                return _blocked(
+                    workspace,
+                    "github-sync.json",
+                    "github_sync_failed",
+                    "Failed to resolve synced commit hash.",
+                    failed_step="commit_hash",
+                    attempted_command="git rev-parse --short HEAD",
+                    stderr_summary=_safe_summary(getattr(head_result, "stderr", "")),
+                    remote_branch_found=checkout_target is not None,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                    **push_evidence,
+                )
+            synced_commit = str(getattr(head_result, "stdout", "")).strip()
+            evidence_path = _write_evidence(
+                _evidence_path(workspace, "github-sync.json"),
+                {
+                    "ok": True,
+                    "repository_url": repo_url,
+                    "default_branch": branch,
+                    "remote_name": remote,
+                    "synced_commit": synced_commit,
+                    "remote_branch_found": checkout_target is not None,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                    **push_evidence,
+                },
             )
-        synced_commit = str(getattr(head_result, "stdout", "")).strip()
-        evidence_path = _write_evidence(
-            _evidence_path(workspace, "github-sync.json"),
-            {
+            return {
                 "ok": True,
+                "block_reason": "",
+                "evidence_path": evidence_path,
                 "repository_url": repo_url,
                 "default_branch": branch,
                 "remote_name": remote,
                 "synced_commit": synced_commit,
+                "remote_branch_found": checkout_target is not None,
                 **remote_evidence,
                 **snapshot_evidence,
                 **push_evidence,
-            },
-        )
-        return {
-            "ok": True,
-            "block_reason": "",
-            "evidence_path": evidence_path,
-            "repository_url": repo_url,
-            "default_branch": branch,
-            "remote_name": remote,
-            "synced_commit": synced_commit,
-            **remote_evidence,
-            **snapshot_evidence,
-            **push_evidence,
-        }
+            }
+        finally:
+            if snapshot_backup_root.exists():
+                shutil.rmtree(snapshot_backup_root)
+            if sidecar_backup_root.exists():
+                _restore_workspace_sidecars(workspace, sidecar_backup_root, preserved_sidecars)
     except GithubDeliveryError:
         raise

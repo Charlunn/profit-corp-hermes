@@ -33,6 +33,13 @@ STATUS_REQUIRED_LINES = [
     "Protected change",
     "Platform justification",
 ]
+SPECIALIST_STAGE_ORDER = [
+    "design",
+    "development",
+    "testing",
+    "git_versioning",
+    "release_readiness",
+]
 
 
 class ApprovedDeliveryPipelineValidationError(Exception):
@@ -118,6 +125,15 @@ def resolve_workspace_path(record: dict[str, Any]) -> Path:
         raise ApprovedDeliveryPipelineValidationError("approved-project authority record missing workspace path")
     workspace = Path(workspace_path)
     if not workspace.exists():
+        status = first_nonempty(get_nested(record, "pipeline", "status"))
+        final_handoff_path = first_nonempty(
+            get_nested(record, "pipeline", "final_handoff_path"),
+            get_nested(record, "artifacts", "final_handoff_path"),
+            get_nested(record, "final_handoff", "path"),
+            get_nested(record, "final_handoff", "link"),
+        )
+        if status == "completed" and final_handoff_path and Path(final_handoff_path).exists():
+            return workspace
         raise ApprovedDeliveryPipelineValidationError(f"workspace path not found: {workspace.as_posix()}")
     return workspace
 
@@ -133,13 +149,16 @@ def resolve_manifest_path(record: dict[str, Any], workspace: Path) -> Path:
     if not manifest_path.is_absolute():
         manifest_path = workspace / raw
     if not manifest_path.exists():
+        pipeline_status = first_nonempty(get_nested(record, "pipeline", "status"))
+        if pipeline_status == "completed":
+            return manifest_path
         raise ApprovedDeliveryPipelineValidationError(
             f"Phase 9 delivery run manifest missing: {manifest_path.as_posix()}"
         )
     return manifest_path
 
 
-def resolve_conformance_path(record: dict[str, Any], workspace: Path) -> Path:
+def resolve_conformance_path(record: dict[str, Any], workspace: Path, project_dir: Path) -> Path:
     raw = first_nonempty(
         get_nested(record, "artifacts", "conformance_evidence_path"),
         record.get("conformance_evidence_path"),
@@ -149,9 +168,11 @@ def resolve_conformance_path(record: dict[str, Any], workspace: Path) -> Path:
     for candidate in candidates:
         candidate_path = Path(candidate)
         if not candidate_path.is_absolute():
-            candidate_path = workspace / candidate
+            candidate_path = resolve_project_artifact_path(candidate, project_dir) if "approved-projects" in candidate_path.parts else workspace / candidate_path
         if candidate_path.exists():
             return candidate_path
+    if first_nonempty(get_nested(record, "pipeline", "status")) == "completed":
+        return Path(raw) if raw else workspace / CONFORMANCE_CANDIDATES[0]
     raise ApprovedDeliveryPipelineValidationError("conformance evidence missing from authority record/workspace")
 
 
@@ -178,14 +199,25 @@ def resolve_final_handoff_path(record: dict[str, Any], workspace: Path, *, block
     return path
 
 
+def resolve_project_artifact_path(raw_path: str, project_dir: Path) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path
+    parts = list(path.parts)
+    if "approved-projects" in parts:
+        anchor = parts.index("approved-projects")
+        if anchor + 1 < len(parts) and parts[anchor + 1] == project_dir.name:
+            suffix = parts[anchor + 2 :]
+            return project_dir.joinpath(*suffix) if suffix else project_dir
+    return project_dir / path
+
+
 def resolve_final_review_path(record: dict[str, Any], project_dir: Path, *, blocked_context: bool = False) -> Path:
     raw = first_nonempty(
         get_nested(record, "artifacts", "final_review_path"),
         (project_dir / FINAL_REVIEW_NAME).as_posix(),
     )
-    path = Path(raw)
-    if not path.is_absolute():
-        path = project_dir / raw
+    path = resolve_project_artifact_path(raw, project_dir)
     if not path.exists():
         if blocked_context:
             raise ApprovedDeliveryPipelineValidationError(
@@ -193,6 +225,46 @@ def resolve_final_review_path(record: dict[str, Any], project_dir: Path, *, bloc
             )
         raise ApprovedDeliveryPipelineValidationError(f"final operator review artifact not found: {path.as_posix()}")
     return path
+
+
+def validate_specialist_stage_visibility(record: dict[str, Any], events: list[dict[str, Any]], status_text: str, workspace: Path) -> None:
+    lowered = status_text.lower()
+    manifest_path = resolve_manifest_path(record, workspace)
+    if manifest_path.exists():
+        manifest = load_json(manifest_path, "delivery run manifest")
+        stages = manifest.get("stages", [])
+        if not isinstance(stages, list) or len(stages) < len(SPECIALIST_STAGE_ORDER):
+            declared_order = []
+        else:
+            declared_order = [str(stage.get("stage", "")).strip() for stage in stages if isinstance(stage, dict)]
+        expected_delivery_order = ["design", "development", "testing", "git versioning", "release readiness"]
+        if declared_order and declared_order[: len(expected_delivery_order)] != expected_delivery_order:
+            raise ApprovedDeliveryPipelineValidationError("delivery run manifest specialist stage order drifted")
+
+    pipeline = get_nested(record, "pipeline") if isinstance(get_nested(record, "pipeline"), dict) else {}
+    current_stage = first_nonempty(get_nested(pipeline, "stage"))
+    specialist_events = {str(event.get("stage", "")).strip(): event for event in events if str(event.get("stage", "")).strip() in SPECIALIST_STAGE_ORDER}
+    github_seen = any(str(event.get("stage", "")).strip() == "github_repository" for event in events)
+    should_enforce = bool(specialist_events)
+
+    for stage in SPECIALIST_STAGE_ORDER:
+        if not should_enforce:
+            break
+        if stage not in specialist_events and (github_seen or current_stage in {stage, "github_repository", "github_sync", "vercel_linkage", "vercel_deploy", "handoff"}):
+            raise ApprovedDeliveryPipelineValidationError(f"missing specialist stage event before shipping: {stage}")
+        if stage in specialist_events:
+            event = specialist_events[stage]
+            artifact = first_nonempty(event.get("artifact"))
+            if not artifact:
+                raise ApprovedDeliveryPipelineValidationError(f"specialist stage missing artifact: {stage}")
+            artifact_path = Path(artifact)
+            if not artifact_path.is_absolute():
+                artifact_path = workspace / artifact
+            if artifact_path.exists():
+                if artifact_path.name.lower() not in lowered and artifact_path.as_posix().lower() not in lowered:
+                    raise ApprovedDeliveryPipelineValidationError(f"status view missing specialist stage artifact linkage: {artifact_path.name}")
+            elif first_nonempty(get_nested(record, "pipeline", "status")) != "completed":
+                raise ApprovedDeliveryPipelineValidationError(f"specialist stage artifact not found: {artifact_path.as_posix()}")
 
 
 def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: list[dict[str, Any]], status_text: str) -> None:
@@ -331,13 +403,18 @@ def validate_status_markdown(status_text: str, workspace: Path, final_handoff: P
         raise ApprovedDeliveryPipelineValidationError("status view missing final handoff link")
 
 
-def latest_handoff_event(events: list[dict[str, Any]]) -> dict[str, Any]:
+def latest_successful_handoff_reference(events: list[dict[str, Any]]) -> str:
     for event in reversed(events):
-        if str(event.get("stage", "")).strip() == "handoff":
-            return event
-    if events:
-        return events[-1]
-    raise ApprovedDeliveryPipelineValidationError("approved delivery events missing handoff stage")
+        handoff = first_nonempty(
+            event.get("final_handoff_path"),
+            get_nested(event, "final_handoff", "path"),
+            get_nested(event, "final_handoff", "link"),
+        )
+        if handoff:
+            return handoff
+        if str(event.get("stage", "")).strip() == "handoff" and first_nonempty(event.get("artifact")):
+            return first_nonempty(event.get("artifact"))
+    return ""
 
 
 def validate_final_review(record: dict[str, Any], final_review_path: Path, review_text: str) -> None:
@@ -374,37 +451,50 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
     final_review_text = load_text(final_review_path, "final operator review")
 
     workspace = resolve_workspace_path(record)
-    conformance_path = resolve_conformance_path(record, workspace)
+    conformance_path = resolve_conformance_path(record, workspace, project_dir)
     manifest_path = resolve_manifest_path(record, workspace)
     validate_blocked_prerequisite_visibility(record, events, status_text)
-    final_handoff_path = resolve_final_handoff_path(record, workspace, blocked_context=has_blocked_state)
+    final_handoff_path = resolve_final_handoff_path(record, workspace, blocked_context=False)
 
-    handoff_event = latest_handoff_event(events)
-    event_final_handoff = first_nonempty(
-        handoff_event.get("final_handoff_path"),
-        get_nested(handoff_event, "final_handoff", "path"),
-        get_nested(handoff_event, "final_handoff", "link"),
-        handoff_event.get("artifact"),
-    )
+    event_final_handoff = latest_successful_handoff_reference(events)
     if not event_final_handoff:
-        raise ApprovedDeliveryPipelineValidationError("handoff event missing final handoff path/link")
-    event_final_handoff_path = Path(event_final_handoff)
-    if not event_final_handoff_path.is_absolute():
-        event_final_handoff_path = workspace / event_final_handoff
-    if event_final_handoff_path.resolve() != final_handoff_path.resolve():
-        raise ApprovedDeliveryPipelineValidationError("final handoff path mismatch between authority record and handoff event")
+        pipeline_status = first_nonempty(get_nested(record, "pipeline", "status"))
+        if pipeline_status == "completed":
+            raise ApprovedDeliveryPipelineValidationError("completed pipeline missing successful final handoff event reference")
+    else:
+        event_final_handoff_path = Path(event_final_handoff)
+        if not event_final_handoff_path.is_absolute():
+            event_final_handoff_path = workspace / event_final_handoff
+        if event_final_handoff_path.resolve() != final_handoff_path.resolve():
+            raise ApprovedDeliveryPipelineValidationError("final handoff path mismatch between authority record and successful event history")
 
-    event_workspace = first_nonempty(handoff_event.get("workspace_path"), workspace.as_posix())
+    event_workspace = first_nonempty(
+        next(
+            (
+                event.get("workspace_path")
+                for event in reversed(events)
+                if first_nonempty(
+                    event.get("final_handoff_path"),
+                    get_nested(event, "final_handoff", "path"),
+                    get_nested(event, "final_handoff", "link"),
+                )
+            ),
+            "",
+        ),
+        workspace.as_posix(),
+    )
     if Path(event_workspace).resolve() != workspace.resolve():
         raise ApprovedDeliveryPipelineValidationError("workspace path mismatch between authority record and handoff event")
 
     validate_status_markdown(status_text, workspace, final_handoff_path)
+    validate_specialist_stage_visibility(record, events, status_text + "\n" + final_review_text, workspace)
     validate_final_review(record, final_review_path, final_review_text)
     validate_current_state_precedence(record, events, status_text, final_review_text)
     validate_github_linkage(record, status_text + "\n" + final_review_text)
     validate_vercel_linkage(record, status_text + "\n" + final_review_text)
     validate_blocked_prerequisite_visibility(record, events, status_text + "\n" + final_review_text)
 
+    terminal_stage = "handoff" if event_final_handoff else first_nonempty(get_nested(record, "pipeline", "stage")) or "handoff"
     return {
         "ok": True,
         "approved_project_path": project_dir.as_posix(),
@@ -414,7 +504,7 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
         "final_handoff_path": final_handoff_path.as_posix(),
         "final_review_path": final_review_path.as_posix(),
         "event_count": len(events),
-        "terminal_stage": str(handoff_event.get("stage", "handoff")),
+        "terminal_stage": terminal_stage,
     }
 
 

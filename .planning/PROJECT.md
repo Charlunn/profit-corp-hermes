@@ -12,29 +12,29 @@ Turn noisy web-wide user pain signals into a clear, actionable operating view: w
 
 ## Current State
 
-**Latest shipped milestone:** v1.1 SaaS Delivery Factory (shipped 2026-04-28)
+**Latest shipped milestone:** v1.1.1 Delivery Pipeline Reliability Fixes (shipped 2026-04-30)
 
-Hermes now supports a full approved-to-delivery SaaS factory flow on top of the original operating core:
-- governed template asset registration and contract enforcement
-- shared Supabase backend guardrails
-- Claude Code specialist delivery-team orchestration
-- approved-project bootstrap, blocked-state tracking, resume, and handoff
-- constrained GitHub/Vercel automation with operator-visible audit artifacts
+Hermes now has a repaired approved-to-delivery automation path on top of the shipped SaaS factory baseline:
+- governed GitHub auth can use either explicit env tokens or an already-authenticated `gh` CLI session
+- approved projects derive canonical GitHub owner/repository identity instead of slug-based fallbacks
+- GitHub sync uses source-only snapshots, remote convergence, and transport fallback for real Windows + pnpm workspaces
+- governed Vercel delivery can use either explicit `VERCEL_TOKEN` or a healthy local CLI login session
+- authority and operator-visible status artifacts now converge to the true recovered final state after successful GitHub/Vercel completion
 
-## Current Milestone: v1.1.1 Delivery Pipeline Reliability Fixes
+## Current Milestone: Post-close Live Validation
 
-**Goal:** Turn the approved-project delivery path back into a repeatable, self-converging automation flow by fixing the defects exposed during the live Hermes instance test.
+**Goal:** Run a fresh end-to-end delivery test against the repaired pipeline and use that evidence to decide the next product-factory milestone.
 
 **Target features:**
-- Fix GitHub auth detection, owner fallback, and repo/sync defaults so new approved projects can create and sync their own repositories without manual rescue
-- Fix workspace snapshot behavior and transport/path handling so GitHub sync succeeds on the real Windows + pnpm environment used in live delivery
-- Fix Vercel auth handling and final authority/status convergence so a real successful deploy is reflected as a clean completed pipeline state
+- Re-run the approved-project GitHub/Vercel delivery path on the real operator machine and confirm the repaired automation succeeds without manual recovery
+- Confirm operator-facing authority, status, and final review artifacts match the real final state for the new run
+- Use the resulting evidence to define the next roadmap expansion beyond delivery-path reliability fixes
 
 ## Next Milestone Goals
 
-- Repair the specific GitHub/Vercel delivery defects found during the live end-to-end Hermes instance test
-- Preserve the one-approval automated delivery model while removing the manual recovery steps that were required to finish the test run
-- Make operator-facing authority/status artifacts converge to the true final state after successful shipping and deployment
+- Validate the repaired GitHub/Vercel delivery path through a fresh live end-to-end run before expanding scope again
+- Preserve the one-approval automated delivery model while confirming the operator no longer needs manual GitHub/Vercel recovery
+- Define the next milestone from live evidence rather than assumptions once the repaired path is re-tested
 
 ## Requirements
 
@@ -53,13 +53,17 @@ Hermes now supports a full approved-to-delivery SaaS factory flow on top of the 
 - ✓ Approved product opportunities can now move through governed workspace bootstrap, delivery orchestration, GitHub sync, Vercel deploy, and final handoff artifacts — Validated in v1.1
 - ✓ Platform-managed GitHub/Vercel delivery automation now runs through constrained, auditable governance paths instead of open-ended credential use — Validated in v1.1
 - ✓ GitHub sync now stages a source-only canonical snapshot, converges workspace remotes, retries through operator-healthy transport paths, and persists granular sync evidence — Validated in Phase 15: GitHub Sync Reliability on Real Workspaces
+- ✓ Approved-project delivery can treat an already-authenticated `gh` CLI session as a valid GitHub auth source when env tokens are absent — Validated in Phase 14
+- ✓ Approved-project delivery now derives canonical GitHub repository owner/name/url identity for new projects and resume flows — Validated in Phase 14
+- ✓ Governed Vercel delivery can use either explicit token auth or an already-authenticated local CLI session — Validated in Phase 16
+- ✓ Authority and operator-facing status surfaces now converge to the true recovered final state after GitHub/Vercel success — Validated in Phase 17
 
 ### Active
 
-- [ ] Restore automatic GitHub credential detection for approved-project delivery without requiring manual shell token export
-- [ ] Restore correct GitHub repository owner/repo targeting for new approved projects
-- [ ] Restore Vercel deployment automation so the pipeline can use the available operator auth path without manual CLI rescue
-- [ ] Restore authority/status artifact convergence so successful live delivery renders as completed instead of staying blocked
+- [ ] Validate the repaired delivery path with a fresh live end-to-end run on the real operator machine
+- [ ] Confirm the new live run finishes without manual GitHub or Vercel recovery steps
+- [ ] Confirm `APPROVED_PROJECT.json`, `DELIVERY_PIPELINE_STATUS.md`, and `FINAL_OPERATOR_REVIEW.md` match the true final state for the new live run
+- [ ] Define the next milestone from the new live evidence set
 
 ### Out of Scope
 
@@ -112,7 +116,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? → Add to Key Decisions
 5. "What This Is" still accurate? → Update if drifted
 
-**Current state:** v1.1 shipped — Hermes now spans both opportunity intelligence and governed SaaS delivery. The next milestone should define what to extend beyond the delivery-factory baseline rather than reopening already-closed v1.1 scope.
+**Current state:** v1.1.1 shipped — Hermes now has a repaired approved-to-delivery automation path, and the next step is a fresh live validation run before defining further expansion.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -121,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-29 after v1.1.1 milestone kickoff*
+*Last updated: 2026-04-30 after v1.1.1 milestone close*

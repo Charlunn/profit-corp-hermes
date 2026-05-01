@@ -9,7 +9,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RootDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$HermesHome = Join-Path $env:USERPROFILE '.hermes'
+if ($env:HERMES_HOME) {
+  $HermesHome = $env:HERMES_HOME
+} else {
+  $HermesHome = Join-Path $env:USERPROFILE '.hermes'
+}
 $HermesConfig = Join-Path $HermesHome 'config.yaml'
 $TemplateConfig = Join-Path $RootDir 'config/hermes.config.yaml.example'
 $Profiles = @('ceo','scout','cmo','arch','accountant')
@@ -542,6 +546,8 @@ function Configure-ModelsInteractive {
 function Print-Sanity([string]$PythonBin) {
   Log 'Running Hermes doctor'
   try {
+    $env:PYTHONIOENCODING = 'utf-8'
+    $env:PYTHONUTF8 = '1'
     & hermes doctor
   } catch {
     Warn 'Hermes doctor reported an error (often encoding in ~/.hermes/.env on Windows); continue with manual checks below.'
