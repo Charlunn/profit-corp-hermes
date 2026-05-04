@@ -1,11 +1,34 @@
 # Milestones
 
-## v1.1.1 — Delivery Pipeline Reliability Fixes
+## v1.1.2 - Real-SaaS Delivery Governance Hardening
+
+**Shipped:** 2026-05-04
+**Phases:** 4 | **Plans:** 11 | **Tasks:** 11
+**Timeline:** 2026-05-04 -> 2026-05-04
+**Git range:** `working-tree milestone`
+
+### Delivered
+- Unified specialist handoff generation, validation, authority truth, and operator-facing review around one canonical governance contract
+- Made specialist stages fail closed on missing transcript, handoff, workspace inventory, structured evidence, and stale or thin `/ui-ux-pro-max` artifacts
+- Blocked template-only and identity-only delivery from passing as real SaaS proof, including `/demo`-based loopholes
+- Carried the stricter evidence and proof model through bootstrap, blocked, resumed, and recovered-final-state flows with targeted regression coverage
+- Preserved the repaired GitHub/Vercel/shared-Supabase delivery backbone while raising the product-substance bar for approved-project completion
+
+### Known Gaps
+- `v1.1.2` milestone audit found no unmet product requirements, but Phase 18 is missing a dedicated `18-VERIFICATION.md` artifact
+- Nyquist validation coverage is incomplete across Phases 18-21, with draft validation files for Phases 19-20 and missing validation files for Phases 18 and 21
+- Open-artifact audit still reports the legacy `Phase 11 / 11-HUMAN-UAT.md` entry even though it is marked passed with zero pending scenarios
+
+### Notes
+- See `.planning/milestones/v1.1.2-ROADMAP.md`, `.planning/milestones/v1.1.2-REQUIREMENTS.md`, and `.planning/v1.1.2-MILESTONE-AUDIT.md` for full archived detail
+- Next milestone work should decide whether to clear workflow evidence debt first or move directly into the next product-factory expansion scope
+
+## v1.1.1 - Delivery Pipeline Reliability Fixes
 
 **Shipped:** 2026-04-30
 **Phases:** 4 | **Plans:** 10 | **Tasks:** 30
-**Timeline:** 2026-04-29 → 2026-04-30
-**Git range:** `c5ab649` → `cb1464a`
+**Timeline:** 2026-04-29 -> 2026-04-30
+**Git range:** `c5ab649` -> `cb1464a`
 
 ### Delivered
 - Restored governed GitHub auth detection so approved delivery can use either exported tokens or an already-authenticated `gh` CLI session
@@ -23,12 +46,12 @@
 - See `.planning/milestones/v1.1.1-ROADMAP.md` and `.planning/milestones/v1.1.1-REQUIREMENTS.md` for full archived detail
 - Next work should start with live end-to-end validation before defining the next milestone
 
-## v1.1 — SaaS Delivery Factory
+## v1.1 - SaaS Delivery Factory
 
 **Shipped:** 2026-04-28
 **Phases:** 7 | **Plans:** 20 | **Tasks:** 35
-**Timeline:** 2026-04-26 → 2026-04-28
-**Git range:** `da8143c` → `9c01d1f`
+**Timeline:** 2026-04-26 -> 2026-04-28
+**Git range:** `da8143c` -> `9c01d1f`
 
 ### Delivered
 - Turned `standalone-saas-template` into a governed Hermes platform asset with a canonical contract and blocking conformance gate
@@ -46,12 +69,12 @@
 - Deferred collaboration, realtime UX, and internal telemetry items remain in STATE.md / PROJECT.md for future milestones
 - See `.planning/milestones/v1.1-ROADMAP.md` and `.planning/milestones/v1.1-REQUIREMENTS.md` for full archived detail
 
-## v1.0 — milestone
+## v1.0 - milestone
 
 **Shipped:** 2026-04-26
 **Phases:** 6 | **Plans:** 18 | **Tasks:** 44
-**Timeline:** 2026-04-24 → 2026-04-26
-**Git range:** `164c0fe` → `3aa6fef`
+**Timeline:** 2026-04-24 -> 2026-04-26
+**Git range:** `164c0fe` -> `3aa6fef`
 
 ### Delivered
 - Established repeatable web-wide pain-signal intake with normalized storage and source history
