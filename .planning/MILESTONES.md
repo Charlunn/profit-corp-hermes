@@ -15,13 +15,11 @@
 - Preserved the repaired GitHub/Vercel/shared-Supabase delivery backbone while raising the product-substance bar for approved-project completion
 
 ### Known Gaps
-- `v1.1.2` milestone audit found no unmet product requirements, but Phase 18 is missing a dedicated `18-VERIFICATION.md` artifact
-- Nyquist validation coverage is incomplete across Phases 18-21, with draft validation files for Phases 19-20 and missing validation files for Phases 18 and 21
 - Open-artifact audit still reports the legacy `Phase 11 / 11-HUMAN-UAT.md` entry even though it is marked passed with zero pending scenarios
 
 ### Notes
 - See `.planning/milestones/v1.1.2-ROADMAP.md`, `.planning/milestones/v1.1.2-REQUIREMENTS.md`, and `.planning/v1.1.2-MILESTONE-AUDIT.md` for full archived detail
-- Next milestone work should decide whether to clear workflow evidence debt first or move directly into the next product-factory expansion scope
+- Post-close cleanup added `18-VERIFICATION.md`, completed Nyquist validation artifacts for Phases 18-21, and brought the milestone audit to `passed`
 
 ## v1.1.1 - Delivery Pipeline Reliability Fixes
 

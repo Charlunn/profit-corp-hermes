@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Turn noisy web-wide user pain signals into clear, governed decisions about what is worth building next - and ensure approved opportunities become real, launchable SaaS products rather than ceremonial agent output.
-**Current focus:** v1.1.2 closed; ready for next-milestone planning or workflow-evidence cleanup
+**Current focus:** v1.1.2 evidence debt cleared; ready for next-milestone planning
 
 ## Current Position
 
@@ -29,7 +29,7 @@ Phase: 21
 Plan: 3 plans completed
 Milestone: v1.1.2 - closed
 Status: Completed
-Last activity: 2026-05-04 -- Milestone v1.1.2 audited and archived
+Last activity: 2026-05-04 -- Milestone v1.1.2 workflow evidence debt cleared
 
 Progress: [##########] 100%
 
@@ -68,7 +68,7 @@ Progress: [##########] 100%
 **Recent Trend:**
 
 - Last 5 plans: 19-02, 19-03, 20-01, 20-02, 21-03
-- Trend: governance hardening milestone is shipped; next step is next-milestone planning or workflow evidence cleanup
+- Trend: governance hardening milestone is shipped and its workflow evidence is now reconciled; next step is next-milestone planning
 
 *Updated after each plan completion*
 
@@ -94,16 +94,14 @@ Recent decisions affecting current work:
 - [v1.1.2]: prioritize real-SaaS governance hardening over reopening the repaired GitHub/Vercel/shared-Supabase transport path
 - [v1.1.2]: make specialist evidence and `/ui-ux-pro-max` artifacts executable blocking gates
 - [v1.1.2]: remove `/demo` and identity-only files from acceptable product proof
-- [Milestone close]: accept missing Phase 18 verification artifact and incomplete Nyquist coverage as process debt rather than failed product scope
+- [Post-close cleanup]: normalized Phase 18-21 verification and validation artifacts so the v1.1.2 milestone audit passes cleanly
 
 ### Pending Todos
 
-- Decide whether to clean up milestone-close workflow evidence debt or roll directly into the next milestone
 - Select the next milestone or follow-up phase after governance hardening
 
 ### Blockers/Concerns
 
-- Milestone audit still flags the missing `18-VERIFICATION.md` artifact and incomplete Nyquist validation coverage for Phases 18-21
 - Existing sample approved-project artifacts still include environment-specific evidence-path drift outside the current milestone scope and may need careful fixture normalization during testing
 
 ## Deferred Items
@@ -116,7 +114,6 @@ Items acknowledged and carried forward from previous milestones:
 | Real-time UX | Real-time dashboard-first experience | Deferred to later milestone | 2026-04-24 |
 | Internal telemetry | Internal metrics as primary input | Deferred to later milestone | 2026-04-24 |
 | DNS | Automated domain / DNS provisioning | Deferred to later milestone | 2026-05-04 |
-| Workflow evidence | Missing `18-VERIFICATION.md` and incomplete Nyquist validation coverage for Phases 18-21 | Accepted at milestone close | 2026-05-04 |
 | Audit artifact | Legacy `Phase 11 / 11-HUMAN-UAT.md` open-artifact entry despite zero pending scenarios | Accepted at milestone close | 2026-05-04 |
 
 ### Roadmap Evolution
@@ -124,7 +121,7 @@ Items acknowledged and carried forward from previous milestones:
 - Phase 14 through Phase 17 repaired the live delivery-path defects exposed after the first shipped SaaS factory milestone
 - v1.1.1 roadmap, requirements, and state surfaces were aligned to the repaired GitHub auth, sync, Vercel, and status-convergence evidence set
 - v1.1.2 completed governance hardening on top of that repaired delivery backbone without reopening the underlying infrastructure stack
-- milestone close archived the governance hardening scope while explicitly carrying workflow-evidence debt forward as deferred process cleanup
+- milestone close archived the governance hardening scope and the follow-up cleanup normalized Phase 18-21 workflow evidence artifacts
 
 ## Session Continuity
 
@@ -134,4 +131,4 @@ Resume file: .planning/PROJECT.md
 
 **Next Phase:** None - milestone closed
 
-**Planned Phase:** Next milestone selection or workflow evidence cleanup
+**Planned Phase:** Next milestone selection
