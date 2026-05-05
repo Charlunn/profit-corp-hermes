@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 ## Current Position
 
-Phase: 29
-Plan: Not started
-Milestone: v1.3 - initialized
+Phase: -
+Plan: -
+Milestone: v1.3 - shipped
 Status: Milestone complete
 Last activity: 2026-05-05 -- Phase 29 execution completed
 
@@ -46,7 +46,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- v1.3 milestone execution complete
+- Start next milestone definition when ready
 
 ### Blockers/Concerns
 
@@ -59,6 +59,7 @@ Items acknowledged and carried forward from previous milestones:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
+| UAT audit | Phase 11 `11-HUMAN-UAT.md` still appears in open-artifact audit despite 0 pending scenarios | Accepted as deferred process debt | 2026-05-05 |
 | Collaboration | Multi-user/team workflow surfaces | Deferred to later milestone | 2026-04-24 |
 | Real-time UX | Real-time dashboard-first experience | Deferred to later milestone | 2026-04-24 |
 | Internal telemetry | Internal metrics as primary input | Deferred to later milestone | 2026-04-24 |
@@ -72,4 +73,4 @@ Resume file: --resume-file
 
 **Next Phase:** None - current milestone complete
 
-**Planned Phase:** 29 - Hermes Final Delivery Experience and Blocked Recovery
+**Planned Phase:** None

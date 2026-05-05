@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.3 - Hermes-First Autonomous Company Interface
+
+**Shipped:** 2026-05-05
+**Phases:** 4 | **Plans:** 11 | **Tasks:** 11
+**Timeline:** 2026-05-05 -> 2026-05-05
+**Git range:** `c1068a0` -> `689b24b`
+
+### Delivered
+- Added one Hermes-native project-start entrypoint that reuses the existing governed run identity and bootstrap truth
+- Internalized company-role routing and approved-work delivery handoff so Hermes stays the only visible operator surface
+- Collapsed proposal and approval into one Hermes-native recommendation and conversational approve/reject loop backed by the locked delivery contract
+- Locked final shipped success and blocked recovery against the authoritative approved-delivery status and notification surfaces
+
+### Known Gaps
+- Open-artifact audit still reports the legacy `Phase 11 / 11-HUMAN-UAT.md` entry even though it is marked passed with zero pending scenarios
+- No dedicated `v1.3-MILESTONE-AUDIT.md` artifact was present at close
+
+### Notes
+- See `.planning/milestones/v1.3-ROADMAP.md` and `.planning/milestones/v1.3-REQUIREMENTS.md` for full archived detail
+- Known deferred items at close: 1 (see `STATE.md` Deferred Items)
+
 ## v1.1.2 - Real-SaaS Delivery Governance Hardening
 
 **Shipped:** 2026-05-04

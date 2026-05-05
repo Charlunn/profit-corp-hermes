@@ -2,11 +2,11 @@
 
 ## Current Milestone
 
-- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (planned 2026-05-05)
+- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (shipped 2026-05-05)
 
 ## Milestones
 
-- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (planned)
+- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (shipped 2026-05-05)
 - **v1.2 Autonomous Project Launch Loop** - Phases 22-25 (shipped 2026-05-05)
 - **v1.1.2 Real-SaaS Delivery Governance Hardening** - Phases 18-21 (shipped 2026-05-04)
 - **v1.1.1 Delivery Pipeline Reliability Fixes** - Phases 14-17 (shipped 2026-04-30)

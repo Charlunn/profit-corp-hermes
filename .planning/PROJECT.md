@@ -12,7 +12,7 @@ Turn noisy web-wide user pain signals into clear, governed decisions about what 
 
 ## Current State
 
-**Latest shipped milestone:** v1.2 Autonomous Project Launch Loop (shipped 2026-05-05)
+**Latest shipped milestone:** v1.3 Hermes-First Autonomous Company Interface (shipped 2026-05-05)
 
 Hermes now has both a repaired approved-to-delivery automation backbone and stricter governance over what counts as successful delivery:
 - governed GitHub auth can use either explicit env tokens or an already-authenticated `gh` CLI session
@@ -26,15 +26,9 @@ Phases 26 through 29 closed the full Hermes-first operator loop: Hermes now owns
 
 ## Current Milestone
 
-**v1.3 Hermes-First Autonomous Company Interface**
+**No active milestone yet**
 
-**Goal:** Make Hermes the only operator-facing interface so the owner can ask Hermes to start a new project, approve the resulting proposal, and receive the final deployed URL without touching internal scripts or phase-level commands.
-
-**Target features:**
-- Hermes-native "start new project" entrypoint that triggers the full launch loop from a single top-level intent
-- Hermes-managed internal role orchestration so `ceo`, `scout`, `cmo`, `arch`, and delivery specialists collaborate behind one interface
-- Hermes-native approval and recovery flow where the owner only sees proposal, approve/reject, blocked context, and final shipped result
-- hidden internal execution of qualification, contract freeze, delivery, deploy, and final notification so the pipeline stays governed but feels like one Hermes capability
+`v1.3 Hermes-First Autonomous Company Interface` is now shipped. The next step is defining the next milestone rather than extending the just-closed roadmap in place.
 
 ## Next Milestone Goals
 

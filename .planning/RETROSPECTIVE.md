@@ -1,5 +1,47 @@
 # Retrospective
 
+## Milestone: v1.3 - Hermes-First Autonomous Company Interface
+
+**Shipped:** 2026-05-05
+**Phases:** 4 | **Plans:** 11
+
+### What Was Built
+
+- Hermes now owns project start through one governed, Hermes-native entrypoint
+- Internal role routing and approved-work delivery handoff are now durable and Hermes-internal
+- Proposal presentation and approve/reject semantics now live in one Hermes-native conversation surface
+- Final shipped success and blocked recovery are now locked to authoritative delivery truth and idempotent notification behavior
+
+### What Worked
+
+- The milestone stayed structurally clean because each phase wrapped an existing governed seam instead of inventing a second workflow engine
+- Contract-first tests around chat intake, approval, delivery status, and final notifications made interface work safe to ship on top of the existing backbone
+- Phase-by-phase summaries and verification artifacts were enough to close the milestone without re-opening the shipped delivery infrastructure
+
+### What Was Inefficient
+
+- The built-in milestone archival helper did not complete successfully in this environment, so closeout required manual archive work
+- Roadmap/state auto-completion still produced malformed or partially updated planning docs that had to be reconciled by hand
+- The open-artifact audit still surfaced the stale Phase 11 UAT item, adding closeout friction unrelated to v1.3 product scope
+
+### Patterns Established
+
+- Hermes-facing UX layers can be safely shipped when they are constrained to repackage existing governed truth rather than replace it
+- Shared approval and notification adapters are a good seam for conversational UX over append-only governance records
+- Final operator-facing messaging should be verified through truth-convergence tests, not only snapshot-style string assertions
+
+### Key Lessons
+
+- Brownfield interface work moves fastest when each phase chooses one authoritative seam and refuses to branch state
+- Milestone close quality now depends as much on planning-tooling reliability as on the product code itself
+- The best way to hide pipeline internals is not to suppress them, but to keep them authoritative and repackage them into clearer operator-facing views
+
+### Cost Observations
+
+- Model mix: not captured in repo artifacts
+- Sessions: concentrated same-day execution across four milestone phases plus closeout
+- Notable: most value came from interface-layer contract tests over already-shipped governed delivery primitives
+
 ## Milestone: v1.1.2 - Real-SaaS Delivery Governance Hardening
 
 **Shipped:** 2026-05-04
@@ -48,3 +90,4 @@
 |-------|-------------|
 | Delivery maturity | Hermes has moved from basic factory shipping into stricter proof-of-delivery governance |
 | Remaining debt | Workflow evidence and milestone-close discipline now lag behind the core runtime behavior |
+| Operator surface | Hermes now owns the full start-to-approve-to-final-result experience without replacing the governed delivery backbone |
