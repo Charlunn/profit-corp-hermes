@@ -7,9 +7,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 SCRIPT_PATH = ROOT_DIR / "scripts" / "start_approved_project_delivery.py"
 EXPECTED_SECTION_ORDER = [
     "# Approved Project Brief",
-    "## Proposal Summary",
-    "## Qualification Backlinks",
+    "## Hermes Proposal",
     "## Project Identity",
+    "## Hermes Internal Handoff",
     "## Approved Scope",
     "## Target User",
     "## MVP Framing",
@@ -86,6 +86,13 @@ class DeliveryReadyBriefTests(unittest.TestCase):
             },
             "proposal": {
                 "proposal_id": "proposal-idea-001-v1",
+                "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
+                "target_user": "Solo operators who need to qualify inbound leads quickly.",
+                "feasibility_summary": "Passed freshness, pain reality, feasibility, and market/pricing proof gates.",
+                "pricing_evidence": [
+                    "https://example.com/pricing",
+                    "https://example.com/competitor",
+                ],
                 "launch_framing": "Launch with one narrow operator workflow and a visible paid conversion path.",
                 "market_rationale": "Competitor pricing and repeated operator pain support a focused lead-qualification SaaS wedge.",
                 "qualification_summary": "Passed freshness, pain reality, feasibility, and market/pricing proof gates.",
@@ -135,10 +142,13 @@ class DeliveryReadyBriefTests(unittest.TestCase):
         self.assertIn("- Charge for priority scoring and follow-up workflow automation.", brief)
         self.assertIn("- en (required)", brief)
         self.assertIn("- zh (required)", brief)
-        self.assertIn("- proposal-idea-001-v1", brief)
+        self.assertIn("- **Proposal ID**: proposal-idea-001-v1", brief)
+        self.assertIn("- **Pain Point**: Operators lose revenue because inbound leads sit unqualified for too long.", brief)
+        self.assertIn("- **Target User**: Solo operators who need to qualify inbound leads quickly.", brief)
+        self.assertIn("- **Feasibility**: Passed freshness, pain reality, feasibility, and market/pricing proof gates.", brief)
+        self.assertIn("- **Pricing Evidence**: https://example.com/pricing", brief)
         self.assertIn("- Launch with one narrow operator workflow and a visible paid conversion path.", brief)
         self.assertIn("- Competitor pricing and repeated operator pain support a focused lead-qualification SaaS wedge.", brief)
-        self.assertIn("- Passed freshness, pain reality, feasibility, and market/pricing proof gates.", brief)
         self.assertIn("- assets/shared/qualification/latest/qualification_bundle.json#IDEA-001", brief)
         self.assertIn("- Reference `/ui-ux-pro-max` output before frontend implementation.", brief)
         self.assertIn("- reuse shared Supabase auth and payments", brief)

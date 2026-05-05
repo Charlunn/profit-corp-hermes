@@ -126,6 +126,7 @@ class ApprovedProjectRecordTests(unittest.TestCase):
             [
                 "approval",
                 "proposal",
+                "hermes_handoff",
                 "project_identity",
                 "approved_scope",
                 "target_user",
@@ -155,6 +156,13 @@ class ApprovedProjectRecordTests(unittest.TestCase):
             approved_project["proposal"],
             {
                 "proposal_id": "proposal-idea-001-v1",
+                "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
+                "target_user": "Solo operators who need to qualify inbound leads quickly.",
+                "feasibility_summary": "Passed canonical qualification gates before approval.",
+                "pricing_evidence": [
+                    "Charge for priority scoring and follow-up workflow automation.",
+                    "Expose a paid upgrade path inside the main operator workflow.",
+                ],
                 "launch_framing": "Turn incoming lead notes into ranked follow-up actions.",
                 "market_rationale": "Qualification-backed opportunity approved for a focused lead qualification workflow.",
                 "qualification_summary": "Passed canonical qualification gates before approval.",

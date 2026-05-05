@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
-from governance_common import (
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from scripts.governance_common import (
     DECISION_TRACE_PATH,
     GOVERNANCE_EVENTS_PATH,
     OPERATING_DECISION_PACKAGE_PATH,
@@ -22,6 +28,50 @@ from governance_common import (
 
 class GovernanceApprovalError(Exception):
     pass
+
+
+def interpret_chat_approval_reply(reply_text: str) -> str | None:
+    normalized = " ".join(str(reply_text).strip().lower().split())
+    if normalized in {"approve", "approved", "yes approve", "approve proposal"}:
+        return "approved"
+    if normalized in {"reject", "rejected", "no reject", "reject proposal"}:
+        return "rejected"
+    return None
+
+
+def chat_approval_idempotency_key(proposal: dict[str, Any], reply_payload: dict[str, Any]) -> str:
+    import hashlib
+
+    origin = dict(proposal.get("chat_origin", {}) or {})
+    raw = "::".join(
+        [
+            str(proposal.get("proposal_id", "")).strip(),
+            str(origin.get("run_id", "")).strip(),
+            str(reply_payload.get("platform", "")).strip(),
+            str(reply_payload.get("channel_or_chat_id", "")).strip(),
+            str(reply_payload.get("thread_or_reply_context", "")).strip(),
+            str(reply_payload.get("message_id", "")).strip(),
+        ]
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def resolve_chat_approval_reply(proposal: dict[str, Any], reply_payload: dict[str, Any]) -> dict[str, Any]:
+    origin = dict(proposal.get("chat_origin", {}) or {})
+    decision = interpret_chat_approval_reply(str(reply_payload.get("reply_text", "")))
+    if decision is None:
+        return {"ok": False, "block_reason": "ambiguous_chat_approval_reply"}
+    if (
+        str(reply_payload.get("platform", "")).strip() != str(origin.get("platform", "")).strip()
+        or str(reply_payload.get("channel_or_chat_id", "")).strip() != str(origin.get("channel_or_chat_id", "")).strip()
+        or str(reply_payload.get("thread_or_reply_context", "")).strip() != str(origin.get("thread_or_reply_context", "")).strip()
+    ):
+        return {"ok": False, "block_reason": "unlinked_chat_approval_reply"}
+    return {
+        "ok": True,
+        "decision": decision,
+        "idempotency_key": chat_approval_idempotency_key(proposal, reply_payload),
+    }
 
 
 def parse_args() -> argparse.Namespace:

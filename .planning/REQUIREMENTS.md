@@ -19,9 +19,9 @@
 
 ### Proposal and Approval Experience
 
-- [ ] **PROP-01**: Hermes presents one evidence-backed proposal that summarizes the pain point, target user, feasibility, pricing evidence, and launch framing.
-- [ ] **PROP-02**: The owner can approve or reject the proposal by replying to Hermes, and approval persists the same locked delivery contract already enforced by the shipped pipeline.
-- [ ] **PROP-03**: If Hermes cannot prove freshness, market evidence, feasibility, or approval linkage, it blocks instead of pretending the project is ready.
+- [x] **PROP-01**: Hermes presents one evidence-backed proposal that summarizes the pain point, target user, feasibility, pricing evidence, and launch framing.
+- [x] **PROP-02**: The owner can approve or reject the proposal by replying to Hermes, and approval persists the same locked delivery contract already enforced by the shipped pipeline.
+- [x] **PROP-03**: If Hermes cannot prove freshness, market evidence, feasibility, or approval linkage, it blocks instead of pretending the project is ready.
 
 ### Autonomous Delivery and Return Link
 
@@ -59,9 +59,9 @@
 | ROLE-01 | Phase 27 | Complete |
 | ROLE-02 | Phase 27 | Complete |
 | ROLE-03 | Phase 27 | Complete |
-| PROP-01 | Phase 28 | Pending |
-| PROP-02 | Phase 28 | Pending |
-| PROP-03 | Phase 28 | Pending |
+| PROP-01 | Phase 28 | Complete |
+| PROP-02 | Phase 28 | Complete |
+| PROP-03 | Phase 28 | Complete |
 | AUTO-01 | Phase 29 | Pending |
 | AUTO-02 | Phase 29 | Pending |
 | AUTO-03 | Phase 29 | Pending |
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-05-05*
-*Last updated: 2026-05-05 after Phase 27 completion*
+*Last updated: 2026-05-05 after Phase 28 completion*

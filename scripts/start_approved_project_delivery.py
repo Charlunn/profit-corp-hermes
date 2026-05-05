@@ -441,15 +441,36 @@ def build_proposal_block(
     qualified_idea_id: str,
     mvp_framing: str,
     qualification_verdict: dict[str, Any] | None,
+    pain_point: str = "",
+    target_user: str = "",
+    pricing_evidence: list[str] | None = None,
 ) -> dict[str, Any]:
     backlinks = [f"{DEFAULT_QUALIFICATION_BUNDLE_PATH}#{qualified_idea_id}"] if qualified_idea_id else []
     generated_from = dict((qualification_verdict or {}).get("generated_from", {}))
+    merged_pricing_evidence = []
+    market_pricing_proof = dict((qualification_verdict or {}).get("market_pricing_proof", {}) or {})
+    for key in ("pricing_links", "competitor_links"):
+        merged_pricing_evidence.extend(
+            str(item).strip()
+            for item in list(market_pricing_proof.get(key, []))
+            if str(item).strip()
+        )
+    merged_pricing_evidence.extend(
+        str(item).strip()
+        for item in (pricing_evidence or [])
+        if str(item).strip()
+    )
+    merged_pricing_evidence = list(dict.fromkeys(merged_pricing_evidence))
     for key in ("history_path", "cluster_path"):
         value = str(generated_from.get(key, "")).strip()
         if value:
             backlinks.append(value)
     return {
         "proposal_id": f"proposal-{qualified_idea_id.lower()}-v1" if qualified_idea_id else "proposal-unlinked-v1",
+        "pain_point": str((qualification_verdict or {}).get("problem_summary", "")).strip() or str(pain_point).strip(),
+        "target_user": str((qualification_verdict or {}).get("target_user", "")).strip() or str(target_user).strip(),
+        "feasibility_summary": "Passed canonical qualification gates before approval." if qualification_verdict else "Qualification proof pending.",
+        "pricing_evidence": merged_pricing_evidence,
         "launch_framing": mvp_framing,
         "market_rationale": "Qualification-backed opportunity approved for a focused lead qualification workflow.",
         "qualification_summary": "Passed canonical qualification gates before approval." if qualification_verdict else "Qualification proof pending.",
@@ -467,27 +488,15 @@ def normalize_hermes_handoff(payload: dict[str, Any]) -> dict[str, str]:
 
 
 def interpret_chat_approval_reply(reply_text: str) -> str | None:
-    normalized = " ".join(str(reply_text).strip().lower().split())
-    if normalized in {"approve", "approved", "yes approve", "approve proposal"}:
-        return "approved"
-    if normalized in {"reject", "rejected", "no reject", "reject proposal"}:
-        return "rejected"
-    return None
+    from scripts.request_governance_approval import interpret_chat_approval_reply as shared_interpret
+
+    return shared_interpret(reply_text)
 
 
 def chat_approval_idempotency_key(proposal: dict[str, Any], reply_payload: dict[str, Any]) -> str:
-    origin = dict(proposal.get("chat_origin", {}) or {})
-    raw = "::".join(
-        [
-            str(proposal.get("proposal_id", "")).strip(),
-            str(origin.get("run_id", "")).strip(),
-            str(reply_payload.get("platform", "")).strip(),
-            str(reply_payload.get("channel_or_chat_id", "")).strip(),
-            str(reply_payload.get("thread_or_reply_context", "")).strip(),
-            str(reply_payload.get("message_id", "")).strip(),
-        ]
-    )
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    from scripts.request_governance_approval import chat_approval_idempotency_key as shared_key
+
+    return shared_key(proposal, reply_payload)
 
 
 def process_chat_approval_decision(
@@ -500,18 +509,13 @@ def process_chat_approval_decision(
     authority = Path(authority_path)
     record = load_json(authority)
     proposal = dict(record.get("proposal", {}) or {})
-    origin = dict(proposal.get("chat_origin", {}) or {})
-    decision = interpret_chat_approval_reply(str(reply_payload.get("reply_text", "")))
-    if decision is None:
-        return {"ok": False, "block_reason": "ambiguous_chat_approval_reply"}
-    if (
-        str(reply_payload.get("platform", "")).strip() != str(origin.get("platform", "")).strip()
-        or str(reply_payload.get("channel_or_chat_id", "")).strip() != str(origin.get("channel_or_chat_id", "")).strip()
-        or str(reply_payload.get("thread_or_reply_context", "")).strip() != str(origin.get("thread_or_reply_context", "")).strip()
-    ):
-        return {"ok": False, "block_reason": "unlinked_chat_approval_reply"}
+    from scripts.request_governance_approval import resolve_chat_approval_reply
 
-    idempotency_key = chat_approval_idempotency_key(proposal, reply_payload)
+    resolution = resolve_chat_approval_reply(proposal, reply_payload)
+    if not resolution.get("ok"):
+        return resolution
+    decision = str(resolution["decision"])
+    idempotency_key = str(resolution["idempotency_key"])
     decisions = dict(proposal.get("chat_decisions", {}) or {})
     if idempotency_key in decisions:
         return {"ok": True, "decision": decisions[idempotency_key]["decision"], "idempotent_replay": True}
@@ -577,6 +581,12 @@ def process_chat_approval_decision(
     record["proposal"] = proposal
     record.setdefault("approval", {})["approver"] = str(reply_payload.get("actor", "ceo")).strip() or "ceo"
     record["approval"]["approved_at"] = governance_common.timestamp_now()
+    record["approval"]["proposal_id"] = str(proposal.get("proposal_id", "")).strip()
+    record["approval"]["chat_reply"] = {
+        "message_id": str(reply_payload.get("message_id", "")).strip(),
+        "decision": decision,
+        "idempotency_key": idempotency_key,
+    }
     record.setdefault("pipeline", {})["status"] = "ready" if decision == "approved" else "blocked"
     record["pipeline"]["stage"] = "approval"
     record["pipeline"]["block_reason"] = "" if decision == "approved" else "proposal_rejected"
@@ -834,6 +844,9 @@ def build_approved_project_record(payload: dict[str, Any], *, approved_projects_
             qualified_idea_id=normalized_payload["qualified_idea_id"],
             mvp_framing=normalized_payload["mvp_framing"],
             qualification_verdict=qualification_verdict,
+            pain_point=normalized_payload["pain_point"],
+            target_user=normalized_payload["target_user"],
+            pricing_evidence=normalized_payload["monetization"],
         ),
         "hermes_handoff": normalized_payload["hermes_handoff"],
         "project_identity": identity,
@@ -925,16 +938,19 @@ def build_delivery_ready_brief(record: dict[str, Any]) -> str:
     target_user = str(record.get("target_user", "")).strip()
     mvp_framing = str(record.get("mvp_framing", "")).strip()
     contract = build_delivery_contract(record)
+    proposal_pricing_evidence = normalize_list(list(proposal.get("pricing_evidence", []))) or normalize_list(contract["monetization"])
     lines = [
         "# Approved Project Brief",
         "",
-        "## Proposal Summary",
-        f"- {proposal.get('proposal_id', 'proposal-unlinked-v1')}",
+        "## Hermes Proposal",
+        f"- **Proposal ID**: {proposal.get('proposal_id', 'proposal-unlinked-v1')}",
+        f"- **Pain Point**: {proposal.get('pain_point', contract['pain_point'])}",
+        f"- **Target User**: {proposal.get('target_user', target_user)}",
+        f"- **Feasibility**: {proposal.get('feasibility_summary', proposal.get('qualification_summary', 'Qualification summary pending.'))}",
+        *[f"- **Pricing Evidence**: {item}" for item in proposal_pricing_evidence],
         f"- {proposal.get('launch_framing', mvp_framing)}",
         f"- {proposal.get('market_rationale', 'Market rationale pending.')}",
         f"- {proposal.get('qualification_summary', 'Qualification summary pending.')}",
-        "",
-        "## Qualification Backlinks",
         *[f"- {item}" for item in normalize_list(list(proposal.get('qualification_backlinks', [])))],
         "",
         "## Project Identity",

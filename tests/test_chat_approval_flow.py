@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCRIPT_PATH = ROOT_DIR / "scripts" / "start_approved_project_delivery.py"
+APPROVAL_SCRIPT_PATH = ROOT_DIR / "scripts" / "request_governance_approval.py"
 
 
 def load_module(module_name: str, script_path: Path):
@@ -22,6 +23,7 @@ def load_module(module_name: str, script_path: Path):
 class ChatApprovalFlowTests(unittest.TestCase):
     def setUp(self) -> None:
         self.module = load_module("start_approved_project_delivery_chat_approval", SCRIPT_PATH)
+        self.approval_module = load_module("request_governance_approval_chat", APPROVAL_SCRIPT_PATH)
 
     def addCleanupPath(self, path: Path) -> None:
         self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
@@ -167,6 +169,53 @@ class ChatApprovalFlowTests(unittest.TestCase):
             )
             self.assertFalse(unlinked["ok"])
             self.assertEqual(unlinked["block_reason"], "unlinked_chat_approval_reply")
+
+    def test_reply_adapter_accepts_explicit_approve_reject_and_blocks_ambiguous(self) -> None:
+        proposal = {
+            "proposal_id": "proposal-idea-001-v1",
+            "chat_origin": {
+                "run_id": "chat-run-20260505-001",
+                "platform": "discord",
+                "channel_or_chat_id": "chan-123",
+                "thread_or_reply_context": "thr-999",
+            },
+        }
+        approved = self.approval_module.resolve_chat_approval_reply(
+            proposal,
+            {
+                "platform": "discord",
+                "channel_or_chat_id": "chan-123",
+                "thread_or_reply_context": "thr-999",
+                "message_id": "reply-approve",
+                "reply_text": "approve proposal",
+            },
+        )
+        rejected = self.approval_module.resolve_chat_approval_reply(
+            proposal,
+            {
+                "platform": "discord",
+                "channel_or_chat_id": "chan-123",
+                "thread_or_reply_context": "thr-999",
+                "message_id": "reply-reject",
+                "reply_text": "reject",
+            },
+        )
+        ambiguous = self.approval_module.resolve_chat_approval_reply(
+            proposal,
+            {
+                "platform": "discord",
+                "channel_or_chat_id": "chan-123",
+                "thread_or_reply_context": "thr-999",
+                "message_id": "reply-ambiguous",
+                "reply_text": "looks promising",
+            },
+        )
+        self.assertTrue(approved["ok"])
+        self.assertEqual(approved["decision"], "approved")
+        self.assertTrue(rejected["ok"])
+        self.assertEqual(rejected["decision"], "rejected")
+        self.assertFalse(ambiguous["ok"])
+        self.assertEqual(ambiguous["block_reason"], "ambiguous_chat_approval_reply")
 
 
 if __name__ == "__main__":
