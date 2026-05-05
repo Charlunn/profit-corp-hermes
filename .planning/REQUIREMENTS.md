@@ -13,9 +13,9 @@
 
 ### Internal Role Orchestration
 
-- [ ] **ROLE-01**: Hermes invokes `ceo`, `scout`, `cmo`, and `arch` as internal collaborators for discovery, qualification, market proof, and proposal synthesis.
-- [ ] **ROLE-02**: Hermes hands approved work to the delivery specialist team internally instead of requiring the owner to switch tools or run stage-specific commands.
-- [ ] **ROLE-03**: Role execution remains configured inside Hermes profiles and skills rather than being recast as ad hoc operator-run glue.
+- [x] **ROLE-01**: Hermes invokes `ceo`, `scout`, `cmo`, and `arch` as internal collaborators for discovery, qualification, market proof, and proposal synthesis.
+- [x] **ROLE-02**: Hermes hands approved work to the delivery specialist team internally instead of requiring the owner to switch tools or run stage-specific commands.
+- [x] **ROLE-03**: Role execution remains configured inside Hermes profiles and skills rather than being recast as ad hoc operator-run glue.
 
 ### Proposal and Approval Experience
 
@@ -56,9 +56,9 @@
 | HERMES-01 | Phase 26 | Complete |
 | HERMES-02 | Phase 26 | Complete |
 | HERMES-03 | Phase 26 | Complete |
-| ROLE-01 | Phase 27 | Pending |
-| ROLE-02 | Phase 27 | Pending |
-| ROLE-03 | Phase 27 | Pending |
+| ROLE-01 | Phase 27 | Complete |
+| ROLE-02 | Phase 27 | Complete |
+| ROLE-03 | Phase 27 | Complete |
 | PROP-01 | Phase 28 | Pending |
 | PROP-02 | Phase 28 | Pending |
 | PROP-03 | Phase 28 | Pending |
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-05-05*
-*Last updated: 2026-05-05 after Phase 26 completion*
+*Last updated: 2026-05-05 after Phase 27 completion*

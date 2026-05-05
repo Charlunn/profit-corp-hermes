@@ -22,7 +22,7 @@ Hermes now has both a repaired approved-to-delivery automation backbone and stri
 - authority and operator-visible status artifacts converge to the true recovered final state after successful GitHub/Vercel completion
 - specialist stages now fail closed on missing evidence, stale `/ui-ux-pro-max` artifacts, template-only work, and weak product-proof claims
 
-Phase 26 closed the first part of that gap: Hermes now has a canonical project-start contract that reuses the existing governed run backbone and renders owner-facing startup status in Hermes language. The remaining work is keeping internal role orchestration, proposal/approval, and final delivery recovery behind the same surface.
+Phases 26 and 27 closed the startup and internal-routing layers of that gap: Hermes now owns project start, preserves one governed run identity, records internal role routing and delivery handoff traces durably, and can explain progress without exposing the owner to raw role choreography. The remaining work is proposal/approval packaging and final success or blocked recovery on that same surface.
 
 ## Current Milestone
 
@@ -78,6 +78,7 @@ Phase 26 closed the first part of that gap: Hermes now has a canonical project-s
 - [ ] Present one concise proposal for operator approval and persist a locked delivery contract after approval
 - [ ] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
 - [x] Hide milestone-internal script choreography behind Hermes-native intent routing and role execution for project start
+- [x] Keep company roles and delivery specialists behind Hermes while preserving durable routing and handoff truth
 
 ### Out of Scope
 
@@ -133,7 +134,7 @@ Research through `v1.2` shows the main remaining risk is no longer infrastructur
 | Move the next milestone toward chat-native autonomous project launch | The operator wants Hermes to behave like a minimally interruptive company loop rather than a terminal-operated toolchain | Validated in v1.2 |
 | Keep the human approval gate but compress healthy-path interaction to start plus approve | The owner still wants control over project direction, but not repeated manual orchestration after approval | Validated in v1.2 |
 | Make Hermes the only operator-facing entrypoint for project start while preserving one governed run identity | The owner should be able to initiate work through Hermes without forking startup authority truth | Validated in Phase 26 |
-| Keep company roles and delivery specialists as Hermes-internal collaborators rather than user-exposed tools | The desired architecture is "Hermes handles everything" with role configuration living inside Hermes | Pending |
+| Keep company roles and delivery specialists as Hermes-internal collaborators rather than user-exposed tools | The desired architecture is "Hermes handles everything" with role configuration living inside Hermes | Validated in Phase 27 |
 
 ## Evolution
 
@@ -146,7 +147,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? Add to Key Decisions
 5. "What This Is" still accurate? Update if drifted
 
-**Current state:** `v1.2` is shipped; `v1.3` is underway, with Phase 26 complete and Hermes project start now flowing through a single governed, Hermes-first entrypoint.
+**Current state:** `v1.2` is shipped; `v1.3` is underway, with Phases 26-27 complete and Hermes now owning project start plus internal role and delivery handoff routing through the existing governed backbone.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -155,4 +156,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-05 after Phase 26 completion*
+*Last updated: 2026-05-05 after Phase 27 completion*

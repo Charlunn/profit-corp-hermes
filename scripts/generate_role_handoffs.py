@@ -14,6 +14,7 @@ PAIN_POINTS_PATH = SHARED_DIR / "PAIN_POINTS.md"
 MARKET_PLAN_PATH = SHARED_DIR / "MARKET_PLAN.md"
 TECH_SPEC_PATH = SHARED_DIR / "TECH_SPEC.md"
 CEO_RANKING_PATH = SHARED_DIR / "CEO_RANKING.md"
+ROLE_ROUTING_TRACE_PATH = SHARED_DIR / "ROLE_ROUTING_TRACE.md"
 
 
 class RoleHandoffError(Exception):
@@ -139,6 +140,19 @@ def render_ceo_ranking(leads: list[dict[str, Any]], source_path: Path) -> str:
     return "\n".join(header + rows + ["", recommendation])
 
 
+def render_role_routing_trace(leads: list[dict[str, Any]], source_path: Path) -> str:
+    top = leads[0]
+    return (
+        "# Hermes Internal Role Routing Trace\n"
+        "- **Operator Surface**: Hermes\n"
+        "- **Current Role**: `scout`\n"
+        f"- **Artifact Produced**: `assets/shared/PAIN_POINTS.md` from shortlist `{source_path.as_posix()}`\n"
+        "- **Next Handoff Target**: `cmo_market_plan`\n"
+        "- **Healthy-path UX Rule**: Hermes remains the only operator-facing surface while internal roles stay artifact-backed.\n"
+        f"- **Focus Idea**: `{top['idea_id']}` - {top['title']}\n"
+    )
+
+
 def write_output(path: Path, content: str) -> None:
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
 
@@ -153,6 +167,7 @@ def main() -> int:
         market_plan = render_market_plan(leads[0], TRIAGE_PATH.relative_to(ROOT_DIR))
         tech_spec = render_tech_spec(leads[0], TRIAGE_PATH.relative_to(ROOT_DIR))
         ceo_ranking = render_ceo_ranking(leads, TRIAGE_PATH.relative_to(ROOT_DIR))
+        routing_trace = render_role_routing_trace(leads, TRIAGE_PATH.relative_to(ROOT_DIR))
         if args.dry_run:
             print("=== PAIN_POINTS.md ===")
             print(pain_points)
@@ -162,15 +177,19 @@ def main() -> int:
             print(tech_spec)
             print("=== CEO_RANKING.md ===")
             print(ceo_ranking)
+            print("=== ROLE_ROUTING_TRACE.md ===")
+            print(routing_trace)
             return 0
         write_output(PAIN_POINTS_PATH, pain_points)
         write_output(MARKET_PLAN_PATH, market_plan)
         write_output(TECH_SPEC_PATH, tech_spec)
         write_output(CEO_RANKING_PATH, ceo_ranking)
+        write_output(ROLE_ROUTING_TRACE_PATH, routing_trace)
         print(f"Wrote {PAIN_POINTS_PATH.relative_to(ROOT_DIR)}")
         print(f"Wrote {MARKET_PLAN_PATH.relative_to(ROOT_DIR)}")
         print(f"Wrote {TECH_SPEC_PATH.relative_to(ROOT_DIR)}")
         print(f"Wrote {CEO_RANKING_PATH.relative_to(ROOT_DIR)}")
+        print(f"Wrote {ROLE_ROUTING_TRACE_PATH.relative_to(ROOT_DIR)}")
         return 0
     except RoleHandoffError as exc:
         print(f"role handoff error: {exc}", file=sys.stderr)

@@ -41,6 +41,28 @@ class QualificationContractTests(unittest.TestCase):
         self.assertIn("IDEA-002", markdown)
         self.assertIn("passed", markdown)
 
+    def test_summary_renderer_includes_role_routing_traceability(self) -> None:
+        markdown = self.module.render_summary(
+            {
+                "generated_at": "2026-05-04T12:00:00Z",
+                "candidates": [
+                    {
+                        "idea_id": "IDEA-003",
+                        "verdict": "passed",
+                        "reason_codes": [],
+                        "routing_trace": {
+                            "current_role": "scout",
+                            "artifact_path": "assets/shared/qualification/latest/scout-discovery.md",
+                            "next_handoff": "cmo_market_plan",
+                        },
+                    }
+                ],
+            }
+        )
+        self.assertIn("scout", markdown)
+        self.assertIn("scout-discovery.md", markdown)
+        self.assertIn("cmo_market_plan", markdown)
+
 
 if __name__ == "__main__":
     unittest.main()

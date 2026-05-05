@@ -184,4 +184,10 @@ def render_summary(bundle: dict[str, Any]) -> str:
     for candidate in bundle.get("candidates", []):
         reasons = ", ".join(candidate.get("reason_codes", [])) or "passed"
         lines.append(f"- `{candidate.get('idea_id', 'unknown')}` -> `{candidate.get('verdict', 'unknown')}` ({reasons})")
+        routing_trace = dict(candidate.get("routing_trace", {}) or {})
+        if routing_trace:
+            current_role = str(routing_trace.get("current_role", "")).strip() or "unknown-role"
+            artifact_path = str(routing_trace.get("artifact_path", "")).strip() or "not available"
+            next_handoff = str(routing_trace.get("next_handoff", "")).strip() or "not available"
+            lines.append(f"  - role trace: `{current_role}` produced `{artifact_path}` -> next `{next_handoff}`")
     return "\n".join(lines) + "\n"

@@ -105,6 +105,70 @@ class DeliveryOrchestrationContractTests(unittest.TestCase):
         self.assertIn("project metadata path", content, "D-04: project metadata path must be explicit")
         self.assertIn("gsd constraints source", content.lower(), "D-04: GSD constraints source must be explicit")
 
+    def test_role02_approved_bundle_can_carry_hermes_internal_handoff_trace(self) -> None:
+        delivery_module = self.load_module("start_approved_project_delivery_contract", ROOT_DIR / "scripts" / "start_approved_project_delivery.py")
+        root = Path(tempfile.mkdtemp(prefix="delivery-handoff-bundle-"))
+        self.addCleanupPath(root)
+        qualification_bundle_path = root / "qualification_bundle.json"
+        qualification_bundle_path.write_text(
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "idea_id": "IDEA-ACR-01",
+                            "problem_summary": "Operators lose revenue when abandoned carts are not followed up quickly.",
+                            "verdict": "passed",
+                            "market_pricing_proof": {
+                                "pricing_links": ["https://example.com/pricing"],
+                                "competitor_links": ["https://example.com/competitor"],
+                            },
+                            "generated_from": {},
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+                indent=2,
+            ) + "\n",
+            encoding="utf-8",
+        )
+        payload = {
+            "approval_id": "APR-2026-05-05-01",
+            "approved_at": "2026-05-05T09:00:00Z",
+            "approver": "ceo",
+            "approval_evidence": {
+                "decision_record": "assets/shared/CORP_CULTURE.md#approval",
+                "summary": "Approved after Hermes internal review.",
+            },
+            "project_name": "Abandoned Cart Recovery Copilot",
+            "project_url": "https://cart-copilot.example.com",
+            "target_user": "Shop operators losing revenue to abandoned carts",
+            "mvp_framing": "Recover abandoned-cart revenue with guided follow-up workflows.",
+            "pain_point": "Operators lose revenue when abandoned carts are not followed up quickly.",
+            "approved_scope": ["Recover abandoned carts", "Guide operators through follow-up actions"],
+            "constraints": ["Reuse the governed delivery backbone"],
+            "acceptance_gates": ["Approved bundle present"],
+            "monetization": ["Subscription for recovery workflow access"],
+            "required_languages": ["en", "zh"],
+            "ui_artifact_contract": ["Reference /ui-ux-pro-max before frontend implementation."],
+            "template_contract_path": "docs/platform/standalone-saas-template-contract.md",
+            "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+            "qualification_bundle_path": qualification_bundle_path.as_posix(),
+            "qualified_idea_id": "IDEA-ACR-01",
+            "hermes_handoff": {
+                "source_role": "arch",
+                "source_artifact": "assets/shared/proposals/latest/PROPOSAL.md",
+                "next_target": "delivery-orchestrator",
+            },
+        }
+
+        result = delivery_module.write_approved_project_bundle(payload, approved_projects_root=root)
+        record = result["approved_project"]
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(record["hermes_handoff"]["source_role"], "arch")
+        self.assertEqual(record["hermes_handoff"]["next_target"], "delivery-orchestrator")
+        self.assertIn("source_artifact", record["hermes_handoff"])
+
     def test_auto01_status_render_names_exact_locked_contract_drift_fields(self) -> None:
         render_module = self.load_module("render_approved_delivery_status_contract", RENDER_SCRIPT_PATH)
         root = Path(tempfile.mkdtemp(prefix="delivery-contract-drift-"))

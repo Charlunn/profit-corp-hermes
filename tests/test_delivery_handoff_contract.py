@@ -14,9 +14,12 @@ STAGE_HEADINGS = [
     "## 1) Stage Summary",
     "## 2) Outputs Produced",
     "## 3) Evidence Links",
-    "## 4) Gate Decision",
-    "## 5) Open Risks",
-    "## 6) Next Stage Input",
+    "## 4) Changed Files",
+    "## 5) User Visible Behavior",
+    "## 6) Pain Point Mapping",
+    "## 7) Gate Decision",
+    "## 8) Open Risks",
+    "## 9) Next Stage Input",
 ]
 FINAL_HEADINGS = [
     "## 1) End-to-end Summary",
@@ -54,6 +57,8 @@ class DeliveryHandoffContractTests(unittest.TestCase):
         for field in STAGE_METADATA_FIELDS:
             self.assertIn(field, content, f"D-05: stage handoff missing metadata field {field}")
         self.assertIn("`gate_decision`: PASS | FAIL", content, "D-05: stage handoff must keep Gate Decision semantics")
+        self.assertIn("## 4) Changed Files", content, "D-05: stage handoff must capture concrete file changes")
+        self.assertIn("## 5) User Visible Behavior", content, "D-05: stage handoff must capture user-visible behavior")
 
     def test_d06_final_delivery_keeps_required_sections_and_delivery_metadata(self) -> None:
         content = self.load_final_template()

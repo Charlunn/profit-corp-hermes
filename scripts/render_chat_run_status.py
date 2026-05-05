@@ -35,6 +35,7 @@ def _build_hermes_status_lines(record: dict, authority_path: str, status_path: s
     origin = dict(record.get("chat_origin", {}))
     pipeline = dict(record.get("pipeline", {}))
     blocked = dict(record.get("blocked", {}))
+    role_routing = dict(record.get("role_routing", {}) or {})
     status = str(pipeline.get("status", "ready")).strip().lower()
     stage = str(pipeline.get("stage", "intake")).strip().lower()
 
@@ -54,6 +55,25 @@ def _build_hermes_status_lines(record: dict, authority_path: str, status_path: s
         detail = f"Current step: {stage or 'intake'}."
         next_step = "Hermes will confirm progress from the persisted run record."
 
+    routing_lines: list[str] = []
+    if role_routing:
+        workstream = str(role_routing.get("workstream", "")).strip()
+        current_role = str(role_routing.get("current_role", "")).strip()
+        artifact_path = str(role_routing.get("artifact_path", "")).strip()
+        next_handoff = str(role_routing.get("next_handoff", "")).strip()
+        if workstream:
+            detail = f"{detail} Hermes is currently handling {workstream}."
+        if status == "blocked" and current_role:
+            next_step = f"Review the blocker detail and the routing artifacts below. Current internal owner: {current_role}."
+        routing_lines = [
+            "",
+            "## Internal Routing",
+            f"- **Current Workstream**: `{workstream or stage or 'not available'}`",
+            f"- **Responsible Role**: `{current_role or 'not available'}`",
+            f"- **Routing Artifact**: `{artifact_path or 'not available'}`",
+            f"- **Next Handoff**: `{next_handoff or 'not available'}`",
+        ]
+
     return [
         "# Hermes Project Start",
         f"- **Status**: {headline}",
@@ -67,6 +87,7 @@ def _build_hermes_status_lines(record: dict, authority_path: str, status_path: s
         "## Governance Artifacts",
         f"- **Authority Record**: `{authority_path}`",
         f"- **Status View**: `{status_path}`",
+        *routing_lines,
         "",
         "This owner-facing update is derived from the authoritative governed run record.",
     ]

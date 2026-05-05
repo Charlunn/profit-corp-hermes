@@ -220,6 +220,60 @@ class ChatRunBootstrapTests(unittest.TestCase):
                 self.assertIn(result["authority_record_path"], status_text)
                 self.assertIn(result["status_path"], status_text)
 
+    def test_status_renderer_summarizes_internal_role_progress_without_exposing_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                authority_path = Path(result["authority_record_path"])
+                record = json.loads(authority_path.read_text(encoding="utf-8"))
+                record["pipeline"]["stage"] = "qualification"
+                record["pipeline"]["status"] = "running"
+                record["role_routing"] = {
+                    "current_role": "scout",
+                    "workstream": "discovery research",
+                    "artifact_path": "assets/shared/qualification/latest/scout-discovery.md",
+                    "next_handoff": "cmo_market_plan",
+                }
+                authority_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                self.module.render_chat_run_status(result["run_id"], str(chat_root / result["run_id"]))
+                status_text = Path(result["status_path"]).read_text(encoding="utf-8")
+                self.assertIn("discovery research", status_text)
+                self.assertNotIn("scout chat", status_text.lower())
+                self.assertIn("scout-discovery.md", status_text)
+
+    def test_status_renderer_names_responsible_role_for_blocked_internal_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                authority_path = Path(result["authority_record_path"])
+                record = json.loads(authority_path.read_text(encoding="utf-8"))
+                record["pipeline"]["status"] = "blocked"
+                record["blocked"]["detail"] = "Market proof is incomplete."
+                record["role_routing"] = {
+                    "current_role": "cmo",
+                    "workstream": "proposal preparation",
+                    "artifact_path": "assets/shared/proposals/latest/market-proof.md",
+                    "next_handoff": "approval",
+                }
+                authority_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                self.module.render_chat_run_status(result["run_id"], str(chat_root / result["run_id"]))
+                status_text = Path(result["status_path"]).read_text(encoding="utf-8")
+                self.assertIn("cmo", status_text.lower())
+                self.assertIn("Market proof is incomplete.", status_text)
+                self.assertIn("market-proof.md", status_text)
+
 
 if __name__ == "__main__":
     unittest.main()

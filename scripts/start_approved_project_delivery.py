@@ -457,6 +457,15 @@ def build_proposal_block(
     }
 
 
+def normalize_hermes_handoff(payload: dict[str, Any]) -> dict[str, str]:
+    handoff = dict(payload.get("hermes_handoff", {}) or {})
+    return {
+        "source_role": str(handoff.get("source_role", "")).strip(),
+        "source_artifact": str(handoff.get("source_artifact", "")).strip(),
+        "next_target": str(handoff.get("next_target", "")).strip(),
+    }
+
+
 def interpret_chat_approval_reply(reply_text: str) -> str | None:
     normalized = " ".join(str(reply_text).strip().lower().split())
     if normalized in {"approve", "approved", "yes approve", "approve proposal"}:
@@ -787,6 +796,7 @@ def build_approved_project_record(payload: dict[str, Any], *, approved_projects_
         "gsd_constraints_path": str(payload.get("gsd_constraints_path", DEFAULT_GSD_CONSTRAINTS_PATH)).strip(),
         "qualification_bundle_path": str(payload.get("qualification_bundle_path", DEFAULT_QUALIFICATION_BUNDLE_PATH)).strip(),
         "qualified_idea_id": str(payload.get("qualified_idea_id", "")).strip(),
+        "hermes_handoff": normalize_hermes_handoff(payload),
     }
     identity = normalize_project_identity(normalized_payload["project_name"], normalized_payload["project_url"])
     missing = collect_missing_inputs(normalized_payload)
@@ -825,6 +835,7 @@ def build_approved_project_record(payload: dict[str, Any], *, approved_projects_
             mvp_framing=normalized_payload["mvp_framing"],
             qualification_verdict=qualification_verdict,
         ),
+        "hermes_handoff": normalized_payload["hermes_handoff"],
         "project_identity": identity,
         "approved_scope": normalized_payload["approved_scope"],
         "target_user": normalized_payload["target_user"],
@@ -931,6 +942,11 @@ def build_delivery_ready_brief(record: dict[str, Any]) -> str:
         f"- App key: `{identity.get('app_key', '')}`",
         f"- App name: `{identity.get('app_name', '')}`",
         f"- App URL: `{identity.get('app_url', '')}`",
+        "",
+        "## Hermes Internal Handoff",
+        f"- Source role: {record.get('hermes_handoff', {}).get('source_role', 'not available')}",
+        f"- Source artifact: {record.get('hermes_handoff', {}).get('source_artifact', 'not available')}",
+        f"- Next target: {record.get('hermes_handoff', {}).get('next_target', 'not available')}",
         "",
         "## Approved Scope",
         *[f"- {item}" for item in approved_scope],
