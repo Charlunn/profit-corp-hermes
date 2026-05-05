@@ -22,7 +22,7 @@
 | 26 | Hermes Intent Gateway and Unified Project Start | Turn "start a new project" into one Hermes-native entrypoint that hides pipeline internals | HERMES-01, HERMES-02, HERMES-03 | Complete (2026-05-05) |
 | 27 | Hermes Internal Role Routing and Delivery Handoff | Make Hermes orchestrate company roles and delivery specialists internally | ROLE-01, ROLE-02, ROLE-03 | Complete (2026-05-05) |
 | 28 | Hermes Proposal and Approval Surface | Make proposal presentation and approval feel like one Hermes conversation instead of a bundle of subsystems | PROP-01, PROP-02, PROP-03 | Complete (2026-05-05) |
-| 29 | Hermes Final Delivery Experience and Blocked Recovery | Return the final URL or blocked recovery context as the natural result of the same Hermes workflow | AUTO-01, AUTO-02, AUTO-03 | 4 |
+| 29 | Hermes Final Delivery Experience and Blocked Recovery | Return the final URL or blocked recovery context as the natural result of the same Hermes workflow | AUTO-01, AUTO-02, AUTO-03 | Complete (2026-05-05) |
 
 ## Phase Details
 

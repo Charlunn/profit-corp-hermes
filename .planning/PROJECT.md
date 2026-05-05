@@ -22,7 +22,7 @@ Hermes now has both a repaired approved-to-delivery automation backbone and stri
 - authority and operator-visible status artifacts converge to the true recovered final state after successful GitHub/Vercel completion
 - specialist stages now fail closed on missing evidence, stale `/ui-ux-pro-max` artifacts, template-only work, and weak product-proof claims
 
-Phases 26 through 28 closed the startup, internal-routing, and approval-surface layers of that gap: Hermes now owns project start, preserves one governed run identity, routes internal roles durably, renders one concise proposal object, and maps approve/reject replies into the same locked delivery contract truth the shipped pipeline already trusts. The remaining work is final success and blocked recovery on that same surface.
+Phases 26 through 29 closed the full Hermes-first operator loop: Hermes now owns project start, internal routing, proposal approval, and final success or blocked recovery packaging while still deriving every visible step from the existing governed delivery backbone.
 
 ## Current Milestone
 
@@ -76,7 +76,7 @@ Phases 26 through 28 closed the startup, internal-routing, and approval-surface 
 - [x] Let the operator trigger a new project through Hermes as the only required control surface
 - [x] Qualify only fresh, real, buildable pain points with market and pricing proof before proposal approval
 - [x] Present one concise proposal for operator approval and persist a locked delivery contract after approval
-- [ ] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
+- [x] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
 - [x] Hide milestone-internal script choreography behind Hermes-native intent routing and role execution for project start
 - [x] Keep company roles and delivery specialists behind Hermes while preserving durable routing and handoff truth
 
@@ -136,6 +136,7 @@ Research through `v1.2` shows the main remaining risk is no longer infrastructur
 | Make Hermes the only operator-facing entrypoint for project start while preserving one governed run identity | The owner should be able to initiate work through Hermes without forking startup authority truth | Validated in Phase 26 |
 | Keep company roles and delivery specialists as Hermes-internal collaborators rather than user-exposed tools | The desired architecture is "Hermes handles everything" with role configuration living inside Hermes | Validated in Phase 27 |
 | Present one concise Hermes proposal and persist conversational approvals through the existing locked-contract governance model | The operator should approve from one Hermes surface without weakening contract truth or reopen behavior | Validated in Phase 28 |
+| Package final shipped success and blocked recovery as one Hermes-native outcome surface over authoritative delivery truth | The operator should receive either the final URL or honest recovery context without inspecting pipeline internals first | Validated in Phase 29 |
 
 ## Evolution
 
@@ -148,7 +149,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? Add to Key Decisions
 5. "What This Is" still accurate? Update if drifted
 
-**Current state:** `v1.2` is shipped; `v1.3` is underway, with Phases 26-28 complete and Hermes now owning project start, internal routing, and proposal/approval persistence through the existing governed backbone.
+**Current state:** `v1.3` is complete; Hermes now owns the full start-to-approve-to-final-result operator surface while still reusing the existing governed qualification, approval, delivery, deploy, and recovery backbone underneath.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -157,4 +158,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-05 after Phase 28 completion*
+*Last updated: 2026-05-05 after Phase 29 completion*

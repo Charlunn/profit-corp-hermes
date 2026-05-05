@@ -344,6 +344,79 @@ class ApprovedDeliveryPipelineCliTests(unittest.TestCase):
                 self.assertIn("Usage:", arity_result.stdout + arity_result.stderr)
                 self.assertIn(usage_fragment, arity_result.stdout + arity_result.stderr)
 
+    def test_final_status_surface_exposes_authoritative_success_and_blocked_fields(self) -> None:
+        render_module = load_module("render_approved_delivery_status_final_fields", ROOT_DIR / "scripts" / "render_approved_delivery_status.py")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"
+            approved_project.mkdir(parents=True)
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            final_review = approved_project / "FINAL_OPERATOR_REVIEW.md"
+            authority_path = approved_project / "APPROVED_PROJECT.json"
+            status_path = approved_project / "DELIVERY_PIPELINE_STATUS.md"
+            final_handoff = approved_project / "FINAL_DELIVERY.md"
+            final_handoff.write_text("# Final Delivery\n", encoding="utf-8")
+            final_review.write_text("# Final Operator Review\n", encoding="utf-8")
+
+            self.write_json(
+                authority_path,
+                {
+                    "approval": {"approval_id": "APR-1", "approved_at": "2026-05-05T09:00:00Z", "approver": "ceo", "evidence": {"decision_record": "record", "summary": "Approved."}},
+                    "project_identity": {"project_slug": "demo-project"},
+                    "pipeline": {
+                        "stage": "handoff",
+                        "status": "completed",
+                        "workspace_path": workspace.as_posix(),
+                        "delivery_run_id": "run-1",
+                        "final_handoff_path": final_handoff.as_posix(),
+                        "resume_from_stage": "",
+                    },
+                    "artifacts": {
+                        "authority_record_path": authority_path.as_posix(),
+                        "status_path": status_path.as_posix(),
+                        "final_review_path": final_review.as_posix(),
+                        "delivery_brief_path": (approved_project / "PROJECT_BRIEF.md").as_posix(),
+                    },
+                    "shipping": {
+                        "vercel": {
+                            "deploy_url": "https://demo.example.com",
+                            "deploy_status": "ready",
+                            "deploy_evidence_path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                        }
+                    },
+                    "latest_blocked_prerequisite": {
+                        "stage": "vercel_deploy",
+                        "reason": "vercel_deploy_failed",
+                        "path": (workspace / ".hermes" / "vercel-deploy.json").as_posix(),
+                        "status": "resolved",
+                    },
+                },
+            )
+            self.write_jsonl(
+                approved_project / "approved-delivery-events.jsonl",
+                [
+                    {
+                        "stage": "handoff",
+                        "status": "completed",
+                        "outcome": "pass",
+                        "final_handoff_path": final_handoff.as_posix(),
+                        "workspace_path": workspace.as_posix(),
+                    }
+                ],
+            )
+
+            markdown = render_module.build_status_markdown(
+                render_module.load_events(approved_project / "approved-delivery-events.jsonl"),
+                render_module.load_json(authority_path),
+                approved_project,
+            )
+            self.assertIn("Final Handoff Path", markdown)
+            self.assertIn("https://demo.example.com", markdown)
+            self.assertIn("Blocked Stage", markdown)
+            self.assertIn("Repair Action", markdown)
+            self.assertIn("Recovery Detail", markdown)
+
     def test_validator_fails_when_required_artifacts_or_cross_links_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             approved_project = Path(tmp) / "assets" / "shared" / "approved-projects" / "demo-project"

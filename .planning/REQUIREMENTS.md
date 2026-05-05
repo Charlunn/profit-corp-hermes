@@ -25,9 +25,9 @@
 
 ### Autonomous Delivery and Return Link
 
-- [ ] **AUTO-01**: After approval, Hermes continues through design, development, testing, GitHub, Vercel, and final handoff without healthy-path manual resumes.
-- [ ] **AUTO-02**: Hermes returns the final live deployment URL and concise ship summary as the normal success output of the same top-level project request.
-- [ ] **AUTO-03**: If delivery blocks, Hermes reports the failed stage, reason, and recovery context in owner-facing language without requiring the owner to inspect pipeline internals first.
+- [x] **AUTO-01**: After approval, Hermes continues through design, development, testing, GitHub, Vercel, and final handoff without healthy-path manual resumes.
+- [x] **AUTO-02**: Hermes returns the final live deployment URL and concise ship summary as the normal success output of the same top-level project request.
+- [x] **AUTO-03**: If delivery blocks, Hermes reports the failed stage, reason, and recovery context in owner-facing language without requiring the owner to inspect pipeline internals first.
 
 ## v2 Requirements
 
@@ -62,9 +62,9 @@
 | PROP-01 | Phase 28 | Complete |
 | PROP-02 | Phase 28 | Complete |
 | PROP-03 | Phase 28 | Complete |
-| AUTO-01 | Phase 29 | Pending |
-| AUTO-02 | Phase 29 | Pending |
-| AUTO-03 | Phase 29 | Pending |
+| AUTO-01 | Phase 29 | Complete |
+| AUTO-02 | Phase 29 | Complete |
+| AUTO-03 | Phase 29 | Complete |
 
 **Coverage:**
 - v1 requirements: 12 total
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-05-05*
-*Last updated: 2026-05-05 after Phase 28 completion*
+*Last updated: 2026-05-05 after Phase 29 completion*

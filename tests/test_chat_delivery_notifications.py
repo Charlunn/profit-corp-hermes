@@ -112,6 +112,15 @@ class ChatDeliveryNotificationTests(unittest.TestCase):
         self.assertFalse(first["idempotent_replay"])
         self.assertTrue(second["idempotent_replay"])
 
+    def test_success_notification_refuses_incomplete_truth(self) -> None:
+        module = load_module("chat_final_delivery_notify_incomplete", SCRIPT_PATH)
+        _, authority_path, _ = self.create_authority_fixture(platform="discord", status="completed", stage="handoff")
+        payload = json.loads(authority_path.read_text(encoding="utf-8"))
+        payload["artifacts"]["final_review_path"] = str(Path(payload["artifacts"]["final_review_path"]).with_name("MISSING_REVIEW.md"))
+        authority_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaises(module.ChatDeliveryNotifyError):
+            module.deliver_final_chat_notification(authority_path, platform="discord")
+
 
 if __name__ == "__main__":
     unittest.main()
