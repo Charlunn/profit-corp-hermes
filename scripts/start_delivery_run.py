@@ -19,11 +19,36 @@ REQUIRED_INPUTS = {
     "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
 }
 STAGES = [
-    {"stage": "design", "role": "design-specialist", "artifact": ".hermes/stage-handoffs/01-design.md"},
-    {"stage": "development", "role": "development-specialist", "artifact": ".hermes/stage-handoffs/02-development.md"},
-    {"stage": "testing", "role": "testing-specialist", "artifact": ".hermes/stage-handoffs/03-testing.md"},
-    {"stage": "git versioning", "role": "git-versioning-specialist", "artifact": ".hermes/stage-handoffs/04-git-versioning.md"},
-    {"stage": "release readiness", "role": "release-readiness-specialist", "artifact": ".hermes/stage-handoffs/05-release-readiness.md"},
+    {
+        "stage": "design",
+        "role": "design-specialist",
+        "artifact": ".hermes/stage-handoffs/01-design.md",
+        "evidence_artifact": ".hermes/stage-evidence/01-design.json",
+    },
+    {
+        "stage": "development",
+        "role": "development-specialist",
+        "artifact": ".hermes/stage-handoffs/02-development.md",
+        "evidence_artifact": ".hermes/stage-evidence/02-development.json",
+    },
+    {
+        "stage": "testing",
+        "role": "testing-specialist",
+        "artifact": ".hermes/stage-handoffs/03-testing.md",
+        "evidence_artifact": ".hermes/stage-evidence/03-testing.json",
+    },
+    {
+        "stage": "git versioning",
+        "role": "git-versioning-specialist",
+        "artifact": ".hermes/stage-handoffs/04-git-versioning.md",
+        "evidence_artifact": ".hermes/stage-evidence/04-git-versioning.json",
+    },
+    {
+        "stage": "release readiness",
+        "role": "release-readiness-specialist",
+        "artifact": ".hermes/stage-handoffs/05-release-readiness.md",
+        "evidence_artifact": ".hermes/stage-evidence/05-release-readiness.json",
+    },
 ]
 DEFAULT_SCOPE_STATUS = "approved-brief-only"
 ORCHESTRATOR_ROLE = "delivery-orchestrator"
@@ -95,12 +120,32 @@ def validate_required_inputs(workspace: Path) -> tuple[bool, str | None, dict[st
 
 
 def build_manifest(workspace: Path, metadata: dict[str, Any]) -> dict[str, Any]:
+    product_requirements = dict(metadata.get("product_requirements", {}) or {})
+    required_languages = [
+        str(value).strip().lower()
+        for value in list(product_requirements.get("required_languages", []))
+        if str(value).strip()
+    ]
     return {
         "run_id": f"delivery-{workspace.name}-001",
         "workspace_name": str(metadata.get("workspace_name", workspace.name)).strip() or workspace.name,
         "orchestrator_role": ORCHESTRATOR_ROLE,
         "scope_status": DEFAULT_SCOPE_STATUS,
         "required_inputs": dict(REQUIRED_INPUTS),
+        "product_contract": {
+            "pain_point": str(product_requirements.get("pain_point", "")).strip(),
+            "monetization": [
+                str(value).strip()
+                for value in list(product_requirements.get("monetization", []))
+                if str(value).strip()
+            ],
+            "required_languages": required_languages,
+            "ui_artifact_contract": [
+                str(value).strip()
+                for value in list(product_requirements.get("ui_artifact_contract", []))
+                if str(value).strip()
+            ],
+        },
         "stage_order": [stage["stage"] for stage in STAGES],
         "stages": [dict(stage) for stage in STAGES],
         "authority_stream": EVENTS_PATH,

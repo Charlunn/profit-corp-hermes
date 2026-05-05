@@ -1,0 +1,89 @@
+{
+  "approval": {
+    "approval_id": "APR-2026-05-02-VALIDATION-01",
+    "approved_at": "2026-05-02T15:00:00Z",
+    "approver": "ceo",
+    "evidence": {
+      "decision_record": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md",
+      "summary": "Validation run for Hermes role-based specialist delivery using official ui-ux-pro-max skill."
+    }
+  },
+  "project_identity": {
+    "project_slug": "idea-001-validation-workflow-cockpit",
+    "app_key": "idea_001_validation_workflow_cockpit",
+    "app_name": "IDEA 001 Validation Workflow Cockpit",
+    "app_url": "https://idea-001-validation-workflow-cockpit.example.com"
+  },
+  "approved_scope": [
+    "address validated pain point IDEA-001",
+    "ship one narrow operator workflow based on the top ranked opportunity",
+    "prove Hermes role-based frontend and backend delivery end to end"
+  ],
+  "target_user": "Developers and technical operators",
+  "mvp_framing": "Deliver one markdown-first operator workflow that proves the IDEA-001 pain point is turned into real product behavior.",
+  "constraints": [
+    "reuse shared Supabase auth and payments",
+    "keep delivery scope approved-brief-only",
+    "frontend specialists must load official ui-ux-pro-max via Hermes profile skills"
+  ],
+  "acceptance_gates": [
+    "brief generated",
+    "workspace bootstrap ready",
+    "production deployment reachable",
+    "specialist transcripts show Hermes role execution"
+  ],
+  "pipeline": {
+    "stage": "github_repository",
+    "status": "blocked",
+    "block_reason": "github_repository_failed",
+    "resume_from_stage": "github_repository",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit",
+    "delivery_run_id": "delivery-idea-001-validation-workflow-cockpit-001",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/github-repository-prepare.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/FINAL_DELIVERY.md"
+  },
+  "artifacts": {
+    "project_directory": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit",
+    "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/APPROVED_PROJECT.json",
+    "delivery_brief_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/PROJECT_BRIEF.md",
+    "template_contract_path": "docs/platform/standalone-saas-template-contract.md",
+    "project_metadata_path": ".hermes/project-metadata.json",
+    "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
+    "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+    "final_review_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/FINAL_OPERATOR_REVIEW.md",
+    "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+    "events_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/approved-delivery-events.jsonl",
+    "status_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/DELIVERY_PIPELINE_STATUS.md",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit",
+    "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/conformance-report.md",
+    "delivery_manifest_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/delivery-run-manifest.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/FINAL_DELIVERY.md"
+  },
+  "shipping": {
+    "github": {
+      "repository_mode": "create",
+      "repository_owner": "profit-corp",
+      "repository_repo": "pc-idea-001-validation-workflow-cockpit",
+      "repository_name": "profit-corp/pc-idea-001-validation-workflow-cockpit",
+      "repository_url": "https://github.com/profit-corp/pc-idea-001-validation-workflow-cockpit.git",
+      "default_branch": "main",
+      "remote_name": "origin",
+      "last_sync_status": "pending",
+      "naming_rule": "pc-<project-slug>",
+      "delivery_run_id": "delivery-idea-001-validation-workflow-cockpit-001",
+      "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit"
+    },
+    "vercel": {}
+  },
+  "final_handoff": {
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/FINAL_DELIVERY.md",
+    "link": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/FINAL_DELIVERY.md"
+  },
+  "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit",
+  "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit/conformance-report.md",
+  "protected_change": {
+    "classification": "product_only",
+    "status": "approved",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit/.hermes/protected-surface-classification-testing.json"
+  }
+}

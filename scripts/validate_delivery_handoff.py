@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,11 +21,50 @@ REQUIRED_STAGE_HEADINGS = [
     "## 1) Stage Summary",
     "## 2) Outputs Produced",
     "## 3) Evidence Links",
-    "## 4) Gate Decision",
-    "## 5) Open Risks",
-    "## 6) Next Stage Input",
+    "## 4) Changed Files",
+    "## 5) User Visible Behavior",
+    "## 6) Pain Point Mapping",
+    "## 7) Gate Decision",
+    "## 8) Open Risks",
+    "## 9) Next Stage Input",
 ]
 REQUIRED_STAGE_METADATA = ["`run_id`", "`role`", "`stage`", "`scope_status`", "`next_stage`"]
+REQUIRED_NON_EMPTY_STAGE_SECTIONS = [
+    "## 1) Stage Summary",
+    "## 2) Outputs Produced",
+    "## 3) Evidence Links",
+    "## 4) Changed Files",
+    "## 5) User Visible Behavior",
+    "## 6) Pain Point Mapping",
+    "## 7) Gate Decision",
+    "## 8) Open Risks",
+    "## 9) Next Stage Input",
+]
+REQUIRED_SUBSTANTIVE_STAGE_SECTIONS = {
+    "## 4) Changed Files",
+    "## 5) User Visible Behavior",
+    "## 6) Pain Point Mapping",
+}
+REQUIRED_UI_COVERAGE_KEYS = {
+    "screen_inventory",
+    "primary_workflow",
+    "monetization_surface",
+    "multilingual_coverage",
+    "responsive_rules",
+    "accessibility_rules",
+    "states",
+}
+PLACEHOLDER_SECTION_VALUES = {
+    "placeholder",
+    "placeholders",
+    "coming soon",
+    "not available",
+    "n/a",
+    "na",
+    "tbd",
+    "todo",
+    "none yet",
+}
 REQUIRED_FINAL_HEADINGS = [
     "## 1) End-to-end Summary",
     "## 2) Impact Surface",
@@ -120,11 +160,61 @@ def extract_tag_value(text: str, tag: str) -> str:
     return ""
 
 
+def extract_section_body(text: str, heading: str, all_headings: list[str]) -> str:
+    start = text.index(heading) + len(heading)
+    following_positions = [text.index(candidate) for candidate in all_headings if candidate != heading and text.index(candidate) > start]
+    end = min(following_positions) if following_positions else len(text)
+    return text[start:end]
+
+
+def section_has_meaningful_content(body: str) -> bool:
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.fullmatch(r"[-*]\s*", line):
+            continue
+        if re.fullmatch(r"[-*]\s*[`\s]*", line):
+            continue
+        if re.fullmatch(r"[-*]\s*[`][^`]+[`]:\s*", line):
+            continue
+        return True
+    return False
+
+
+def section_is_placeholder_only(body: str) -> bool:
+    meaningful_lines: list[str] = []
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith(("-", "*")):
+            line = line[1:].strip()
+        if re.fullmatch(r"[`][^`]+`:\s*.*", line):
+            line = line.split(":", 1)[1].strip()
+        if not line:
+            continue
+        meaningful_lines.append(line.lower())
+    if not meaningful_lines:
+        return False
+    return all(line in PLACEHOLDER_SECTION_VALUES for line in meaningful_lines)
+
+
+def require_non_empty_sections(text: str, headings: list[str], label: str) -> None:
+    for heading in headings:
+        body = extract_section_body(text, heading, headings)
+        if not section_has_meaningful_content(body):
+            raise DeliveryHandoffValidationError(f"{label} empty required section: {heading}")
+        if heading in REQUIRED_SUBSTANTIVE_STAGE_SECTIONS and section_is_placeholder_only(body):
+            raise DeliveryHandoffValidationError(f"{label} placeholder-only required section: {heading}")
+
+
 def validate_stage_handoff(path: Path, *, expected_stage: str, expected_role: str, expected_next_stage: str, run_id: str) -> None:
     label = path.name
     text = load_text(path, label)
     require_in_order(text, REQUIRED_STAGE_HEADINGS, label)
     require_tokens(text, REQUIRED_STAGE_METADATA, label)
+    require_non_empty_sections(text, REQUIRED_NON_EMPTY_STAGE_SECTIONS, label)
     if extract_tag_value(text, "run_id") != run_id:
         raise DeliveryHandoffValidationError(f"{label} run_id mismatch")
     if extract_tag_value(text, "stage") != expected_stage:
@@ -135,6 +225,71 @@ def validate_stage_handoff(path: Path, *, expected_stage: str, expected_role: st
         raise DeliveryHandoffValidationError(f"{label} scope_status missing approved delivery value")
     if extract_tag_value(text, "next_stage") != expected_next_stage:
         raise DeliveryHandoffValidationError(f"{label} next_stage mismatch: expected {expected_next_stage}")
+
+
+def validate_stage_evidence(
+    path: Path,
+    *,
+    expected_stage: str,
+    expected_role: str,
+    expected_handoff_path: str,
+    run_id: str,
+) -> None:
+    payload = load_json(path, path.name)
+    if str(payload.get("run_id", "")).strip() != run_id:
+        raise DeliveryHandoffValidationError(f"{path.name} run_id mismatch")
+    if str(payload.get("stage", "")).strip() != expected_stage:
+        raise DeliveryHandoffValidationError(f"{path.name} stage mismatch: expected {expected_stage}")
+    if str(payload.get("role", "")).strip() != expected_role:
+        raise DeliveryHandoffValidationError(f"{path.name} role mismatch: expected {expected_role}")
+    if str(payload.get("handoff_path", "")).strip() != expected_handoff_path:
+        raise DeliveryHandoffValidationError(f"{path.name} handoff path mismatch")
+    transcript_path = str(payload.get("transcript_path", "")).strip()
+    if not transcript_path:
+        raise DeliveryHandoffValidationError(f"{path.name} missing transcript path")
+    transcript_file = Path(transcript_path)
+    if not transcript_file.exists() or not transcript_file.read_text(encoding="utf-8").strip():
+        raise DeliveryHandoffValidationError(f"{path.name} transcript evidence missing or empty")
+    if not str(payload.get("workspace_change_inventory_path", "")).strip():
+        raise DeliveryHandoffValidationError(f"{path.name} missing workspace change inventory path")
+    evidence_links = payload.get("evidence_links")
+    if not isinstance(evidence_links, list) or not evidence_links:
+        raise DeliveryHandoffValidationError(f"{path.name} missing evidence links")
+    normalized_evidence_links = [str(item).strip() for item in evidence_links if str(item).strip()]
+    if transcript_path not in normalized_evidence_links:
+        raise DeliveryHandoffValidationError(f"{path.name} missing transcript evidence link")
+    workspace_change_inventory_path = str(payload.get("workspace_change_inventory_path", "")).strip()
+    if workspace_change_inventory_path not in normalized_evidence_links:
+        raise DeliveryHandoffValidationError(f"{path.name} missing workspace change inventory link")
+    if expected_stage in {"design", "development"}:
+        for field in ("ui_artifact_path", "ui_artifact_summary_path"):
+            if not str(payload.get(field, "")).strip():
+                raise DeliveryHandoffValidationError(f"{path.name} missing {field}")
+        ui_artifact_path = str(payload.get("ui_artifact_path")).strip()
+        ui_artifact_summary_path = str(payload.get("ui_artifact_summary_path")).strip()
+        if ui_artifact_path not in normalized_evidence_links or ui_artifact_summary_path not in normalized_evidence_links:
+            raise DeliveryHandoffValidationError(f"{path.name} missing ui-ux artifact evidence link")
+        summary_payload = load_json(Path(ui_artifact_summary_path), "ui-ux artifact summary")
+        coverage = summary_payload.get("coverage", {})
+        if not isinstance(coverage, dict):
+            raise DeliveryHandoffValidationError(f"{path.name} ui-ux artifact summary coverage must be an object")
+        missing_coverage = [key for key in REQUIRED_UI_COVERAGE_KEYS if not isinstance(coverage.get(key), list) or not coverage.get(key)]
+        if missing_coverage:
+            raise DeliveryHandoffValidationError(
+                f"{path.name} ui-ux artifact summary missing coverage: {', '.join(missing_coverage)}"
+            )
+        states = {str(item).strip().lower() for item in coverage.get("states", []) if str(item).strip()}
+        required_states = {"empty", "loading", "error", "success"}
+        if not required_states.issubset(states):
+            raise DeliveryHandoffValidationError(
+                f"{path.name} ui-ux artifact summary missing states: {', '.join(sorted(required_states - states))}"
+            )
+        for field in ("brief_contract", "summary_hash"):
+            if field not in summary_payload:
+                raise DeliveryHandoffValidationError(f"{path.name} ui-ux artifact summary missing {field}")
+    if expected_stage == "testing":
+        if not isinstance(payload.get("verification_evidence"), list) or not payload.get("verification_evidence"):
+            raise DeliveryHandoffValidationError(f"{path.name} missing testing verification evidence")
 
 
 def validate_final_delivery(path: Path, *, run_id: str) -> None:
@@ -173,10 +328,18 @@ def validate_delivery_run(workspace: Path) -> dict[str, Any]:
             stage = str(stage_entry.get("stage", "")).strip()
             role = str(stage_entry.get("role", "")).strip()
             artifact = str(stage_entry.get("artifact", "")).strip()
-            if not stage or not role or not artifact:
-                raise DeliveryHandoffValidationError("delivery run manifest stage entry missing stage, role, or artifact")
+            evidence_artifact = str(stage_entry.get("evidence_artifact", "")).strip()
+            if not stage or not role or not artifact or not evidence_artifact:
+                raise DeliveryHandoffValidationError("delivery run manifest stage entry missing stage, role, artifact, or evidence_artifact")
             next_stage = str(stages[index + 1].get("stage", "none")).strip() if index + 1 < len(stages) else "none"
             validate_stage_handoff(workspace / artifact, expected_stage=stage, expected_role=role, expected_next_stage=next_stage, run_id=run_id)
+            validate_stage_evidence(
+                workspace / evidence_artifact,
+                expected_stage=stage,
+                expected_role=role,
+                expected_handoff_path=(workspace / artifact).as_posix(),
+                run_id=run_id,
+            )
             matching_events = [event for event in events if event.get("stage") == stage and event.get("role") == role and event.get("artifact") == artifact]
             if not matching_events:
                 raise DeliveryHandoffValidationError(f"missing replay event for stage {stage} and artifact {artifact}")

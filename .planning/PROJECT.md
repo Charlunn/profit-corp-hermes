@@ -26,15 +26,22 @@ The biggest unresolved gaps are now workflow-evidence debt rather than core deli
 
 ## Current Milestone
 
-No new milestone is defined yet.
+**v1.2 Autonomous Project Launch Loop**
 
-The shipped `v1.1.2` work closed the main governance integrity gap around specialist evidence, UI design artifacts, product proof, and bootstrap/resume truth.
+**Goal:** Let the operator start a new project from Discord or Telegram, receive one evidence-backed proposal for approval, and then let Hermes carry the approved build all the way to deployment and return the live link with no healthy-path terminal intervention.
+
+**Target features:**
+- chat-native project intake from Discord and Telegram instead of terminal-first startup
+- hard qualification gates for fresh, real, buildable pain points plus market and pricing evidence
+- one-shot proposal approval that freezes scope, pricing, and delivery contract
+- autonomous post-approval delivery through design, development, testing, GitHub, Vercel, and final link handoff
 
 ## Next Milestone Goals
 
-- Decide whether to clear workflow evidence debt first by normalizing phase verification and Nyquist validation artifacts for the hardened governance milestone
-- Or move directly into the next product-factory expansion scope now that delivery governance is materially stricter
-- Preserve the stable GitHub/Vercel/shared-Supabase transport path while avoiding any regression that reopens template-shaped delivery loopholes
+- turn Hermes from a terminal-invoked governed pipeline into a chat-invoked autonomous launch loop
+- preserve the repaired delivery backbone while removing manual operator orchestration on healthy runs
+- make real-pain freshness, feasibility, and pricing proof blocking requirements before approval
+- ensure approved delivery follows the locked proposal contract and returns a deployment link to the originating conversation
 
 ## Requirements
 
@@ -66,16 +73,17 @@ The shipped `v1.1.2` work closed the main governance integrity gap around specia
 
 ### Active
 
-- [ ] Normalize milestone-close workflow evidence so each shipped phase has complete verification and Nyquist validation artifacts
-- [ ] Run a fresh live end-to-end approved-project delivery on the real operator environment under the hardened governance rules
-- [ ] Decide the next product-factory milestone scope after the governance hardening baseline is re-validated live
+- [ ] Let the operator trigger a new project from Discord or Telegram and create one authoritative intake run
+- [ ] Qualify only fresh, real, buildable pain points with market and pricing proof before proposal approval
+- [ ] Present one concise proposal for operator approval and persist a locked delivery contract after approval
+- [ ] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
 
 ### Out of Scope
 
 - Reopening GitHub auth, GitHub sync, Vercel auth, Vercel deployment, or recovered-status convergence as primary milestone work - those delivery-path reliability repairs shipped in v1.1.1 and should remain stable unless a new blocker appears
 - Replacing the approved-project architecture with a new workflow engine or state store - brownfield constraint is to harden the current authority/event/artifact model rather than restart it
 - Supporting fully custom per-product backend stacks as the default path - shared template plus shared Supabase remains the baseline until explicitly superseded
-- Broad product-factory expansion into new specialist roles or brand-new delivery surfaces - this milestone was governance hardening, not factory sprawl
+- Broad product-factory expansion into unrelated business functions or a generic messaging product - this milestone is about autonomous project launch and delivery
 - Building unrelated end-user SaaS features inside Hermes itself - the focus remains delivery governance behavior, not product application scope inside this repo
 
 ## Context
@@ -86,7 +94,7 @@ A standalone mini-SaaS template exists at `C:\Users\42236\Desktop\standalone-saa
 
 The current deployment model remains Vercel for frontend delivery and a single shared Supabase project for SaaS backends. New projects isolate product data through app-key conventions and shared-boundary enforcement instead of spinning up a separate backend per SaaS by default.
 
-Research through `v1.1.2` shows the main remaining risk is no longer infrastructure reliability but workflow discipline: closeout evidence, audit hygiene, and milestone-artifact completeness now need to catch up with the runtime behavior.
+Research through `v1.1.2` shows the main remaining risk is no longer infrastructure reliability but operator friction and proof quality at the front of the loop: Hermes can govern delivery, but it still needs a chat-native intake, stronger proposal qualification, and truly autonomous progression from approval to deployed result.
 
 ## Constraints
 
@@ -98,6 +106,8 @@ Research through `v1.1.2` shows the main remaining risk is no longer infrastruct
 - **Template contract**: Shared auth, payment, entitlement, and core public table flows from `standalone-saas-template` are platform primitives rather than per-product rebuild targets
 - **Governance hardening scope**: New work should preserve the stricter specialist evidence, UI artifact, product-proof, and recovered-truth rules added in `v1.1.2`
 - **Language coverage**: English and Chinese are mandatory and major internet languages remain part of the default product requirement contract unless a brief justifies a narrower set
+- **Operator interaction model**: Healthy-path interaction should collapse to start plus approve, with escalation only for real blockers
+- **Evidence freshness**: Proposed pain-point and market evidence must be recent enough to support a three-day validity window
 
 ## Key Decisions
 
@@ -118,6 +128,8 @@ Research through `v1.1.2` shows the main remaining risk is no longer infrastruct
 | Make `/ui-ux-pro-max` a blocking governed artifact for UI scope, not a policy-only suggestion | Frontend stages need executable design proof to stop template-like output and generic handoffs | Validated in v1.1.2 |
 | Remove `/demo` and identity-only paths from acceptable product proof | Renaming template identity is necessary bootstrap work, but it is not evidence of a real paid SaaS workflow | Validated in v1.1.2 |
 | Treat current audit gaps as process debt rather than failed governance scope | The runtime behavior satisfies the milestone, but closeout evidence is still incomplete | Accepted at v1.1.2 close |
+| Move the next milestone toward chat-native autonomous project launch | The operator wants Hermes to behave like a minimally interruptive company loop rather than a terminal-operated toolchain | Pending |
+| Keep the human approval gate but compress healthy-path interaction to start plus approve | The owner still wants control over project direction, but not repeated manual orchestration after approval | Pending |
 
 ## Evolution
 
@@ -130,7 +142,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? Add to Key Decisions
 5. "What This Is" still accurate? Update if drifted
 
-**Current state:** `v1.1.2` is shipped and archived; the next work is either workflow-evidence cleanup or definition of the next milestone.
+**Current state:** `v1.1.2` is shipped and archived; `v1.2` is now defined around autonomous chat intake, proposal proof, locked approval, and automatic deploy-to-link completion.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -139,4 +151,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-04 after v1.1.2 milestone closeout*
+*Last updated: 2026-05-04 after v1.2 milestone initialization*

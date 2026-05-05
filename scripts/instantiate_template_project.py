@@ -46,6 +46,7 @@ PROTECTED_PATHS = [
     "src/app/api/paypal/capture/route.ts",
     "supabase/migrations/20260423112500_create_shared_public_tables.sql",
 ]
+DEFAULT_REQUIRED_LANGUAGES = ["en", "zh", "es", "ar", "pt", "fr", "hi", "ja", "ru"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -144,7 +145,7 @@ def update_app_definition(app_definition_path: Path, identity: dict[str, str]) -
     app_definition_path.write_text(content, encoding="utf-8")
 
 
-def build_metadata(asset: dict, workspace_name: str, identity: dict[str, str], template_source_path: Path) -> dict[str, str]:
+def build_metadata(asset: dict, workspace_name: str, identity: dict[str, str], template_source_path: Path) -> dict[str, object]:
     contract_path = DEFAULT_CONTRACT_PATH
     canonical_contract = str(asset.get("canonical_contract", "")).strip()
     if canonical_contract:
@@ -157,14 +158,31 @@ def build_metadata(asset: dict, workspace_name: str, identity: dict[str, str], t
         "app_url": identity["APP_URL"],
         "template_source_path": template_source_path.as_posix(),
         "canonical_contract_path": contract_path.as_posix(),
+        "product_requirements": build_default_product_requirements(identity),
     }
 
 
-def build_shared_backend_guardrails(metadata: dict[str, str]) -> dict[str, object]:
+def build_default_product_requirements(identity: dict[str, str]) -> dict[str, object]:
+    app_name = identity["APP_NAME"]
+    return {
+        "pain_point": f"Users need a product-specific workflow in {app_name} instead of a generic template shell.",
+        "monetization": [
+            f"Charge for paid access to {app_name} workflows that resolve the approved pain point.",
+            "Expose a clear upgrade surface tied to the product's primary action and outcome.",
+        ],
+        "required_languages": list(DEFAULT_REQUIRED_LANGUAGES),
+        "ui_artifact_contract": [
+            "Reference `/ui-ux-pro-max` output before frontend implementation.",
+            "Document screen inventory, monetization surface, and multilingual behavior.",
+        ],
+    }
+
+
+def build_shared_backend_guardrails(metadata: dict[str, object]) -> dict[str, object]:
     return {
         "backend_model": SHARED_BACKEND_MODEL,
-        "app_key": metadata["app_key"],
-        "canonical_contract_path": metadata["canonical_contract_path"],
+        "app_key": str(metadata["app_key"]),
+        "canonical_contract_path": str(metadata["canonical_contract_path"]),
         "allowed_shared_tables": SHARED_TABLES,
         "protected_paths": PROTECTED_PATHS,
         "client_write_blocked_tables": SHARED_TABLES,
@@ -195,6 +213,9 @@ def write_hermes_handoff(workspace: Path, metadata: dict[str, str]) -> None:
             f"- Shared backend guardrails: `.hermes/shared-backend-guardrails.json`",
             f"- Canonical contract: `{metadata['canonical_contract_path']}`",
             f"- Template source: `{metadata['template_source_path']}`",
+            f"- Pain point: `{metadata['product_requirements']['pain_point']}`",
+            f"- Required languages: `{', '.join(metadata['product_requirements']['required_languages'])}`",
+            "- UI artifact contract: `Reference /ui-ux-pro-max output before frontend implementation.`",
         ]
     )
     brief_path.write_text(brief.rstrip() + "\n", encoding="utf-8")

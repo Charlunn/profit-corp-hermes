@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+UI_UX_SKILL_NAME="ui-ux-pro-max"
 resolve_hermes_home() {
   local raw_home="${HERMES_HOME:-$HOME/.hermes}"
   if command -v cygpath >/dev/null 2>&1; then
@@ -111,6 +112,18 @@ install_ui_ux_pro_max() {
 
   log "Ensuring UI/UX Pro Max skill is installed for Claude Code"
   (cd "$ROOT_DIR" && uipro init --ai claude) || warn "UI/UX Pro Max init reported issues"
+}
+
+sync_official_ui_skill_into_profile() {
+  local profile="$1"
+  local profile_home="$HERMES_HOME_DEFAULT/profiles/$profile"
+  local target_dir="$profile_home/skills/$UI_UX_SKILL_NAME"
+  local project_skill_dir="$ROOT_DIR/.claude/skills/$UI_UX_SKILL_NAME"
+
+  [ -d "$project_skill_dir" ] || return 0
+  mkdir -p "$target_dir"
+  cp -rf "$project_skill_dir"/. "$target_dir"/
+  log "Official UI/UX Pro Max skill synced into Hermes profile: $profile"
 }
 
 setup_default_config() {
@@ -250,25 +263,30 @@ sync_profile_skills() {
 
   mkdir -p "$target_dir"
 
-  if [ -d "$source_common" ] || [ -d "$source_role" ]; then
+  if [ -d "$source_common" ] || [ -d "$source_role" ] || [ -d "$ROOT_DIR/.claude/skills/$UI_UX_SKILL_NAME" ]; then
     if [ "$OVERWRITE_SYNCED_SKILLS" -eq 0 ] && [ -n "$(ls -A "$target_dir" 2>/dev/null || true)" ]; then
       read -r -p "Profile '$profile' skills exist. Overwrite synced skills from project? [y/N] " ans
       case "${ans:-N}" in
         [yY]|[yY][eE][sS]) OVERWRITE_SYNCED_SKILLS=1 ;;
         *)
           log "Keeping existing profile skills: $profile"
-          return 0
           ;;
       esac
     fi
 
-    if [ -d "$source_common" ]; then
-      cp -f "$source_common"/*.md "$target_dir"/ 2>/dev/null || true
+    if [ "$OVERWRITE_SYNCED_SKILLS" -eq 1 ] || [ -z "$(ls -A "$target_dir" 2>/dev/null || true)" ]; then
+      if [ -d "$source_common" ]; then
+        cp -f "$source_common"/*.md "$target_dir"/ 2>/dev/null || true
+      fi
+      if [ -d "$source_role" ]; then
+        cp -f "$source_role"/*.md "$target_dir"/ 2>/dev/null || true
+      fi
+      log "Skills synced: $profile"
     fi
-    if [ -d "$source_role" ]; then
-      cp -f "$source_role"/*.md "$target_dir"/ 2>/dev/null || true
+
+    if [ "$profile" = "arch" ]; then
+      sync_official_ui_skill_into_profile "$profile"
     fi
-    log "Skills synced: $profile"
   fi
 }
 

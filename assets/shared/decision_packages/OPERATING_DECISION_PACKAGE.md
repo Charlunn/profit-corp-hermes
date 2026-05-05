@@ -1,37 +1,37 @@
-# Operating Decision Package - 2026-04-29
-- **Generated At**: 2026-04-29T04:49:06Z
-- **Run ID**: decision-package-20260429
+# Operating Decision Package - 2026-04-25
+- **Generated At**: 2026-05-04T16:08:56Z
+- **Run ID**: decision-package-20260425
 - **Shared Shortlist Source**: `assets/shared/external_intelligence/triage/prioritized_signals.json`
 - **CEO Synthesis Source**: `assets/shared/CEO_RANKING.md`
 
 ## Overall Conclusion / 一句话总判断
-优先围绕 IDEA-001 开启下一轮 founder/operator 验证：它仍是今天最强的机会信号，但由于当前风险等级为 medium 且预计 MVP 需要 10 小时，执行上应先做窄范围验证而不是直接全面投入。
+优先围绕 IDEA-001 开启下一轮 founder/operator 验证：它仍是今天最强的机会信号，但由于当前风险等级为 medium 且预计 MVP 需要 22 小时，执行上应先做窄范围验证而不是直接全面投入。
 
 ## Top 3 Ranked Opportunities
 - Only 2 validated opportunities were available in the current shortlist, so this run keeps the Top 3 frame while rendering all validated rows.
 | Rank | idea_id | Opportunity | Why now | Evidence signal | Recommended motion |
 |---|---|---|---|---|---|
-| 1 | IDEA-001 | . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th | Monetization 5/10、Urgency 4/10，适合先做轻量验证再决定是否深入。 | 1 条证据，最近证据距今 0.16 小时，来源集中在 web-discovery-default-2。 | Validate IDEA-001 before expanding scope. |
-| 2 | IDEA-002 | States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude | Monetization 5/10、Urgency 4/10，适合先做轻量验证再决定是否深入。 | 1 条证据，最近证据距今 0.17 小时，来源集中在 web-discovery-default-1。 | Validate IDEA-002 before expanding scope. |
+| 1 | IDEA-001 | Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12 | Monetization 5/10、Urgency 5.5/10，适合先做轻量验证再决定是否深入。 | 7 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-2。 | Validate IDEA-001 before expanding scope. |
+| 2 | IDEA-002 | org Functional Programmers need to take a look at Zig haskell zig pure-systems | Monetization 5/10、Urgency 4/10，适合先做轻量验证再决定是否深入。 | 4 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-1。 | Validate IDEA-002 before expanding scope. |
 
 ## Operating Framing
 - **Goal**: 验证 IDEA-001 是否值得作为下一阶段 mini-SaaS 切入点，并确认用户是否愿意为该痛点付费。
 - **Target User**: Developers and technical operators
-- **MVP Framing**: 以 IDEA-001 为核心做一个 10 小时量级的 markdown-first operator workflow 原型，先验证最痛的检索/反馈闭环。
+- **MVP Framing**: 以 IDEA-001 为核心做一个 22 小时量级的 markdown-first operator workflow 原型，先验证最痛的检索/反馈闭环。
 - **Primary Focus**: IDEA-001 remains the current operating bet.
 
 ## 关键机会
-### IDEA-001 — . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th
+### IDEA-001 — Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12
 - **Judgment ID**: opp-idea-001
-- **Summary**: . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns the code Claude Code wrote? 1 条证据，最近证据距今 0.16 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 4/10。
+- **Summary**: Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12y hide . Softmax, can you derive the Jacobian? 7 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 9.61/10。
 - **Backlinks**:
   - `assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001`
   - `assets/shared/PAIN_POINTS.md`
   - `assets/shared/CEO_RANKING.md`
 
-### IDEA-002 — States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude
+### IDEA-002 — org Functional Programmers need to take a look at Zig haskell zig pure-systems
 - **Judgment ID**: opp-idea-002
-- **Summary**: States formalmethods buttondown.com/hillelwayne ajdecon Who Owns the Code Claude Wrote? 1 条证据，最近证据距今 0.17 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 4/10。
+- **Summary**: org Functional Programmers need to take a look at Zig haskell zig pure-systems 4 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-1。 EvidenceStrength 8/10。
 - **Backlinks**:
   - `assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-002`
   - `assets/shared/PAIN_POINTS.md`
@@ -40,7 +40,7 @@
 ## 主要风险
 ### IDEA-001 需要先控制验证范围
 - **Judgment ID**: risk-idea-001-scope
-- **Summary**: MARKET_PLAN.md 标记风险等级为 medium，同时该机会预计 MVP 需 10 小时，说明直接进入完整构建的执行风险偏高。
+- **Summary**: MARKET_PLAN.md 标记风险等级为 medium，同时该机会预计 MVP 需 22 小时，说明直接进入完整构建的执行风险偏高。
 - **Backlinks**:
   - `assets/shared/external_intelligence/triage/prioritized_signals.json#IDEA-001`
   - `assets/shared/MARKET_PLAN.md`
@@ -57,8 +57,8 @@
   - `assets/shared/CEO_RANKING.md`
 
 ## 推荐下一步
-- 围绕 IDEA-001 组织 3-5 个目标用户验证访谈 — evidence: . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns the code Claude Code wrote? 1 条证据，最近证据距今 0.16 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 4/10。 — trace: `judgment_id=action-idea-001-interviews`
-- 定义一个只覆盖核心痛点的 MVP framing，并压缩到单一 workflow 原型 — evidence: MARKET_PLAN.md 标记风险等级为 medium，同时该机会预计 MVP 需 10 小时，说明直接进入完整构建的执行风险偏高。 — trace: `judgment_id=action-idea-001-prototype`
+- 围绕 IDEA-001 组织 3-5 个目标用户验证访谈 — evidence: Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12y hide . Softmax, can you derive the Jacobian? 7 条证据，最近证据距今 0 小时，来源集中在 web-discovery-default-2。 EvidenceStrength 9.61/10。 — trace: `judgment_id=action-idea-001-interviews`
+- 定义一个只覆盖核心痛点的 MVP framing，并压缩到单一 workflow 原型 — evidence: MARKET_PLAN.md 标记风险等级为 medium，同时该机会预计 MVP 需 22 小时，说明直接进入完整构建的执行风险偏高。 — trace: `judgment_id=action-idea-001-prototype`
 
 ## 证据回链
 - prioritized shortlist: `assets/shared/external_intelligence/triage/prioritized_signals.json`

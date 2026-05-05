@@ -8,6 +8,10 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+
+from scripts.template_contract_common import LOCAL_PROJECTS_ROOT
+
 SCRIPT_PATH = ROOT_DIR / "scripts" / "check_template_conformance.py"
 INSTANTIATE_SCRIPT = ROOT_DIR / "scripts" / "instantiate_template_project.py"
 REGISTRY_PATH = ROOT_DIR / "assets" / "shared" / "templates" / "standalone-saas-template.json"
@@ -15,6 +19,7 @@ TEMPLATE_SOURCE = Path("C:/Users/42236/Desktop/standalone-saas-template")
 EXPECTED_SECTION_ORDER = [
     "## Status",
     "## Blocking Violations",
+    "## Proof Warnings",
     "## Verified Paths",
     "## Fingerprint Checks",
 ]
@@ -59,10 +64,12 @@ class CheckTemplateConformanceTests(unittest.TestCase):
         return tail[:next_heading].strip()
 
     def create_workspace_fixture(self) -> tuple[Path, Path, Path]:
-        workspace_root = ROOT_DIR / "assets" / "workspaces" / "projects"
+        temp_dir = Path(tempfile.mkdtemp(prefix="conformance-workspace-"))
+        self.addCleanupPath(temp_dir)
+        workspace_root = LOCAL_PROJECTS_ROOT / temp_dir.name / "projects-root"
+        self.addCleanupPath(workspace_root.parent)
         workspace_root.mkdir(parents=True, exist_ok=True)
         workspace_name = f"lead-capture-{next(tempfile._get_candidate_names())}"
-        self.addCleanupPath(workspace_root / workspace_name)
 
         registry_path = Path(tempfile.mkdtemp(prefix="conformance-registry-")) / "standalone-saas-template.json"
         self.addCleanupPath(registry_path.parent)
@@ -87,6 +94,11 @@ class CheckTemplateConformanceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         workspace = workspace_root / workspace_name
         self.assertTrue(workspace.exists(), "workspace was not created")
+
+        metadata_path = workspace / ".hermes" / "project-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["product_requirements"]["required_languages"] = ["en", "zh"]
+        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return registry_path.parent, registry_path, workspace
 
     def base_args(self, registry_path: Path, workspace: Path) -> list[str]:
@@ -128,19 +140,45 @@ class CheckTemplateConformanceTests(unittest.TestCase):
         self.assertIn("src/lib/supabase-browser.ts", fingerprint_section)
         self.assertIn("src/lib/paypal.ts", fingerprint_section)
         self.assertEqual(self.extract_section(output, "## Blocking Violations"), "None.")
+        self.assertEqual(self.extract_section(output, "## Proof Warnings"), "None.")
         self.assert_section_order(output)
 
-    def test_missing_app_key_fails_with_blocking_violation(self) -> None:
+    def test_missing_product_requirements_fails_with_blocking_violation(self) -> None:
         _, registry_path, workspace = self.create_workspace_fixture()
-        env_path = workspace / ".env"
-        env_text = env_path.read_text(encoding="utf-8").replace("APP_KEY=lead_capture", "APP_KEY=")
-        env_path.write_text(env_text, encoding="utf-8")
+        metadata_path = workspace / ".hermes" / "project-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata.pop("product_requirements", None)
+        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
         result = self.run_conformance(*self.base_args(registry_path, workspace))
         self.assertEqual(result.returncode, 1)
         violations = self.extract_section(result.stdout, "## Blocking Violations")
-        self.assertIn("APP_KEY", violations)
-        self.assertIn("missing or blank", violations)
+        self.assertIn("missing product_requirements object", violations)
+
+    def test_missing_required_language_evidence_fails_with_blocking_violation(self) -> None:
+        _, registry_path, workspace = self.create_workspace_fixture()
+        metadata_path = workspace / ".hermes" / "project-metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["product_requirements"]["required_languages"] = ["en", "zh", "es", "ar"]
+        metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        result = self.run_conformance(*self.base_args(registry_path, workspace))
+        self.assertEqual(result.returncode, 1)
+        violations = self.extract_section(result.stdout, "## Blocking Violations")
+        self.assertIn("workspace missing multilingual evidence", violations)
+        self.assertIn("es", violations)
+        self.assertIn("ar", violations)
+
+    def test_template_marker_residue_fails_with_blocking_violation(self) -> None:
+        _, registry_path, workspace = self.create_workspace_fixture()
+        page_path = workspace / "src" / "app" / "page.tsx"
+        page_path.write_text(page_path.read_text(encoding="utf-8") + "\nStandalone SaaS Template\n", encoding="utf-8")
+
+        result = self.run_conformance(*self.base_args(registry_path, workspace))
+        self.assertEqual(result.returncode, 1)
+        violations = self.extract_section(result.stdout, "## Blocking Violations")
+        self.assertIn("template marker residue detected", violations)
+        self.assertIn("src/app/page.tsx", violations)
 
     def test_missing_guardrails_file_fails_with_blocking_violation(self) -> None:
         _, registry_path, workspace = self.create_workspace_fixture()

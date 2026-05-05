@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1.2
-milestone_name: Real-SaaS Delivery Governance Hardening
-status: completed
-stopped_at: .planning/v1.1.2-MILESTONE-AUDIT.md
-last_updated: "2026-05-04T00:00:00.000Z"
-last_activity: 2026-05-04 -- Milestone v1.1.2 audited and archived
+milestone: v1.2
+milestone_name: Autonomous Project Launch Loop
+status: ready_to_execute
+stopped_at: .planning/phases/25-autonomous-delivery-to-deploy-and-return-link/25-03-PLAN.md
+last_updated: "2026-05-04T15:20:00.000Z"
+last_activity: 2026-05-04 -- Auto planning completed for phases 22-25
 progress:
   total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  completed_phases: 0
+  total_plans: 12
+  completed_plans: 0
+  percent: 50
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Turn noisy web-wide user pain signals into clear, governed decisions about what is worth building next - and ensure approved opportunities become real, launchable SaaS products rather than ceremonial agent output.
-**Current focus:** v1.1.2 evidence debt cleared; ready for next-milestone planning
+**Current focus:** v1.2 autonomous chat intake, proposal proof, locked approval, and deploy-to-link automation
 
 ## Current Position
 
-Phase: 21
-Plan: 3 plans completed
-Milestone: v1.1.2 - closed
-Status: Completed
-Last activity: 2026-05-04 -- Milestone v1.1.2 workflow evidence debt cleared
+Phase: 22
+Plan: 25-03 planned
+Milestone: v1.2 - initialized
+Status: Ready to execute
+Last activity: 2026-05-04 -- Auto planning completed for phases 22-25
 
-Progress: [##########] 100%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
@@ -68,7 +68,7 @@ Progress: [##########] 100%
 **Recent Trend:**
 
 - Last 5 plans: 19-02, 19-03, 20-01, 20-02, 21-03
-- Trend: governance hardening milestone is shipped and its workflow evidence is now reconciled; next step is next-milestone planning
+- Trend: delivery governance is stable enough to shift the next milestone toward reducing operator touchpoints and automating the project launch loop
 
 *Updated after each plan completion*
 
@@ -98,11 +98,15 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Select the next milestone or follow-up phase after governance hardening
+- Execute Phase 22 plans for chat-native intake and authoritative run orchestration
+- Execute Phase 23 qualification gates before proposal approval
+- Execute Phase 24 approval bundle and locked contract governance
+- Execute Phase 25 autonomous approved-to-deploy completion and final chat reply
 
 ### Blockers/Concerns
 
 - Existing sample approved-project artifacts still include environment-specific evidence-path drift outside the current milestone scope and may need careful fixture normalization during testing
+- Chat-platform integration will need a clean contract for mapping conversation events into the current authority/event model without bypassing governance
 
 ## Deferred Items
 
@@ -121,14 +125,14 @@ Items acknowledged and carried forward from previous milestones:
 - Phase 14 through Phase 17 repaired the live delivery-path defects exposed after the first shipped SaaS factory milestone
 - v1.1.1 roadmap, requirements, and state surfaces were aligned to the repaired GitHub auth, sync, Vercel, and status-convergence evidence set
 - v1.1.2 completed governance hardening on top of that repaired delivery backbone without reopening the underlying infrastructure stack
-- milestone close archived the governance hardening scope and the follow-up cleanup normalized Phase 18-21 workflow evidence artifacts
+- v1.2 now targets the interaction model above that backbone: chat-native start, one-shot approval, and autonomous approved-to-deploy completion
 
 ## Session Continuity
 
-Last session: Milestone closeout completed
-Stopped at: .planning/v1.1.2-MILESTONE-AUDIT.md
-Resume file: .planning/PROJECT.md
+Last session: Auto planning completed for phases 22-25
+Stopped at: .planning/phases/25-autonomous-delivery-to-deploy-and-return-link/25-03-PLAN.md
+Resume file: .planning/phases/22-conversational-intake-and-run-orchestration/22-01-PLAN.md
 
-**Next Phase:** None - milestone closed
+**Next Phase:** 22 - Conversational Intake and Run Orchestration
 
-**Planned Phase:** Next milestone selection
+**Planned Phase:** 25 - Autonomous Delivery to Deploy and Return Link

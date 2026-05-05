@@ -1,0 +1,179 @@
+{
+  "approval": {
+    "approval_id": "APR-2026-05-01-AUTO-01",
+    "approved_at": "2026-05-01T00:00:00Z",
+    "approver": "ceo",
+    "evidence": {
+      "decision_record": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md",
+      "summary": "优先围绕 IDEA-001 开启下一轮 founder/operator 验证：它仍是今天最强的机会信号，但由于当前风险等级为 medium 且预计 MVP 需要 16 小时，执行上应先做窄范围验证而不是直接全面投入。"
+    }
+  },
+  "project_identity": {
+    "project_slug": "found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+    "app_key": "found_in_the_pytorch_lightning_ai_training_library_semgrep_dev_points_by_j12",
+    "app_name": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12",
+    "app_url": "https://found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.example.com"
+  },
+  "approved_scope": [
+    "address validated pain point IDEA-001",
+    "ship one narrow operator workflow based on the top ranked opportunity",
+    "deploy a production-ready first version through the governed SaaS pipeline"
+  ],
+  "target_user": "Developers and technical operators",
+  "mvp_framing": "以 IDEA-001 为核心做一个 16 小时量级的 markdown-first operator workflow 原型，先验证最痛的检索/反馈闭环。",
+  "constraints": [
+    "reuse shared Supabase auth and payments",
+    "keep delivery scope approved-brief-only",
+    "derive project only from current operating decision package evidence"
+  ],
+  "acceptance_gates": [
+    "brief generated",
+    "workspace bootstrap ready",
+    "production deployment reachable"
+  ],
+  "pipeline": {
+    "stage": "vercel_deploy",
+    "status": "completed",
+    "block_reason": null,
+    "resume_from_stage": "handoff",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+    "delivery_run_id": "delivery-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12-001",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-deploy.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/FINAL_DELIVERY.md"
+  },
+  "artifacts": {
+    "project_directory": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+    "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/APPROVED_PROJECT.json",
+    "delivery_brief_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/PROJECT_BRIEF.md",
+    "template_contract_path": "docs/platform/standalone-saas-template-contract.md",
+    "project_metadata_path": ".hermes/project-metadata.json",
+    "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
+    "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+    "final_review_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/FINAL_OPERATOR_REVIEW.md",
+    "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+    "events_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/approved-delivery-events.jsonl",
+    "status_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/DELIVERY_PIPELINE_STATUS.md",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+    "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/conformance-report.md",
+    "delivery_manifest_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/delivery-run-manifest.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/FINAL_DELIVERY.md"
+  },
+  "shipping": {
+    "github": {
+      "repository_mode": "create",
+      "repository_owner": "Charlunn",
+      "repository_repo": "pc-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+      "repository_name": "Charlunn/pc-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+      "repository_url": "https://github.com/Charlunn/pc-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.git",
+      "default_branch": "main",
+      "remote_name": "origin",
+      "last_sync_status": "completed",
+      "naming_rule": "pc-<project-slug>",
+      "delivery_run_id": "delivery-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12-001",
+      "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+      "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/APPROVED_PROJECT.json",
+      "prepare_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/github-repository-prepare.json",
+      "prepare_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/credential-audit-github-repository-prepare.json",
+      "prepare_auth_source": "gh_cli",
+      "prepare_auth_source_details": {
+        "command": "gh auth status",
+        "login": ""
+      },
+      "synced_commit": "1868315",
+      "sync_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/github-sync.json",
+      "remote_action": "added",
+      "push_transport": "https",
+      "push_attempts": [
+        {
+          "transport": "https",
+          "remote_url": "https://github.com/Charlunn/pc-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.git",
+          "status": "ok",
+          "stderr_summary": "To https://github.com/Charlunn/pc-found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.git * [new branch] main -> main"
+        }
+      ]
+    },
+    "vercel": {
+      "project_id": "",
+      "project_name": "found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12-prod",
+      "project_url": "https://vercel.com/charlunns-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12-prod",
+      "team_scope": "charlunns-projects",
+      "linked": true,
+      "auth_source": "vercel_cli_session",
+      "auth_source_details": {
+        "username": "charlunn"
+      },
+      "link_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-linkage.json",
+      "link_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/credential-audit-vercel-project-link.json",
+      "env_contract": {
+        "platform_managed": [
+          "NEXT_PUBLIC_SUPABASE_URL",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
+          "PAYPAL_CLIENT_SECRET",
+          "PAYPAL_ENVIRONMENT"
+        ],
+        "platform_values": {
+          "NEXT_PUBLIC_SUPABASE_URL": "https://kkjdbgpaveerbxlbnxty.supabase.co",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtramRiZ3BhdmVlcmJ4bGJueHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MDY4MTUsImV4cCI6MjA5MjQ4MjgxNX0.pC-mjCcGOB6XgxwW4lxLHNTJCO7Sp1IIVr2KK2VMeSI",
+          "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtramRiZ3BhdmVlcmJ4bGJueHR5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjkwNjgxNSwiZXhwIjoyMDkyNDgyODE1fQ.K2w_uIj9aTLWrgJDj5cudCEcOuD8he09MmcnItHcYxQ",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID": "AY7pEyQt2mENOFeGhVz3DdEvo6UF-LnaT-J3rjSZvpqK19gwyyH08K78m1yJQiryPPTVkaN4Uc17fJE3",
+          "PAYPAL_CLIENT_SECRET": "EJ1DGWNa0NnvwJtAEWtHsou9RR6I2QcwHD8EZL3OKRsd4fpHJoDJMViCuuEugLD2lR-IV0yF9sI4U1Ix",
+          "PAYPAL_ENVIRONMENT": "live"
+        },
+        "identity_derived": {
+          "APP_KEY": "found_in_the_pytorch_lightning_ai_training_library_semgrep_dev_points_by_j12",
+          "APP_NAME": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12",
+          "APP_URL": "https://found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.example.com",
+          "PAYPAL_BRAND_NAME": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12"
+        },
+        "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-env-contract.json"
+      },
+      "env_contract_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-env-contract.json",
+      "env_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/credential-audit-vercel-env-apply.json",
+      "required_env": {
+        "platform_managed": [
+          "NEXT_PUBLIC_SUPABASE_URL",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
+          "PAYPAL_CLIENT_SECRET",
+          "PAYPAL_ENVIRONMENT"
+        ],
+        "identity_derived": {
+          "APP_KEY": "found_in_the_pytorch_lightning_ai_training_library_semgrep_dev_points_by_j12",
+          "APP_NAME": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12",
+          "APP_URL": "https://found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12.example.com",
+          "PAYPAL_BRAND_NAME": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12"
+        }
+      },
+      "deploy_url": "https://found-in-the-pytorch-lightning-ai-training-library-drzh2d632.vercel.app",
+      "deploy_status": "ready",
+      "deploy_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-deploy.json",
+      "deploy_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/credential-audit-vercel-deploy.json",
+      "deployment_url": "https://found-in-the-pytorch-lightning-ai-training-library-drzh2d632.vercel.app",
+      "deployment_status": "ready",
+      "deployment_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-deploy.json",
+      "deploy_inspector_url": "",
+      "deployment_api_url": "",
+      "deploy_target": "",
+      "deploy_id": ""
+    }
+  },
+  "final_handoff": {
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/FINAL_DELIVERY.md",
+    "link": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/FINAL_DELIVERY.md"
+  },
+  "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12",
+  "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/conformance-report.md",
+  "protected_change": {
+    "classification": "product_only",
+    "status": "approved",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/protected-surface-classification-testing.json"
+  },
+  "latest_blocked_prerequisite": {
+    "status": "resolved",
+    "reason": "vercel_deploy_completed",
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-projects/found-in-the-pytorch-lightning-ai-training-library-semgrep-dev-points-by-j12/.hermes/vercel-deploy.json"
+  }
+}

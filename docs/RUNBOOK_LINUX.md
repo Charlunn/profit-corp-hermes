@@ -11,7 +11,21 @@ Optional flags:
 - `-SkipCron` skip cron job ensure
 - `-SkipSmoke` skip `scripts/smoke_test_pipeline.sh`
 
-## 1) Bootstrap
+## 1) Configure cloud delivery shortcut
+```bash
+cd /path/to/profit-corp-hermes
+python scripts/configure_hermes_cloud.py
+```
+
+The configurator prompts for:
+- Hermes provider/base URL/API key/default model
+- whether to apply that Hermes model block to all role profiles
+- Claude Code relay base URL/token/model
+- Supabase, GitHub, and Vercel delivery env values
+
+It writes secrets only into local operator files ignored by git.
+
+## 2) Bootstrap
 ```bash
 cd /path/to/profit-corp-hermes
 bash scripts/bootstrap_hermes.sh
@@ -33,16 +47,14 @@ Bootstrap does:
 6. Ensure cron jobs from `orchestration/cron/`
 7. Run smoke checks + doctor + finance syntax check
 
-## 2) Non-interactive (CI/VPS)
+## 3) CI/VPS shortcut
 ```bash
 cd /path/to/profit-corp-hermes
-OVERWRITE_HERMES_CONFIG=1 INSTALL_HERMES_IF_MISSING=1 \
-SETUP_PROFILES=1 PROFILE_LIST=ceo,scout,cmo,arch,accountant \
-SETUP_CRON=1 RUN_OPENCLAW_DRY_RUN=0 RUN_SMOKE_TEST=1 \
-  bash scripts/bootstrap_hermes_noninteractive.sh
+python scripts/configure_hermes_cloud.py --skip-checks
+bash scripts/bootstrap_hermes.sh --skip-migration
 ```
 
-## 3) Skills sync & verification
+## 4) Skills sync & verification
 Project skill source:
 - `skills/common/` -> sync to all profiles
 - `skills/ceo/` -> sync to CEO profile

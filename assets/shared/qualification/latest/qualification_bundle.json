@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-05-04T12:00:00Z",
+  "candidates": [
+    {
+      "idea_id": "IDEA-001",
+      "verdict": "passed",
+      "reason_codes": []
+    },
+    {
+      "idea_id": "IDEA-002",
+      "verdict": "passed",
+      "reason_codes": []
+    }
+  ]
+}

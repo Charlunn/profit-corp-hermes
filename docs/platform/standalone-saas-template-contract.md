@@ -97,9 +97,10 @@ The following surfaces are the intended customization points for a new SaaS work
 - `src/app/page.tsx`
 - `src/app/dashboard/page.tsx`
 - `src/app/billing/page.tsx`
-- `src/app/demo/page.tsx`
 - new business pages under `src/app/*`
 - product-specific modules under `src/components/*`
+- locale-aware routes, dictionaries, and product-facing copy surfaces needed to satisfy the approved language contract
+- product-specific UI, monetization surfaces, and workflow implementation that are materially different from the template example frontend
 
 #### Product-specific data layer
 - Business tables using the `APP_KEY_` prefix
@@ -141,7 +142,8 @@ The following files and paths must exist in a conforming generated workspace:
 - `src/app/api/auth/session/route.ts`
 - `src/app/api/paypal/checkout/route.ts`
 - `src/app/api/paypal/capture/route.ts`
-- `src/app/demo/page.tsx`
+- at least one product-specific user-facing page under `src/app/*` that proves the approved workflow is implemented
+- evidence of multilingual product surfaces for the required language set recorded in `.hermes/project-metadata.json`
 - `supabase/migrations/20260423112500_create_shared_public_tables.sql`
 - `README.md`
 - `ARCHITECTURE.md`
@@ -163,6 +165,10 @@ A generated workspace is not ready for handoff or deployment unless the conforma
 - product-specific data remains inside `APP_KEY_` business-table boundaries
 - `supabase/migrations/*.sql` only leave `users`, `orders`, `payments`, and `subscriptions` unprefixed; every other product business table must use the current `APP_KEY_` prefix
 - `src/app/**/*.ts*` and `src/components/**/*.ts*` client files do not directly mutate `users`, `orders`, `payments`, or `subscriptions`
+- `.hermes/project-metadata.json` records a concrete pain point, monetization contract, required language set, and `/ui-ux-pro-max` UI artifact contract inside `product_requirements`
+- the required language set includes English (`en`) and Chinese (`zh`)
+- the workspace contains product-facing implementation beyond `src/lib/app-definition.ts`
+- the primary product surfaces no longer read like the raw template example and do not ship template markers such as `Standalone SaaS Template`
 
 Blocking rule:
 - Any missing protected path, missing identity value, broken authority artifact, broken shared backend declaration, unauthorized shared-table mutation path, broken table-boundary rule, or protected-layer drift must fail conformance and block downstream delivery.

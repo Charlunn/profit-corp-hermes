@@ -94,19 +94,27 @@ For a user-facing version log, see `CHANGELOG.md`.
 
 ## Quick start
 
-### Linux / macOS / Git Bash
+### Configure local cloud delivery
+Run the shortcut configurator first on any operator machine or VPS:
 ```bash
-bash scripts/bootstrap_hermes_noninteractive.sh
+python scripts/configure_hermes_cloud.py
 ```
 
-### Windows PowerShell
+It writes local-only settings for:
+- Hermes provider, base URL, API key, and default model
+- Hermes role profile provider/model inheritance
+- Claude Code relay base URL, token, and model
+- Supabase, GitHub, and Vercel delivery env values in `.claude/settings.local.json`
+
+### Bootstrap runtime
+Linux / macOS / Git Bash:
+```bash
+bash scripts/bootstrap_hermes.sh
+```
+
+Windows PowerShell:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_hermes.ps1
-```
-
-If you only want to resync profiles/skills without rebuilding cron:
-```bash
-SETUP_PROFILES=1 SETUP_CRON=0 RUN_SMOKE_TEST=0 bash scripts/bootstrap_hermes_noninteractive.sh
 ```
 
 ## First-use validation path
@@ -158,9 +166,12 @@ bash orchestration/cron/commands.sh resume-approved-delivery assets/shared/appro
 ## Delivery prerequisites
 
 Before real deploy validation, make sure the operator machine has:
-- authenticated `gh` CLI session or exported GitHub token
+- Hermes configured through `python scripts/configure_hermes_cloud.py`
+- Claude Code available in `PATH`, with relay provider values in `.claude/settings.local.json`
+- authenticated `gh` CLI session or `GH_TOKEN` / `GITHUB_TOKEN`
 - authenticated Vercel CLI session or `VERCEL_TOKEN`
-- project-local PayPal / Supabase env values available through Claude local settings or shell env
+- Supabase values: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- optional delivery target values: `APPROVED_DELIVERY_GITHUB_OWNER`, `APPROVED_DELIVERY_GITHUB_REPO`, `VERCEL_TEAM`, `VERCEL_PROJECT`
 
 Do **not** commit secrets into repo files. Keep them in local environment/config only.
 

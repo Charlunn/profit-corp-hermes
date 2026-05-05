@@ -244,17 +244,15 @@ for path in latest_substance.get("supporting_logic_paths", []):
 |---|-------|---------|---------------|
 | A1 | No additional external packages beyond Python stdlib and pytest are needed to implement Phase 20. `[ASSUMED]` | Standard Stack | Low; if wrong, the planner would miss an install/test step. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should conformance persist the full proof summary artifact or only consume it transiently?**
-   - What we know: Phase 20 allows discretion on persistence location as long as all surfaces read the same authoritative fields. `[VERIFIED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-CONTEXT.md]`
-   - What's unclear: Whether the planner should add a dedicated proof snapshot file or rely only on workspace inventory/event substance. `[VERIFIED: codebase grep]`
-   - Recommendation: Prefer one durable JSON artifact under `.hermes/` plus event copies/references so Phase 21 resume work inherits a stable proof source. `[ASSUMED]`
+   - Resolution: Persist one durable proof-summary JSON artifact under `.hermes/` and have authority/events reference or copy from that canonical payload rather than recomputing separate proof views later. `[RESOLVED: aligns with D-01, D-08, D-09, D-12 in .planning/phases/20-real-product-proof-and-conformance-hardening/20-CONTEXT.md]`
+   - Why this was chosen: It keeps conformance, stage substance, status rendering, and final validation on one authoritative proof vocabulary while giving Phase 21 a resume-safe source of truth. `[VERIFIED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-CONTEXT.md]`
 
 2. **Should `src/app/page.tsx` remain excluded as a primary proof surface?**
-   - What we know: `PRIMARY_SURFACE_EXCLUDED_PATHS` currently excludes `src/app/page.tsx`. `[VERIFIED: codebase grep]`
-   - What's unclear: The context locks `/demo` and identity-only exclusions, but it leaves exact expansion of excluded-proof constants to discretion. `[VERIFIED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-CONTEXT.md]`
-   - Recommendation: Revisit this constant explicitly during planning and keep it only if the root page is always branding/marketing shell in this template. `[ASSUMED]`
+   - Resolution: Treat the root page exclusion as an implementation rule that must be decided explicitly in Plan `20-01` and then locked in code plus tests; it is not allowed to remain an implicit assumption. `[RESOLVED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-01-PLAN.md]`
+   - Why this was chosen: The context deliberately leaves excluded-path expansion to agent discretion, and the plan already requires Phase 20 regressions to codify whether `src/app/page.tsx` stays excluded or becomes accepted proof based on actual workflow semantics. `[VERIFIED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-CONTEXT.md]` `[VERIFIED: .planning/phases/20-real-product-proof-and-conformance-hardening/20-01-PLAN.md]`
 
 ## Environment Availability
 

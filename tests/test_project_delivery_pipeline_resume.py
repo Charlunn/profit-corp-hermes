@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import shutil
 import tempfile
@@ -24,6 +25,34 @@ def load_module(module_name: str, script_path: Path):
 
 class ApprovedDeliveryResumeTests(unittest.TestCase):
     maxDiff = None
+
+    def _write_json_fixture(self, path: Path, payload: dict) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return path.as_posix()
+
+    def _fake_materialize_product_surface(self, _workspace: Path, _record: dict) -> list[str]:
+        return ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"]
+
+    def _write_stage_handoff_fixture(self, workspace: Path, artifact: str, _content: str) -> str:
+        path = workspace / artifact
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# Stage Handoff\n", encoding="utf-8")
+        return path.as_posix()
+
+    def _make_dispatch_result(self, workspace: Path, *, transcript_name: str = "design-claude-code.txt", skills: list[str] | None = None, hermes_profile: str = "arch") -> dict:
+        transcript_path = workspace / ".hermes" / transcript_name
+        transcript_path.parent.mkdir(parents=True, exist_ok=True)
+        transcript_path.write_text("specialist transcript evidence\n", encoding="utf-8")
+        return {
+            "ok": True,
+            "transcript_path": transcript_path.as_posix(),
+            "stdout": "ok",
+            "stderr": "",
+            "skills": skills or [],
+            "hermes_profile": hermes_profile,
+            "command": ["hermes", "-p", hermes_profile, "chat", "-q", "stage prompt", "-Q"],
+        }
 
     def addCleanupPath(self, path: Path) -> None:
         self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
@@ -76,6 +105,65 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             encoding="utf-8",
         )
         (hermes_dir / "PROJECT_BRIEF_ENTRYPOINT.md").write_text("# Hermes Project Brief Entrypoint\n", encoding="utf-8")
+        (hermes_dir / "ui-ux-design-system.md").write_text("# UI UX Design System\n", encoding="utf-8")
+        ui_brief_contract = {
+            "pain_point": "capture inbound lead notes",
+            "core_workflow": [
+                "User opens the product and immediately sees a workflow focused on: capture inbound lead notes",
+                "User completes at least one concrete task that proves the app can deliver a concrete user workflow",
+                "User receives a visible result, output, or paid next action rather than generic template copy",
+            ],
+            "monetization": [
+                "Offer a paid subscription that continuously solves capture inbound lead notes for Solo operators who need to qualify inbound leads quickly..",
+                "Show a clear upgrade/paywall surface tied to the primary workflow outcome rather than a template placeholder offer.",
+                "Release-readiness evidence must prove the paid path is visible in the product or explicitly staged behind a governed integration boundary.",
+            ],
+            "required_languages": ["en", "zh", "es", "ar", "pt", "fr", "hi", "ja", "ru"],
+            "screen_inventory": ["capture inbound lead notes"],
+        }
+        (hermes_dir / "ui-ux-design-system.summary.json").write_text(
+            json.dumps(
+                {
+                    "generated_by": "/ui-ux-pro-max",
+                    "artifact_path": (hermes_dir / "ui-ux-design-system.md").as_posix(),
+                    "stage": "design",
+                    "role": "design-specialist",
+                    "app_name": "Lead Capture Copilot",
+                    "target_user": "Solo operators who need to qualify inbound leads quickly.",
+                    "brief_contract": ui_brief_contract,
+                    "coverage": {
+                        "screen_inventory": ["capture inbound lead notes"],
+                        "primary_workflow": [
+                            "User opens the product and immediately sees a workflow focused on: capture inbound lead notes",
+                            "User completes at least one concrete task that proves the app can deliver a concrete user workflow",
+                            "User receives a visible result, output, or paid next action rather than generic template copy",
+                        ],
+                        "monetization_surface": [
+                            "Offer a paid subscription that continuously solves capture inbound lead notes for Solo operators who need to qualify inbound leads quickly..",
+                            "Show a clear upgrade/paywall surface tied to the primary workflow outcome rather than a template placeholder offer.",
+                            "Release-readiness evidence must prove the paid path is visible in the product or explicitly staged behind a governed integration boundary.",
+                        ],
+                        "multilingual_coverage": ["en", "zh", "es", "ar", "pt", "fr", "hi", "ja", "ru"],
+                        "responsive_rules": [
+                            "Primary workflow must remain usable on desktop and mobile widths.",
+                            "Responsive behavior must preserve CTA clarity and result visibility.",
+                        ],
+                        "accessibility_rules": [
+                            "Primary actions must keep visible labels and focus states.",
+                            "Critical workflow states must remain understandable without color alone.",
+                        ],
+                        "states": ["empty", "loading", "error", "success"],
+                    },
+                    "summary_hash": hashlib.sha256(
+                        json.dumps(ui_brief_contract, ensure_ascii=False, sort_keys=True).encode("utf-8")
+                    ).hexdigest(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         authority_path = project_dir / "APPROVED_PROJECT.json"
         authority = {
             "approval": {
@@ -165,13 +253,20 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
              mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=self._write_stage_handoff_fixture), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -218,13 +313,20 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
              mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=self._write_stage_handoff_fixture), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -284,13 +386,20 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
              mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=self._write_stage_handoff_fixture), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -423,6 +532,7 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             },
         }
         authority_path.write_text(json.dumps(authority, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (workspace / ".hermes" / "stale-vercel-link-blocked.json").write_text('{"ok": false}\n', encoding="utf-8")
 
         stale_block_event = {
             "project_slug": "lead-capture-copilot",
@@ -430,7 +540,10 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             "status": "blocked",
             "action": "stage_blocked",
             "timestamp": "2026-04-27T08:37:00Z",
-            "outcome": "blocked",
+            "outcome": {
+                "status": "blocked",
+                "result": "blocked",
+            },
             "authority_record_path": authority_path.as_posix(),
             "brief_path": (project_dir / "PROJECT_BRIEF.md").as_posix(),
             "workspace_path": workspace.as_posix(),
@@ -440,6 +553,16 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
             "evidence_path": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
             "resume_from_stage": "vercel_linkage",
             "final_handoff_path": "",
+            "gate": {
+                "decision": "block",
+                "reason": "vercel_linkage_failed",
+            },
+            "evidence": {
+                "primary_path": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
+            },
+            "handoff": {
+                "artifact_path": (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(),
+            },
             "shipping": authority["shipping"],
         }
         (project_dir / "approved-delivery-events.jsonl").write_text(json.dumps(stale_block_event, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -497,10 +620,22 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         self.assertEqual(vercel["deploy_evidence_path"], (workspace / ".hermes" / "vercel-deploy.json").as_posix())
         self.assertEqual(updated["pipeline"]["stage"], "vercel_deploy")
         self.assertEqual(updated["pipeline"]["status"], "completed")
+        self.assertEqual(updated["pipeline"]["current_stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["current_status"], "completed")
+        self.assertEqual(updated["pipeline"]["latest_governance"]["stage"], "vercel_deploy")
+        self.assertEqual(updated["pipeline"]["latest_governance"]["status"], "completed")
+        self.assertEqual(updated["pipeline"]["latest_governance"]["outcome"], "pass")
         self.assertEqual(updated["pipeline"]["resume_from_stage"], "handoff")
         self.assertIsNone(updated["pipeline"]["block_reason"])
         self.assertEqual(updated["pipeline"]["evidence_path"], (workspace / ".hermes" / "vercel-deploy.json").as_posix())
         self.assertEqual(updated["pipeline"]["final_handoff_path"], final_handoff.as_posix())
+        self.assertEqual(updated["pipeline"]["latest_block_context"]["stage"], "vercel_linkage")
+        self.assertEqual(updated["pipeline"]["latest_block_context"]["reason"], "vercel_linkage_failed")
+        self.assertEqual(updated["pipeline"]["latest_block_context"]["status"], "resolved")
+        self.assertEqual(updated["latest_blocked_prerequisite"]["stage"], "vercel_linkage")
+        self.assertEqual(updated["latest_blocked_prerequisite"]["reason"], "vercel_linkage_failed")
+        self.assertEqual(updated["latest_blocked_prerequisite"]["path"], (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix())
+        self.assertEqual(updated["latest_blocked_prerequisite"]["status"], "resolved")
         self.assertNotEqual(vercel["project_name"], "stale-project-prod")
         self.assertNotEqual(vercel["team_scope"], "old-team")
         self.assertNotEqual(vercel["deploy_url"], "https://stale-project.vercel.app")
@@ -508,13 +643,117 @@ class ApprovedDeliveryResumeTests(unittest.TestCase):
         events = self.read_events(project_dir)
         self.assertEqual(events[0]["status"], "blocked")
         self.assertEqual(events[0]["block_reason"], "vercel_linkage_failed")
+        self.assertEqual(events[0]["gate"]["decision"], "block")
+        self.assertEqual(events[0]["evidence"]["primary_path"], (workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix())
+        self.assertEqual(events[0]["outcome"]["status"], "blocked")
         self.assertEqual(events[-2]["stage"], "vercel_linkage")
         self.assertEqual(events[-2]["status"], "ready")
+        self.assertEqual(events[-2]["gate"]["decision"], "pass")
         self.assertEqual(events[-2]["shipping"]["vercel"]["project_name"], "lead-capture-copilot-prod")
         self.assertEqual(events[-1]["stage"], "vercel_deploy")
         self.assertEqual(events[-1]["status"], "completed")
-        self.assertEqual(events[-1]["final_handoff_path"], final_handoff.as_posix())
+        self.assertEqual(events[-1]["handoff"]["final_handoff_path"], final_handoff.as_posix())
+        self.assertEqual(events[-1]["outcome"]["status"], "completed")
         self.assertEqual(events[-1]["shipping"]["vercel"]["deploy_url"], "https://lead-capture-copilot-prod.vercel.app")
+
+        status_text = (project_dir / "DELIVERY_PIPELINE_STATUS.md").read_text(encoding="utf-8")
+        final_review_text = (project_dir / "FINAL_OPERATOR_REVIEW.md").read_text(encoding="utf-8")
+        for surface_text in [status_text, final_review_text]:
+            self.assertIn("**Pipeline Status**: `completed`", surface_text)
+            self.assertIn("**Current Stage**: `vercel_deploy`", surface_text)
+            self.assertIn("lead-capture-copilot-prod", surface_text)
+            self.assertIn((workspace / ".hermes" / "vercel-deploy.json").as_posix(), surface_text)
+            self.assertIn("vercel_linkage_failed", surface_text)
+            self.assertIn((workspace / ".hermes" / "stale-vercel-link-blocked.json").as_posix(), surface_text)
+
+    def test_resume_reblocks_when_blocked_authority_truth_drifts_from_event_history(self) -> None:
+        start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace = self.create_resume_fixture(stage="vercel_linkage")
+        authority = self.read_json(authority_path)
+        authority["pipeline"].update(
+            {
+                "status": "blocked",
+                "block_reason": "vercel_linkage_failed",
+                "resume_from_stage": "vercel_linkage",
+                "evidence_path": (workspace / ".hermes" / "authority-blocked.json").as_posix(),
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+            }
+        )
+        authority["latest_blocked_prerequisite"] = {
+            "stage": "vercel_linkage",
+            "reason": "vercel_linkage_failed",
+            "path": (workspace / ".hermes" / "authority-blocked.json").as_posix(),
+            "status": "blocked",
+        }
+        authority_path.write_text(json.dumps(authority, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (workspace / ".hermes" / "authority-blocked.json").write_text('{"ok": false}\n', encoding="utf-8")
+
+        stale_event = {
+            "project_slug": "lead-capture-copilot",
+            "stage": "vercel_linkage",
+            "status": "blocked",
+            "action": "stage_blocked",
+            "timestamp": "2026-04-27T08:37:00Z",
+            "outcome": {
+                "status": "blocked",
+                "result": "blocked",
+            },
+            "authority_record_path": authority_path.as_posix(),
+            "brief_path": (project_dir / "PROJECT_BRIEF.md").as_posix(),
+            "workspace_path": workspace.as_posix(),
+            "delivery_run_id": "delivery-lead-capture-copilot-001",
+            "artifact": (workspace / ".hermes" / "event-blocked.json").as_posix(),
+            "block_reason": "missing_vercel_project_linkage",
+            "evidence_path": (workspace / ".hermes" / "event-blocked.json").as_posix(),
+            "resume_from_stage": "vercel_linkage",
+            "final_handoff_path": "",
+            "gate": {
+                "decision": "block",
+                "reason": "missing_vercel_project_linkage",
+            },
+            "evidence": {
+                "primary_path": (workspace / ".hermes" / "event-blocked.json").as_posix(),
+            },
+            "handoff": {
+                "artifact_path": (workspace / ".hermes" / "event-blocked.json").as_posix(),
+            },
+            "shipping": authority.get("shipping", {}),
+        }
+        (workspace / ".hermes" / "event-blocked.json").write_text('{"ok": false}\n', encoding="utf-8")
+        (project_dir / "approved-delivery-events.jsonl").write_text(json.dumps(stale_event, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "link_vercel_project") as link_mock:
+            result = start_module.resume_approved_project_delivery(authority_path)
+
+        self.assertFalse(result["ok"], msg=result)
+        self.assertEqual(result["stage"], "vercel_linkage")
+        self.assertEqual(result["block_reason"], "authority_state_drift")
+        self.assertEqual(result["evidence_path"], (workspace / ".hermes" / "authority-blocked.json").as_posix())
+        self.assertIn("latest blocked event", result["error"])
+        link_mock.assert_not_called()
+
+        updated = self.read_json(authority_path)
+        self.assertEqual(updated["pipeline"]["status"], "blocked")
+        self.assertEqual(updated["pipeline"]["block_reason"], "authority_state_drift")
+        self.assertEqual(updated["pipeline"]["resume_from_stage"], "vercel_linkage")
+        self.assertEqual(updated["pipeline"]["evidence_path"], (workspace / ".hermes" / "authority-blocked.json").as_posix())
+        self.assertEqual(updated["latest_blocked_prerequisite"]["reason"], "authority_state_drift")
+        self.assertEqual(updated["latest_blocked_prerequisite"]["path"], (workspace / ".hermes" / "authority-blocked.json").as_posix())
+        self.assertEqual(updated["latest_blocked_prerequisite"]["status"], "blocked")
+
+        events = self.read_events(project_dir)
+        self.assertEqual(events[-1]["stage"], "vercel_linkage")
+        self.assertEqual(events[-1]["status"], "blocked")
+        self.assertEqual(events[-1]["block_reason"], "authority_state_drift")
+        self.assertEqual(events[-1]["evidence_path"], (workspace / ".hermes" / "authority-blocked.json").as_posix())
+
+        status_text = (project_dir / "DELIVERY_PIPELINE_STATUS.md").read_text(encoding="utf-8")
+        final_review_text = (project_dir / "FINAL_OPERATOR_REVIEW.md").read_text(encoding="utf-8")
+        self.assertIn("authority_state_drift", status_text)
+        self.assertIn((workspace / ".hermes" / "authority-blocked.json").as_posix(), status_text)
+        self.assertIn("authority_state_drift", final_review_text)
+        self.assertIn((workspace / ".hermes" / "authority-blocked.json").as_posix(), final_review_text)
 
     def test_workspace_instantiation_refreshes_existing_workspace_without_deleting_git_history(self) -> None:
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)

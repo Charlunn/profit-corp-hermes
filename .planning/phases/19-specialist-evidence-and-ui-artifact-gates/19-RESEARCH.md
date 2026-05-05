@@ -340,17 +340,17 @@ return {
 |---|-------|---------|---------------|
 | A1 | Markdown presence is cheaper to check than content coverage and brief drift. | Common Pitfalls - Pitfall 2 | Low; this only explains likely failure mode, not the recommended implementation. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should transcript evidence be required to be non-empty, or only present?**
-   - What we know: The phase requirements require transcript evidence before pass, and the orchestrator already writes per-stage transcript files. [VERIFIED: REQUIREMENTS.md] [VERIFIED: scripts/start_approved_project_delivery.py]
-   - What's unclear: The current validator snippets shown in this research assert structured evidence links and paths, but not an explicit transcript non-empty check in the downstream validators. [VERIFIED: scripts/validate_delivery_handoff.py] [VERIFIED: scripts/validate_approved_delivery_pipeline.py]
-   - Recommendation: Plan one explicit contract decision and enforce it across runtime plus both validators so transcript emptiness cannot drift by stage. [VERIFIED: 19-CONTEXT.md]
+1. **Transcript evidence rule**
+   - **Decision:** Transcript evidence must be present and non-empty before any specialist stage can pass.
+   - **Why:** Phase requirements already require transcript evidence as part of the specialist evidence bundle, and a present-but-empty transcript is not materially different from missing evidence in a fail-closed governance path. [VERIFIED: REQUIREMENTS.md] [VERIFIED: 19-CONTEXT.md]
+   - **Implementation guidance:** Enforce the same non-empty transcript rule in runtime bundle validation, stage-evidence replay validation, and CLI regression fixtures so no stage can pass on path presence alone. [VERIFIED: scripts/start_approved_project_delivery.py] [VERIFIED: scripts/validate_delivery_handoff.py]
 
-2. **Where should failed gate names be sourced from for specialist-stage blocks?**
-   - What we know: Blocked-state validation already expects failed gate linkage and repair guidance in operator-facing views. [VERIFIED: scripts/validate_approved_delivery_pipeline.py]
-   - What's unclear: The exact gate-name taxonomy for stage-evidence, UI-artifact, and substance failures is left to implementation discretion. [VERIFIED: 19-CONTEXT.md]
-   - Recommendation: Plan a canonical enum-like gate-name mapping in the orchestrator and reuse it in status/review rendering tests. [VERIFIED: 19-CONTEXT.md]
+2. **Failed gate naming source**
+   - **Decision:** Failed specialist/UI gate names must be sourced from one canonical taxonomy defined in `scripts/start_approved_project_delivery.py`, then reused unchanged by status/final-review rendering and validator checks.
+   - **Why:** The orchestrator is already the runtime source for block reasons, repair action persistence, and event payload generation, so it is the correct authority for gate-name emission. [VERIFIED: scripts/start_approved_project_delivery.py] [VERIFIED: scripts/validate_approved_delivery_pipeline.py]
+   - **Implementation guidance:** Use stable enum-like gate names for transcript, structured-evidence, UI-artifact, and substance failures; regression tests should assert those names appear consistently across authority, events, status, and final review. [VERIFIED: 19-CONTEXT.md] [VERIFIED: tests/test_approved_delivery_pipeline_cli.py]
 
 ## Environment Availability
 
