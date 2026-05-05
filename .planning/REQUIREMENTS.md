@@ -7,9 +7,9 @@
 
 ### Hermes Interface
 
-- [ ] **HERMES-01**: The owner can tell Hermes to start a new project without choosing scripts, phases, or backend entrypoints.
-- [ ] **HERMES-02**: Hermes translates that top-level intent into one authoritative project run using the existing governed launch loop.
-- [ ] **HERMES-03**: Hermes keeps internal pipeline mechanics hidden from the owner during healthy execution and only exposes proposal, approval, blocked recovery, and final shipped result.
+- [x] **HERMES-01**: The owner can tell Hermes to start a new project without choosing scripts, phases, or backend entrypoints.
+- [x] **HERMES-02**: Hermes translates that top-level intent into one authoritative project run using the existing governed launch loop.
+- [x] **HERMES-03**: Hermes keeps internal pipeline mechanics hidden from the owner during healthy execution and only exposes proposal, approval, blocked recovery, and final shipped result.
 
 ### Internal Role Orchestration
 
@@ -53,9 +53,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HERMES-01 | Phase 26 | Pending |
-| HERMES-02 | Phase 26 | Pending |
-| HERMES-03 | Phase 26 | Pending |
+| HERMES-01 | Phase 26 | Complete |
+| HERMES-02 | Phase 26 | Complete |
+| HERMES-03 | Phase 26 | Complete |
 | ROLE-01 | Phase 27 | Pending |
 | ROLE-02 | Phase 27 | Pending |
 | ROLE-03 | Phase 27 | Pending |
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-05-05*
-*Last updated: 2026-05-05 after v1.3 milestone definition*
+*Last updated: 2026-05-05 after Phase 26 completion*

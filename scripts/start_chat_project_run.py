@@ -91,11 +91,10 @@ def _build_new_record(envelope: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def bootstrap_chat_project_run(
-    raw_payload: dict[str, Any],
+def _bootstrap_envelope(
+    envelope: dict[str, Any],
     dispatch_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    envelope = normalize_chat_payload(raw_payload)
     existing = load_existing_run_by_origin(str(envelope["origin_key"]))
     if existing is not None:
         render_chat_run_status(str(existing["run_id"]), str(run_dir_for(str(existing["run_id"]))))
@@ -173,6 +172,24 @@ def bootstrap_chat_project_run(
         "status_path": status_path_for(str(record["run_id"])).as_posix(),
         "record": record,
     }
+
+
+def bootstrap_chat_project_run(
+    raw_payload: dict[str, Any],
+    dispatch_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    envelope = normalize_chat_payload(raw_payload)
+    return _bootstrap_envelope(envelope, dispatch_fn=dispatch_fn)
+
+
+def bootstrap_hermes_project_run(
+    raw_payload: dict[str, Any],
+    dispatch_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    payload = dict(raw_payload)
+    payload["platform"] = "hermes"
+    envelope = normalize_chat_payload(payload)
+    return _bootstrap_envelope(envelope, dispatch_fn=dispatch_fn)
 
 
 def main() -> int:

@@ -103,6 +103,45 @@ class ChatIntakeContractTests(unittest.TestCase):
         self.assertEqual(first["origin_key"], second["origin_key"])
         self.assertEqual(first["run_id"], second["run_id"])
 
+    def test_normalize_hermes_project_start_payload_into_canonical_contract(self) -> None:
+        payload = {
+            "platform": "hermes",
+            "conversation": {"id": "owner-thread-9"},
+            "request": {
+                "id": "req-42",
+                "text": "Start a project for abandoned cart recovery and qualify the demand.",
+                "received_at": "2026-05-05T08:00:00Z",
+            },
+            "owner": {"id": "owner-1", "display_name": "Taylor", "username": "taylor"},
+            "provenance": {"surface": "hermes-web", "session_id": "session-77"},
+        }
+
+        envelope = self.module.normalize_chat_payload(payload)
+
+        self.assertEqual(envelope["platform"], "hermes")
+        self.assertEqual(envelope["channel_or_chat_id"], "owner-thread-9")
+        self.assertEqual(envelope["thread_or_reply_context"], "session-77")
+        self.assertEqual(envelope["message_id"], "req-42")
+        self.assertEqual(envelope["requester"]["id"], "owner-1")
+        self.assertIn("abandoned cart recovery", envelope["intent"])
+        self.assertEqual(envelope["provenance"]["surface"], "hermes-web")
+
+    def test_hermes_payload_requires_start_metadata(self) -> None:
+        payload = {
+            "platform": "hermes",
+            "conversation": {"id": ""},
+            "request": {
+                "id": "req-42",
+                "text": "",
+                "received_at": "",
+            },
+            "owner": {"id": "owner-1", "display_name": "", "username": ""},
+            "provenance": {"surface": "", "session_id": ""},
+        }
+
+        with self.assertRaises(self.module.ChatIntakeError):
+            self.module.normalize_chat_payload(payload)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,7 +22,7 @@ Hermes now has both a repaired approved-to-delivery automation backbone and stri
 - authority and operator-visible status artifacts converge to the true recovered final state after successful GitHub/Vercel completion
 - specialist stages now fail closed on missing evidence, stale `/ui-ux-pro-max` artifacts, template-only work, and weak product-proof claims
 
-The biggest unresolved gap is now operator experience above the shipped pipeline: Hermes can intake, qualify, approve, deliver, deploy, and notify, but the owner still has to think in terms of milestone internals instead of treating Hermes as the single conversational company surface.
+Phase 26 closed the first part of that gap: Hermes now has a canonical project-start contract that reuses the existing governed run backbone and renders owner-facing startup status in Hermes language. The remaining work is keeping internal role orchestration, proposal/approval, and final delivery recovery behind the same surface.
 
 ## Current Milestone
 
@@ -73,11 +73,11 @@ The biggest unresolved gap is now operator experience above the shipped pipeline
 
 ### Active
 
-- [ ] Let the operator trigger a new project through Hermes as the only required control surface
+- [x] Let the operator trigger a new project through Hermes as the only required control surface
 - [ ] Qualify only fresh, real, buildable pain points with market and pricing proof before proposal approval
 - [ ] Present one concise proposal for operator approval and persist a locked delivery contract after approval
 - [ ] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
-- [ ] Hide milestone-internal script choreography behind Hermes-native intent routing and role execution
+- [x] Hide milestone-internal script choreography behind Hermes-native intent routing and role execution for project start
 
 ### Out of Scope
 
@@ -132,7 +132,7 @@ Research through `v1.2` shows the main remaining risk is no longer infrastructur
 | Treat current audit gaps as process debt rather than failed governance scope | The runtime behavior satisfies the milestone, but closeout evidence is still incomplete | Accepted at v1.1.2 close |
 | Move the next milestone toward chat-native autonomous project launch | The operator wants Hermes to behave like a minimally interruptive company loop rather than a terminal-operated toolchain | Validated in v1.2 |
 | Keep the human approval gate but compress healthy-path interaction to start plus approve | The owner still wants control over project direction, but not repeated manual orchestration after approval | Validated in v1.2 |
-| Make Hermes the only operator-facing entrypoint for the launch loop | The owner should talk to Hermes, not think in terms of scripts, phases, or handoff glue | Pending |
+| Make Hermes the only operator-facing entrypoint for project start while preserving one governed run identity | The owner should be able to initiate work through Hermes without forking startup authority truth | Validated in Phase 26 |
 | Keep company roles and delivery specialists as Hermes-internal collaborators rather than user-exposed tools | The desired architecture is "Hermes handles everything" with role configuration living inside Hermes | Pending |
 
 ## Evolution
@@ -146,7 +146,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? Add to Key Decisions
 5. "What This Is" still accurate? Update if drifted
 
-**Current state:** `v1.2` is shipped; `v1.3` is now defined around turning the shipped launch loop into a Hermes-first operator interface with hidden internal orchestration.
+**Current state:** `v1.2` is shipped; `v1.3` is underway, with Phase 26 complete and Hermes project start now flowing through a single governed, Hermes-first entrypoint.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -155,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-05 after v1.3 milestone initialization*
+*Last updated: 2026-05-05 after Phase 26 completion*

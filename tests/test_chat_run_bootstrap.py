@@ -38,6 +38,19 @@ class ChatRunBootstrapTests(unittest.TestCase):
             "author": {"id": "user-1", "display_name": "Taylor", "username": "taylor"},
         }
 
+    def hermes_payload(self) -> dict:
+        return {
+            "platform": "hermes",
+            "conversation": {"id": "owner-thread-9"},
+            "request": {
+                "id": "req-42",
+                "text": "Start a project for abandoned cart recovery and qualify the demand.",
+                "received_at": "2026-05-05T08:00:00Z",
+            },
+            "owner": {"id": "owner-1", "display_name": "Taylor", "username": "taylor"},
+            "provenance": {"surface": "hermes-web", "session_id": "session-77"},
+        }
+
     def test_bootstrap_writes_authority_and_events_before_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -119,6 +132,93 @@ class ChatRunBootstrapTests(unittest.TestCase):
                 self.assertEqual(record["pipeline"]["status"], "blocked")
                 self.assertEqual(record["blocked"]["reason"], "dispatch_failed")
                 self.assertIn("governed startup unavailable", record["blocked"]["detail"])
+
+    def test_hermes_bootstrap_reuses_authoritative_run_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                record = json.loads(Path(result["authority_record_path"]).read_text(encoding="utf-8"))
+                self.assertTrue(result["ok"])
+                self.assertEqual(record["chat_origin"]["platform"], "hermes")
+                self.assertEqual(record["dispatch"]["mode"], "governed-existing-pipeline")
+                self.assertEqual(record["pipeline"]["status"], "running")
+                self.assertEqual(record["artifacts"]["authority_record_path"], result["authority_record_path"])
+
+    def test_hermes_bootstrap_replays_same_origin_without_duplicate_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                first = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                second = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                self.assertEqual(first["run_id"], second["run_id"])
+                self.assertTrue(second["idempotent_replay"])
+                run_dirs = [item for item in chat_root.iterdir() if item.is_dir()]
+                self.assertEqual(len(run_dirs), 1)
+
+    def test_hermes_bootstrap_blocks_when_required_start_metadata_is_missing(self) -> None:
+        with self.assertRaises(self.module.ChatIntakeError):
+            self.module.bootstrap_hermes_project_run(
+                {
+                    "platform": "hermes",
+                    "conversation": {"id": ""},
+                    "request": {"id": "", "text": "", "received_at": ""},
+                    "owner": {"id": "owner-1", "display_name": "", "username": ""},
+                    "provenance": {"surface": "", "session_id": ""},
+                }
+            )
+
+    def test_status_renderer_uses_hermes_language_for_healthy_start(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.module.bootstrap_hermes_project_run(self.hermes_payload())
+                status_text = Path(result["status_path"]).read_text(encoding="utf-8")
+                self.assertIn("Request accepted", status_text)
+                self.assertIn("Hermes is preparing the governed project run", status_text)
+                self.assertNotIn("run-analysis-loop", status_text)
+                self.assertNotIn("phase", status_text.lower())
+                self.assertIn(result["authority_record_path"], status_text)
+
+    def test_status_renderer_reports_truthful_hermes_blocker_with_artifact_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.module, "ROOT_DIR", root), \
+                 mock.patch.object(self.module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.module.bootstrap_hermes_project_run(
+                    self.hermes_payload(),
+                    dispatch_fn=lambda _record: {
+                        "ok": False,
+                        "action": "dispatch_failed",
+                        "error": "governed startup unavailable",
+                        "command": "bash orchestration/cron/commands.sh run-analysis-loop",
+                        "target": "existing-discovery-startup",
+                    },
+                )
+                status_text = Path(result["status_path"]).read_text(encoding="utf-8")
+                self.assertIn("Start blocked", status_text)
+                self.assertIn("governed startup unavailable", status_text)
+                self.assertIn(result["authority_record_path"], status_text)
+                self.assertIn(result["status_path"], status_text)
 
 
 if __name__ == "__main__":

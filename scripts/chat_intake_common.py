@@ -90,6 +90,21 @@ def normalize_thread_context(platform: str, payload: dict[str, Any]) -> dict[str
             "channel_or_chat_id": chat_id,
             "thread_or_reply_context": reply_id or f"message:{message_id}",
         }
+    if platform == "hermes":
+        conversation = payload.get("conversation")
+        request = payload.get("request")
+        provenance = payload.get("provenance")
+        if not isinstance(conversation, dict) or not isinstance(request, dict) or not isinstance(provenance, dict):
+            raise ChatIntakeError("missing Hermes start provenance")
+        conversation_id = str(conversation.get("id", "")).strip()
+        request_id = str(request.get("id", "")).strip()
+        session_id = str(provenance.get("session_id", "")).strip()
+        if not conversation_id or not request_id:
+            raise ChatIntakeError("missing Hermes start provenance")
+        return {
+            "channel_or_chat_id": conversation_id,
+            "thread_or_reply_context": session_id or f"request:{request_id}",
+        }
     raise ChatIntakeError(f"unsupported platform: {platform}")
 
 
@@ -108,6 +123,17 @@ def extract_message_bits(platform: str, payload: dict[str, Any]) -> dict[str, st
         message_id = str(message.get("message_id", "")).strip()
         received_at = str(message.get("date", "")).strip()
         requester = normalize_requester(from_user)
+    elif platform == "hermes":
+        request = payload.get("request")
+        provenance = payload.get("provenance")
+        if not isinstance(request, dict):
+            raise ChatIntakeError("missing Hermes request payload")
+        if not isinstance(provenance, dict) or not str(provenance.get("surface", "")).strip():
+            raise ChatIntakeError("missing Hermes start provenance")
+        content = str(request.get("text", "")).strip()
+        message_id = str(request.get("id", "")).strip()
+        received_at = str(request.get("received_at", "")).strip()
+        requester = normalize_requester(payload.get("owner"))
     else:
         raise ChatIntakeError(f"unsupported platform: {platform}")
     if not content or not message_id or not received_at:
@@ -146,8 +172,8 @@ def governed_run_id(envelope: dict[str, Any]) -> str:
 
 def normalize_chat_payload(raw_payload: dict[str, Any]) -> dict[str, Any]:
     platform = str(raw_payload.get("platform", "")).strip().lower()
-    if platform not in {"discord", "telegram"}:
-        raise ChatIntakeError("platform must be discord or telegram")
+    if platform not in {"discord", "telegram", "hermes"}:
+        raise ChatIntakeError("platform must be discord, telegram, or hermes")
     thread_bits = normalize_thread_context(platform, raw_payload)
     message_bits = extract_message_bits(platform, raw_payload)
     envelope = {
@@ -165,6 +191,16 @@ def normalize_chat_payload(raw_payload: dict[str, Any]) -> dict[str, Any]:
                 raise ChatIntakeError(f"missing canonical field: {field}")
         elif not str(envelope[field]).strip():
             raise ChatIntakeError(f"missing canonical field: {field}")
+    if platform == "hermes":
+        provenance = raw_payload.get("provenance")
+        if not isinstance(provenance, dict):
+            raise ChatIntakeError("missing Hermes start provenance")
+        envelope["provenance"] = {
+            "surface": str(provenance.get("surface", "")).strip(),
+            "session_id": str(provenance.get("session_id", "")).strip(),
+        }
+        if not envelope["provenance"]["surface"]:
+            raise ChatIntakeError("missing Hermes start provenance")
     envelope["origin_key"] = canonical_origin_key(envelope)
     envelope["run_id"] = governed_run_id(envelope)
     return envelope

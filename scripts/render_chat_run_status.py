@@ -31,11 +31,56 @@ def resolve_project_dir(run_id: str, explicit_dir: str = "") -> Path:
     return run_dir_for(run_id)
 
 
+def _build_hermes_status_lines(record: dict, authority_path: str, status_path: str) -> list[str]:
+    origin = dict(record.get("chat_origin", {}))
+    pipeline = dict(record.get("pipeline", {}))
+    blocked = dict(record.get("blocked", {}))
+    status = str(pipeline.get("status", "ready")).strip().lower()
+    stage = str(pipeline.get("stage", "intake")).strip().lower()
+
+    if status == "blocked":
+        headline = "Start blocked"
+        summary = "Hermes could not safely start this project yet."
+        detail = str(blocked.get("detail", "Missing recovery detail.")).strip() or "Missing recovery detail."
+        next_step = "Review the blocker detail and the authority artifacts below before retrying."
+    elif status == "running" and stage == "qualification":
+        headline = "Request accepted"
+        summary = "Hermes is preparing the governed project run and moving into qualification."
+        detail = f"Current step: {stage}."
+        next_step = "Hermes will keep the request moving without asking you to choose scripts or backend entrypoints."
+    else:
+        headline = "Request received"
+        summary = "Hermes recorded the project-start request and is preparing the governed run."
+        detail = f"Current step: {stage or 'intake'}."
+        next_step = "Hermes will confirm progress from the persisted run record."
+
+    return [
+        "# Hermes Project Start",
+        f"- **Status**: {headline}",
+        f"- **Summary**: {summary}",
+        f"- **Requester**: `{origin.get('requester', {}).get('display_name', 'not available')}`",
+        f"- **Project Intent**: `{origin.get('intent', 'not available')}`",
+        f"- **Run ID**: `{record.get('run_id', 'not available')}`",
+        f"- **Detail**: {detail}",
+        f"- **Next**: {next_step}",
+        "",
+        "## Governance Artifacts",
+        f"- **Authority Record**: `{authority_path}`",
+        f"- **Status View**: `{status_path}`",
+        "",
+        "This owner-facing update is derived from the authoritative governed run record.",
+    ]
+
+
 def build_status_markdown(record: dict) -> str:
     origin = dict(record.get("chat_origin", {}))
     pipeline = dict(record.get("pipeline", {}))
     dispatch = dict(record.get("dispatch", {}))
     blocked = dict(record.get("blocked", {}))
+    authority_path = str(record.get("artifacts", {}).get("authority_record_path", "not available"))
+    status_path = str(record.get("artifacts", {}).get("status_path", "not available"))
+    if str(origin.get("platform", "")).strip().lower() == "hermes":
+        return "\n".join(_build_hermes_status_lines(record, authority_path, status_path)).rstrip() + "\n"
     return "\n".join(
         [
             "# Chat Run Status",

@@ -39,6 +39,19 @@ class ChatOriginContractTests(unittest.TestCase):
             "reply_to_message": {"message_id": "700"},
         }
 
+    def hermes_payload(self) -> dict:
+        return {
+            "platform": "hermes",
+            "conversation": {"id": "owner-thread-9"},
+            "request": {
+                "id": "req-42",
+                "text": "Start a project for abandoned cart recovery and qualify the demand.",
+                "received_at": "2026-05-05T08:00:00Z",
+            },
+            "owner": {"id": "owner-1", "display_name": "Taylor", "username": "taylor"},
+            "provenance": {"surface": "hermes-web", "session_id": "session-77"},
+        }
+
     def test_chat_origin_fields_remain_stable_when_reread_from_disk(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -54,6 +67,23 @@ class ChatOriginContractTests(unittest.TestCase):
                 self.assertEqual(record["chat_origin"]["origin_key"], reread["chat_origin"]["origin_key"])
                 self.assertEqual(record["chat_origin"]["run_id"], reread["chat_origin"]["run_id"])
                 self.assertEqual(record["chat_origin"]["thread_or_reply_context"], "700")
+
+    def test_hermes_origin_fields_remain_stable_when_reread_from_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            chat_root = root / "assets" / "shared" / "chat-runs"
+            with mock.patch.object(self.start_module, "ROOT_DIR", root), \
+                 mock.patch.object(self.start_module, "run_dir_for", side_effect=lambda run_id: chat_root / run_id), \
+                 mock.patch.object(self.start_module, "authority_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN.json"), \
+                 mock.patch.object(self.start_module, "status_path_for", side_effect=lambda run_id: chat_root / run_id / "CHAT_RUN_STATUS.md"), \
+                 mock.patch("scripts.chat_intake_common.CHAT_RUNS_ROOT", chat_root):
+                result = self.start_module.bootstrap_hermes_project_run(self.hermes_payload())
+                record = json.loads(Path(result["authority_record_path"]).read_text(encoding="utf-8"))
+                reread = json.loads(Path(result["authority_record_path"]).read_text(encoding="utf-8"))
+                self.assertEqual(record["chat_origin"]["origin_key"], reread["chat_origin"]["origin_key"])
+                self.assertEqual(record["chat_origin"]["run_id"], reread["chat_origin"]["run_id"])
+                self.assertEqual(record["chat_origin"]["thread_or_reply_context"], "session-77")
+                self.assertEqual(record["chat_origin"]["platform"], "hermes")
 
 
 if __name__ == "__main__":
