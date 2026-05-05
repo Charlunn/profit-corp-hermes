@@ -1,75 +1,76 @@
 # Requirements: Profit-Corp Hermes
 
-**Defined:** 2026-05-04
+**Defined:** 2026-05-05
 **Core Value:** Turn noisy web-wide user pain signals into clear, governed decisions about what is worth building next - and ensure approved opportunities become real, launchable SaaS products rather than ceremonial agent output.
 
 ## v1 Requirements
 
-### Conversational Intake
+### Hermes Interface
 
-- [ ] **CHAT-01**: Operator can start a new project run by mentioning Hermes in a Discord or Telegram group.
-- [ ] **CHAT-02**: Hermes records the originating chat platform, channel/thread, requester, and message intent in the authoritative project-run artifacts.
-- [ ] **CHAT-03**: Chat-triggered project runs invoke the same governed approved-project pipeline instead of a separate ad hoc path.
+- [ ] **HERMES-01**: The owner can tell Hermes to start a new project without choosing scripts, phases, or backend entrypoints.
+- [ ] **HERMES-02**: Hermes translates that top-level intent into one authoritative project run using the existing governed launch loop.
+- [ ] **HERMES-03**: Hermes keeps internal pipeline mechanics hidden from the owner during healthy execution and only exposes proposal, approval, blocked recovery, and final shipped result.
 
-### Qualification Gates
+### Internal Role Orchestration
 
-- [ ] **QUAL-01**: Hermes only proposes project candidates whose supporting pain evidence was collected within the last 72 hours.
-- [ ] **QUAL-02**: Hermes must prove each proposed pain point is real, user-facing, and specific enough to support a narrow SaaS workflow.
-- [ ] **QUAL-03**: Hermes must prove the proposed product is feasible on the shared template, shared Supabase, and governed delivery stack before approval.
-- [ ] **QUAL-04**: Hermes must attach market, competitor, and pricing evidence to each proposal and block approval when those artifacts are missing.
+- [ ] **ROLE-01**: Hermes invokes `ceo`, `scout`, `cmo`, and `arch` as internal collaborators for discovery, qualification, market proof, and proposal synthesis.
+- [ ] **ROLE-02**: Hermes hands approved work to the delivery specialist team internally instead of requiring the owner to switch tools or run stage-specific commands.
+- [ ] **ROLE-03**: Role execution remains configured inside Hermes profiles and skills rather than being recast as ad hoc operator-run glue.
 
-### Proposal Approval
+### Proposal and Approval Experience
 
-- [ ] **PROP-01**: Hermes presents one operator-facing proposal bundle that summarizes pain point, target user, scope, pricing, market rationale, and expected launch path.
-- [ ] **PROP-02**: Operator can approve or reject the proposal from chat, and approval persists a single authoritative approved-project contract.
+- [ ] **PROP-01**: Hermes presents one evidence-backed proposal that summarizes the pain point, target user, feasibility, pricing evidence, and launch framing.
+- [ ] **PROP-02**: The owner can approve or reject the proposal by replying to Hermes, and approval persists the same locked delivery contract already enforced by the shipped pipeline.
+- [ ] **PROP-03**: If Hermes cannot prove freshness, market evidence, feasibility, or approval linkage, it blocks instead of pretending the project is ready.
 
-### Autonomous Delivery
+### Autonomous Delivery and Return Link
 
-- [ ] **AUTO-01**: Approved-project contracts lock scope, pricing, language requirements, and acceptance gates so downstream delivery cannot drift silently.
-- [ ] **AUTO-02**: After approval, Hermes continues through design, development, testing, GitHub, and Vercel without requiring manual stage resumes on healthy runs.
-- [ ] **AUTO-03**: Hermes must use real specialist output and real implementation evidence for delivery proof instead of self-generated placeholder artifacts.
-- [ ] **AUTO-04**: When deployment completes, Hermes returns the live link and concise ship summary to the originating chat thread.
+- [ ] **AUTO-01**: After approval, Hermes continues through design, development, testing, GitHub, Vercel, and final handoff without healthy-path manual resumes.
+- [ ] **AUTO-02**: Hermes returns the final live deployment URL and concise ship summary as the normal success output of the same top-level project request.
+- [ ] **AUTO-03**: If delivery blocks, Hermes reports the failed stage, reason, and recovery context in owner-facing language without requiring the owner to inspect pipeline internals first.
 
 ## v2 Requirements
 
-### Recovery and Expansion
+### Conversational Recovery
 
-- **RECO-01**: Operator can recover or redirect a failed autonomous run directly from chat without opening the terminal.
-- **COLL-01**: Multiple operators can subscribe to proposal approvals and delivery completion notifications for the same run.
-- **CHAN-01**: Hermes can launch the same autonomous loop from additional channels beyond Discord and Telegram.
+- **RECO-01**: The owner can tell Hermes to retry, redirect, or cancel a blocked run directly from the same conversation.
+- **RECO-02**: Hermes can explain which internal role or gate is currently blocking and what evidence is still missing before retry.
+
+### Multi-Channel Expansion
+
+- **CHAN-01**: Hermes can expose the same project-start and approval loop consistently across additional channels beyond the initial operator surface.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Building a generic multi-tenant chat platform inside Hermes | The milestone is about launching projects from chat, not creating a standalone messaging product |
-| Replacing the existing approved-project authority model with a new workflow engine | Brownfield constraint is to extend the current authority/event/artifact system |
-| Supporting arbitrary custom backend stacks per generated product | The approved delivery path still depends on the shared template and shared Supabase model |
-| Fully eliminating all operator intervention during exceptional failures | This milestone targets healthy-path autonomy with explicit escalation only on real blockers |
+| Replacing the shipped authority/event/artifact pipeline with a brand new workflow engine | This milestone is about packaging the existing loop behind Hermes, not discarding the backbone that now works |
+| Forcing the owner to manage discovery, approval, delivery, or deployment via raw scripts | Direct script choreography is the exact operator experience this milestone is meant to remove |
+| Building a generic chat platform unrelated to project launch and delivery | The focus is Hermes as the company interface, not a standalone messaging product |
+| Reopening GitHub/Vercel/shared-template reliability work as the main milestone scope | Those capabilities already shipped and should now be reused as internal Hermes machinery |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHAT-01 | Phase 22 | Pending |
-| CHAT-02 | Phase 22 | Pending |
-| CHAT-03 | Phase 22 | Pending |
-| QUAL-01 | Phase 23 | Pending |
-| QUAL-02 | Phase 23 | Pending |
-| QUAL-03 | Phase 23 | Pending |
-| QUAL-04 | Phase 23 | Pending |
-| PROP-01 | Phase 24 | Pending |
-| PROP-02 | Phase 24 | Pending |
-| AUTO-01 | Phase 24 | Pending |
-| AUTO-02 | Phase 25 | Pending |
-| AUTO-03 | Phase 25 | Pending |
-| AUTO-04 | Phase 25 | Pending |
+| HERMES-01 | Phase 26 | Pending |
+| HERMES-02 | Phase 26 | Pending |
+| HERMES-03 | Phase 26 | Pending |
+| ROLE-01 | Phase 27 | Pending |
+| ROLE-02 | Phase 27 | Pending |
+| ROLE-03 | Phase 27 | Pending |
+| PROP-01 | Phase 28 | Pending |
+| PROP-02 | Phase 28 | Pending |
+| PROP-03 | Phase 28 | Pending |
+| AUTO-01 | Phase 29 | Pending |
+| AUTO-02 | Phase 29 | Pending |
+| AUTO-03 | Phase 29 | Pending |
 
 **Coverage:**
-- v1 requirements: 13 total
-- Mapped to phases: 13
+- v1 requirements: 12 total
+- Mapped to phases: 12
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 after milestone v1.2 initialization*
+*Requirements defined: 2026-05-05*
+*Last updated: 2026-05-05 after v1.3 milestone definition*

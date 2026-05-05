@@ -12,7 +12,7 @@ Turn noisy web-wide user pain signals into clear, governed decisions about what 
 
 ## Current State
 
-**Latest shipped milestone:** v1.1.2 Real-SaaS Delivery Governance Hardening (shipped 2026-05-04)
+**Latest shipped milestone:** v1.2 Autonomous Project Launch Loop (shipped 2026-05-05)
 
 Hermes now has both a repaired approved-to-delivery automation backbone and stricter governance over what counts as successful delivery:
 - governed GitHub auth can use either explicit env tokens or an already-authenticated `gh` CLI session
@@ -22,26 +22,26 @@ Hermes now has both a repaired approved-to-delivery automation backbone and stri
 - authority and operator-visible status artifacts converge to the true recovered final state after successful GitHub/Vercel completion
 - specialist stages now fail closed on missing evidence, stale `/ui-ux-pro-max` artifacts, template-only work, and weak product-proof claims
 
-The biggest unresolved gaps are now workflow-evidence debt rather than core delivery behavior: milestone audit still flags a missing Phase 18 verification artifact and incomplete Nyquist validation coverage for Phases 18-21.
+The biggest unresolved gap is now operator experience above the shipped pipeline: Hermes can intake, qualify, approve, deliver, deploy, and notify, but the owner still has to think in terms of milestone internals instead of treating Hermes as the single conversational company surface.
 
 ## Current Milestone
 
-**v1.2 Autonomous Project Launch Loop**
+**v1.3 Hermes-First Autonomous Company Interface**
 
-**Goal:** Let the operator start a new project from Discord or Telegram, receive one evidence-backed proposal for approval, and then let Hermes carry the approved build all the way to deployment and return the live link with no healthy-path terminal intervention.
+**Goal:** Make Hermes the only operator-facing interface so the owner can ask Hermes to start a new project, approve the resulting proposal, and receive the final deployed URL without touching internal scripts or phase-level commands.
 
 **Target features:**
-- chat-native project intake from Discord and Telegram instead of terminal-first startup
-- hard qualification gates for fresh, real, buildable pain points plus market and pricing evidence
-- one-shot proposal approval that freezes scope, pricing, and delivery contract
-- autonomous post-approval delivery through design, development, testing, GitHub, Vercel, and final link handoff
+- Hermes-native "start new project" entrypoint that triggers the full launch loop from a single top-level intent
+- Hermes-managed internal role orchestration so `ceo`, `scout`, `cmo`, `arch`, and delivery specialists collaborate behind one interface
+- Hermes-native approval and recovery flow where the owner only sees proposal, approve/reject, blocked context, and final shipped result
+- hidden internal execution of qualification, contract freeze, delivery, deploy, and final notification so the pipeline stays governed but feels like one Hermes capability
 
 ## Next Milestone Goals
 
-- turn Hermes from a terminal-invoked governed pipeline into a chat-invoked autonomous launch loop
-- preserve the repaired delivery backbone while removing manual operator orchestration on healthy runs
-- make real-pain freshness, feasibility, and pricing proof blocking requirements before approval
-- ensure approved delivery follows the locked proposal contract and returns a deployment link to the originating conversation
+- make Hermes the single front door for project launch, approval, execution, and shipped-result retrieval
+- preserve the shipped 22-25 backbone while hiding milestone-internal script choreography from the operator
+- ensure company roles and delivery specialists are configured and invoked inside Hermes rather than exposed as user-run steps
+- reduce healthy-path interaction to intent + approval + final URL, with explicit Hermes-mediated recovery only on real blockers
 
 ## Requirements
 
@@ -73,17 +73,18 @@ The biggest unresolved gaps are now workflow-evidence debt rather than core deli
 
 ### Active
 
-- [ ] Let the operator trigger a new project from Discord or Telegram and create one authoritative intake run
+- [ ] Let the operator trigger a new project through Hermes as the only required control surface
 - [ ] Qualify only fresh, real, buildable pain points with market and pricing proof before proposal approval
 - [ ] Present one concise proposal for operator approval and persist a locked delivery contract after approval
 - [ ] Continue approved runs through design, development, testing, GitHub, Vercel, and final link return without healthy-path manual resumes
+- [ ] Hide milestone-internal script choreography behind Hermes-native intent routing and role execution
 
 ### Out of Scope
 
 - Reopening GitHub auth, GitHub sync, Vercel auth, Vercel deployment, or recovered-status convergence as primary milestone work - those delivery-path reliability repairs shipped in v1.1.1 and should remain stable unless a new blocker appears
 - Replacing the approved-project architecture with a new workflow engine or state store - brownfield constraint is to harden the current authority/event/artifact model rather than restart it
 - Supporting fully custom per-product backend stacks as the default path - shared template plus shared Supabase remains the baseline until explicitly superseded
-- Broad product-factory expansion into unrelated business functions or a generic messaging product - this milestone is about autonomous project launch and delivery
+- Broad product-factory expansion into unrelated business functions or a generic messaging product - this milestone is about making Hermes the natural interface to the shipped launch-and-delivery loop
 - Building unrelated end-user SaaS features inside Hermes itself - the focus remains delivery governance behavior, not product application scope inside this repo
 
 ## Context
@@ -94,7 +95,7 @@ A standalone mini-SaaS template exists at `C:\Users\42236\Desktop\standalone-saa
 
 The current deployment model remains Vercel for frontend delivery and a single shared Supabase project for SaaS backends. New projects isolate product data through app-key conventions and shared-boundary enforcement instead of spinning up a separate backend per SaaS by default.
 
-Research through `v1.1.2` shows the main remaining risk is no longer infrastructure reliability but operator friction and proof quality at the front of the loop: Hermes can govern delivery, but it still needs a chat-native intake, stronger proposal qualification, and truly autonomous progression from approval to deployed result.
+Research through `v1.2` shows the main remaining risk is no longer infrastructure reliability or missing governance gates. The missing piece is interaction packaging: the launch loop exists, but the owner experience is still too pipeline-aware and not Hermes-native enough.
 
 ## Constraints
 
@@ -108,6 +109,7 @@ Research through `v1.1.2` shows the main remaining risk is no longer infrastruct
 - **Language coverage**: English and Chinese are mandatory and major internet languages remain part of the default product requirement contract unless a brief justifies a narrower set
 - **Operator interaction model**: Healthy-path interaction should collapse to start plus approve, with escalation only for real blockers
 - **Evidence freshness**: Proposed pain-point and market evidence must be recent enough to support a three-day validity window
+- **Interface model**: Hermes must be the only intentional surface the owner talks to; scripts and phase-level commands are implementation details, not user workflow
 
 ## Key Decisions
 
@@ -128,8 +130,10 @@ Research through `v1.1.2` shows the main remaining risk is no longer infrastruct
 | Make `/ui-ux-pro-max` a blocking governed artifact for UI scope, not a policy-only suggestion | Frontend stages need executable design proof to stop template-like output and generic handoffs | Validated in v1.1.2 |
 | Remove `/demo` and identity-only paths from acceptable product proof | Renaming template identity is necessary bootstrap work, but it is not evidence of a real paid SaaS workflow | Validated in v1.1.2 |
 | Treat current audit gaps as process debt rather than failed governance scope | The runtime behavior satisfies the milestone, but closeout evidence is still incomplete | Accepted at v1.1.2 close |
-| Move the next milestone toward chat-native autonomous project launch | The operator wants Hermes to behave like a minimally interruptive company loop rather than a terminal-operated toolchain | Pending |
-| Keep the human approval gate but compress healthy-path interaction to start plus approve | The owner still wants control over project direction, but not repeated manual orchestration after approval | Pending |
+| Move the next milestone toward chat-native autonomous project launch | The operator wants Hermes to behave like a minimally interruptive company loop rather than a terminal-operated toolchain | Validated in v1.2 |
+| Keep the human approval gate but compress healthy-path interaction to start plus approve | The owner still wants control over project direction, but not repeated manual orchestration after approval | Validated in v1.2 |
+| Make Hermes the only operator-facing entrypoint for the launch loop | The owner should talk to Hermes, not think in terms of scripts, phases, or handoff glue | Pending |
+| Keep company roles and delivery specialists as Hermes-internal collaborators rather than user-exposed tools | The desired architecture is "Hermes handles everything" with role configuration living inside Hermes | Pending |
 
 ## Evolution
 
@@ -142,7 +146,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Decisions to log? Add to Key Decisions
 5. "What This Is" still accurate? Update if drifted
 
-**Current state:** `v1.1.2` is shipped and archived; `v1.2` is now defined around autonomous chat intake, proposal proof, locked approval, and automatic deploy-to-link completion.
+**Current state:** `v1.2` is shipped; `v1.3` is now defined around turning the shipped launch loop into a Hermes-first operator interface with hidden internal orchestration.
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -151,4 +155,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-04 after v1.2 milestone initialization*
+*Last updated: 2026-05-05 after v1.3 milestone initialization*
