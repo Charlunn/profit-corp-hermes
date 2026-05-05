@@ -8,8 +8,24 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCRIPT_PATH = ROOT_DIR / "scripts" / "start_approved_project_delivery.py"
-EXPECTED_STAGE_VALUES = {"approval", "brief_generation"}
-EXPECTED_STATUS_VALUES = {"ready", "blocked"}
+EXPECTED_STAGE_VALUES = {
+    "approval",
+    "brief_generation",
+    "workspace_instantiation",
+    "conformance",
+    "delivery_run_bootstrap",
+    "design",
+    "development",
+    "testing",
+    "git_versioning",
+    "release_readiness",
+    "github_repository",
+    "github_sync",
+    "vercel_linkage",
+    "vercel_deploy",
+    "handoff",
+}
+EXPECTED_STATUS_VALUES = {"ready", "blocked", "completed"}
 EXPECTED_BLOCK_REASONS = {
     "missing_approval_evidence",
     "missing_project_identity",
@@ -20,6 +36,12 @@ EXPECTED_BLOCK_REASONS = {
     "missing_acceptance_gates",
     "missing_template_contract_path",
     "missing_gsd_constraints_path",
+    "missing_pain_point",
+    "missing_monetization",
+    "missing_required_languages",
+    "missing_ui_artifact_contract",
+    "missing_qualification_proof",
+    "failed_qualification_proof",
 }
 
 
@@ -53,6 +75,7 @@ class ApprovedProjectRecordTests(unittest.TestCase):
             "project_url": "https://lead-capture.example.com",
             "target_user": "Solo operators who need to qualify inbound leads quickly.",
             "mvp_framing": "Turn incoming lead notes into ranked follow-up actions.",
+            "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
             "approved_scope": [
                 "capture inbound lead notes",
                 "score urgency and intent",
@@ -66,11 +89,28 @@ class ApprovedProjectRecordTests(unittest.TestCase):
                 "brief generated",
                 "workspace bootstrap ready",
             ],
+            "monetization": [
+                "Charge for priority scoring and follow-up workflow automation.",
+                "Expose a paid upgrade path inside the main operator workflow.",
+            ],
+            "required_languages": ["en", "zh", "es", "ar"],
+            "ui_artifact_contract": [
+                "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                "Document screen inventory, monetization surface, and multilingual behavior.",
+            ],
+            "qualification_bundle_path": "assets/shared/qualification/latest/qualification_bundle.json",
+            "qualified_idea_id": "IDEA-001",
         }
 
     def test_d01_d02_d10_d11_builds_stable_authority_record(self) -> None:
         start_approved_delivery = load_module("start_approved_project_delivery", SCRIPT_PATH)
-        record = start_approved_delivery.build_approved_project_record(self.build_payload())
+        qualification_bundle = {"candidates": [{"idea_id": "IDEA-001", "verdict": "passed", "reason_codes": []}]}
+        original_loader = start_approved_delivery.load_qualification_bundle
+        start_approved_delivery.load_qualification_bundle = lambda _path: qualification_bundle
+        try:
+            record = start_approved_delivery.build_approved_project_record(self.build_payload())
+        finally:
+            start_approved_delivery.load_qualification_bundle = original_loader
 
         self.assertTrue(record["ok"])
         self.assertEqual(record["stage"], "approval")
@@ -78,21 +118,24 @@ class ApprovedProjectRecordTests(unittest.TestCase):
         self.assertIsNone(record["block_reason"])
         self.assertEqual(set(record["allowed_stage_values"]), EXPECTED_STAGE_VALUES)
         self.assertEqual(set(record["allowed_status_values"]), EXPECTED_STATUS_VALUES)
-        self.assertEqual(set(record["allowed_block_reasons"]), EXPECTED_BLOCK_REASONS)
+        self.assertTrue(EXPECTED_BLOCK_REASONS.issubset(set(record["allowed_block_reasons"])))
 
         approved_project = record["approved_project"]
         self.assertEqual(
             list(approved_project.keys()),
             [
                 "approval",
+                "proposal",
                 "project_identity",
                 "approved_scope",
                 "target_user",
                 "mvp_framing",
+                "product_requirements",
                 "constraints",
                 "acceptance_gates",
                 "pipeline",
                 "artifacts",
+                "shipping",
             ],
         )
 
@@ -109,6 +152,18 @@ class ApprovedProjectRecordTests(unittest.TestCase):
             },
         )
         self.assertEqual(
+            approved_project["proposal"],
+            {
+                "proposal_id": "proposal-idea-001-v1",
+                "launch_framing": "Turn incoming lead notes into ranked follow-up actions.",
+                "market_rationale": "Qualification-backed opportunity approved for a focused lead qualification workflow.",
+                "qualification_summary": "Passed canonical qualification gates before approval.",
+                "qualification_backlinks": [
+                    "assets/shared/qualification/latest/qualification_bundle.json#IDEA-001"
+                ],
+            },
+        )
+        self.assertEqual(
             approved_project["project_identity"],
             {
                 "project_slug": "lead-capture-copilot",
@@ -117,7 +172,37 @@ class ApprovedProjectRecordTests(unittest.TestCase):
                 "app_url": "https://lead-capture.example.com",
             },
         )
-        self.assertEqual(approved_project["pipeline"], {"stage": "approval", "status": "ready", "block_reason": None})
+        self.assertEqual(
+            approved_project["product_requirements"],
+            {
+                "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
+                "monetization": [
+                    "Charge for priority scoring and follow-up workflow automation.",
+                    "Expose a paid upgrade path inside the main operator workflow.",
+                ],
+                "required_languages": ["en", "zh", "es", "ar"],
+                "ui_artifact_contract": [
+                    "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                    "Document screen inventory, monetization surface, and multilingual behavior.",
+                ],
+            },
+        )
+        self.assertEqual(
+            approved_project["pipeline"],
+            {
+                "stage": "approval",
+                "status": "ready",
+                "block_reason": None,
+                "current_stage": "approval",
+                "current_status": "ready",
+                "latest_governance": {
+                    "stage": "approval",
+                    "status": "ready",
+                    "outcome": "pass",
+                },
+                "latest_block_context": None,
+            },
+        )
         self.assertEqual(
             approved_project["artifacts"],
             {
@@ -128,7 +213,9 @@ class ApprovedProjectRecordTests(unittest.TestCase):
                 "project_metadata_path": ".hermes/project-metadata.json",
                 "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
                 "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+                "final_review_path": "assets/shared/approved-projects/lead-capture-copilot/FINAL_OPERATOR_REVIEW.md",
                 "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+                "qualification_bundle_path": "assets/shared/qualification/latest/qualification_bundle.json",
             },
         )
 
@@ -137,8 +224,13 @@ class ApprovedProjectRecordTests(unittest.TestCase):
         payload = self.build_payload()
         custom_root = Path(tempfile.mkdtemp(prefix="approved-project-root-"))
         self.addCleanupPath(custom_root)
-
-        result = start_approved_delivery.write_approved_project_bundle(payload, approved_projects_root=custom_root)
+        qualification_bundle = {"candidates": [{"idea_id": "IDEA-001", "verdict": "passed", "reason_codes": []}]}
+        original_loader = start_approved_delivery.load_qualification_bundle
+        start_approved_delivery.load_qualification_bundle = lambda _path: qualification_bundle
+        try:
+            result = start_approved_delivery.write_approved_project_bundle(payload, approved_projects_root=custom_root)
+        finally:
+            start_approved_delivery.load_qualification_bundle = original_loader
 
         self.assertTrue(result["ok"], msg=result)
         project_dir = custom_root / "lead-capture-copilot"
@@ -158,8 +250,14 @@ class ApprovedProjectRecordTests(unittest.TestCase):
         payload = self.build_payload()
         payload["approval_evidence"] = {}
         payload["target_user"] = ""
-
-        record = start_approved_delivery.build_approved_project_record(payload)
+        payload["required_languages"] = ["en"]
+        qualification_bundle = {"candidates": [{"idea_id": "IDEA-001", "verdict": "passed", "reason_codes": []}]}
+        original_loader = start_approved_delivery.load_qualification_bundle
+        start_approved_delivery.load_qualification_bundle = lambda _path: qualification_bundle
+        try:
+            record = start_approved_delivery.build_approved_project_record(payload)
+        finally:
+            start_approved_delivery.load_qualification_bundle = original_loader
 
         self.assertFalse(record["ok"])
         self.assertEqual(record["stage"], "approval")
@@ -167,12 +265,51 @@ class ApprovedProjectRecordTests(unittest.TestCase):
         self.assertEqual(record["block_reason"], "missing_approval_evidence")
         self.assertEqual(
             record["missing"],
-            ["approval_evidence", "target_user"],
+            ["approval_evidence", "target_user", "required_languages"],
         )
         approved_project = record["approved_project"]
-        self.assertEqual(approved_project["pipeline"], {"stage": "approval", "status": "blocked", "block_reason": "missing_approval_evidence"})
+        self.assertEqual(approved_project["pipeline"], {
+            "stage": "approval",
+            "status": "blocked",
+            "block_reason": "missing_approval_evidence",
+            "current_stage": "approval",
+            "current_status": "blocked",
+            "latest_governance": {
+                "stage": "approval",
+                "status": "blocked",
+                "outcome": "blocked",
+            },
+            "latest_block_context": {
+                "stage": "approval",
+                "reason": "missing_approval_evidence",
+                "status": "blocked",
+            },
+        })
         self.assertEqual(approved_project["approval"]["evidence"], {})
         self.assertEqual(approved_project["target_user"], "")
+
+    def test_blocks_when_qualification_proof_missing_or_failed(self) -> None:
+        start_approved_delivery = load_module("start_approved_project_delivery", SCRIPT_PATH)
+        payload = self.build_payload()
+
+        original_loader = start_approved_delivery.load_qualification_bundle
+        start_approved_delivery.load_qualification_bundle = lambda _path: {"candidates": []}
+        try:
+            missing_record = start_approved_delivery.build_approved_project_record(payload)
+        finally:
+            start_approved_delivery.load_qualification_bundle = original_loader
+        self.assertFalse(missing_record["ok"])
+        self.assertEqual(missing_record["block_reason"], "missing_qualification_proof")
+
+        start_approved_delivery.load_qualification_bundle = lambda _path: {
+            "candidates": [{"idea_id": "IDEA-001", "verdict": "blocked", "reason_codes": ["missing_market_pricing_proof"]}]
+        }
+        try:
+            failed_record = start_approved_delivery.build_approved_project_record(payload)
+        finally:
+            start_approved_delivery.load_qualification_bundle = original_loader
+        self.assertFalse(failed_record["ok"])
+        self.assertEqual(failed_record["block_reason"], "failed_qualification_proof")
 
 
 if __name__ == "__main__":

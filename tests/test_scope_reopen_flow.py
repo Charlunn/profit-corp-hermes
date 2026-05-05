@@ -154,6 +154,40 @@ class ScopeReopenFlowTests(unittest.TestCase):
             self.assertEqual(len(delivery_events), 2)
             self.assertNotEqual(delivery_events[-1]["action"], "stage_completed")
 
+    def test_locked_contract_drift_requests_governed_reopen_with_exact_field_visibility(self) -> None:
+        request_scope_reopen = load_module("request_scope_reopen", SCRIPT_PATH)
+        workspace = self.create_workspace_fixture()
+        with self.preserve_governance_files():
+            result = request_scope_reopen.request_contract_drift_reopen(
+                workspace,
+                run_id="delivery-lead-capture-001",
+                stage="development",
+                role="development-specialist",
+                drift_field="required_languages",
+                approved_value=["en", "zh"],
+                proposed_value=["en", "zh", "ja"],
+                reason="Need to add Japanese support after approval.",
+            )
+
+            self.assertTrue(result["ok"], msg=result)
+            self.assertEqual(result["governance_event"]["event_type"], "requested")
+            self.assertEqual(result["governance_event"]["status_after"], "pending")
+            self.assertEqual(result["governance_event"]["action_type"], "delivery.scope_reopen.contract_drift")
+            self.assertEqual(result["governance_event"]["target_artifact"], "approved_contract:required_languages")
+            self.assertEqual(result["delivery_event"]["action"], "scope_reopen_requested")
+            self.assertEqual(result["delivery_event"]["scope_status"], "scope-reopen-requested")
+            self.assertEqual(result["delivery_event"]["contract_drift_field"], "required_languages")
+            self.assertEqual(result["delivery_event"]["approved_value"], '["en", "zh"]')
+            self.assertEqual(result["delivery_event"]["proposed_value"], '["en", "zh", "ja"]')
+
+            delivery_events = self.read_jsonl(workspace / ".hermes" / "delivery-events.jsonl")
+            self.assertEqual(delivery_events[-1]["contract_drift_field"], "required_languages")
+            self.assertEqual(delivery_events[-1]["artifact"], "approved_contract:required_languages")
+
+            status_text = (workspace / ".hermes" / "DELIVERY_STATUS.md").read_text(encoding="utf-8")
+            self.assertIn("approved_contract:required_languages", status_text)
+            self.assertIn("scope_reopen_requested", status_text)
+
 
 if __name__ == "__main__":
     unittest.main()

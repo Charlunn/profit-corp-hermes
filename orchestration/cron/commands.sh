@@ -211,6 +211,32 @@ render_approved_delivery_status_cmd() {
   python "$ROOT_DIR/scripts/render_approved_delivery_status.py" --project-dir "$1"
 }
 
+start_chat_project_run_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/start_chat_project_run.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh start-chat-project-run <payload-json-or-path>"; return 1; }
+  if [ -f "$1" ]; then
+    python "$ROOT_DIR/scripts/start_chat_project_run.py" --payload-file "$1"
+  else
+    python "$ROOT_DIR/scripts/start_chat_project_run.py" --payload-json "$1"
+  fi
+}
+
+render_chat_run_status_cmd() {
+  if [ "${1:-}" = "--help" ]; then
+    python "$ROOT_DIR/scripts/render_chat_run_status.py" --help
+    return 0
+  fi
+  [ "$#" -ge 1 ] || { echo "Usage: bash orchestration/cron/commands.sh render-chat-run-status <run-id> [project-dir]"; return 1; }
+  if [ "$#" -ge 2 ]; then
+    python "$ROOT_DIR/scripts/render_chat_run_status.py" --run-id "$1" --project-dir "$2"
+  else
+    python "$ROOT_DIR/scripts/render_chat_run_status.py" --run-id "$1"
+  fi
+}
+
 validate_approved_delivery_pipeline_cmd() {
   if [ "${1:-}" = "--help" ]; then
     python "$ROOT_DIR/scripts/validate_approved_delivery_pipeline.py" --help
@@ -310,6 +336,14 @@ case "$ACTION" in
     shift
     render_approved_delivery_status_cmd "$@"
     ;;
+  start-chat-project-run)
+    shift
+    start_chat_project_run_cmd "$@"
+    ;;
+  render-chat-run-status)
+    shift
+    render_chat_run_status_cmd "$@"
+    ;;
   validate-approved-delivery-pipeline)
     shift
     validate_approved_delivery_pipeline_cmd "$@"
@@ -336,7 +370,7 @@ case "$ACTION" in
     ;;
   pause-all) pause_all ;;
   *)
-    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|start-approved-delivery|render-approved-delivery-status|validate-approved-delivery-pipeline|resume-approved-delivery|prepare-approved-delivery-github|sync-approved-delivery-github|link-approved-delivery-vercel|deploy-approved-delivery-vercel|pause-all]"
+    echo "Usage: bash orchestration/cron/commands.sh [create|ensure|recreate|remove-duplicates|resume-all|list|status|run-daily|run-intelligence|run-analysis-loop|run-decision-packages|run-visibility|run-governed-action|start-delivery-run|append-delivery-event|render-delivery-status|request-scope-reopen|validate-delivery-handoff|start-approved-delivery|render-approved-delivery-status|validate-approved-delivery-pipeline|resume-approved-delivery|prepare-approved-delivery-github|sync-approved-delivery-github|link-approved-delivery-vercel|deploy-approved-delivery-vercel|start-chat-project-run|render-chat-run-status|pause-all]"
     exit 1
     ;;
 esac
