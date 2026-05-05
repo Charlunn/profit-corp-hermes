@@ -10,6 +10,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.product_proof_contract import FAILURE_REASON_MESSAGES
+
 
 APPROVED_RECORD_NAME = "APPROVED_PROJECT.json"
 EVENTS_FILE_NAME = "approved-delivery-events.jsonl"
@@ -80,6 +82,17 @@ def normalize_flag(value: Any) -> str:
     return text or "not available"
 
 
+def format_contract_value(value: Any) -> str:
+    if value is None:
+        return "not available"
+    if isinstance(value, list):
+        return ", ".join(str(item).strip() for item in value if str(item).strip()) or "not available"
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    text = str(value).strip()
+    return text or "not available"
+
+
 def summarize_specialist_stages(events: list[dict[str, Any]], record: dict[str, Any]) -> list[dict[str, str]]:
     pipeline = record.get("pipeline", {}) if isinstance(record.get("pipeline"), dict) else {}
     delivery_run_id = first_nonempty(pipeline.get("delivery_run_id"))
@@ -100,9 +113,25 @@ def summarize_specialist_stages(events: list[dict[str, Any]], record: dict[str, 
                 "status": first_nonempty(latest.get("status")) or ("pending" if delivery_run_id else "not started"),
                 "artifact": first_nonempty(latest.get("artifact")) or artifact_name,
                 "evidence": first_nonempty(latest.get("evidence_path")) or "not available",
+                "template_only": first_nonempty(get_nested(latest, "substance", "template_only")) or "not available",
+                "proof_verdict": first_nonempty(get_nested(latest, "substance", "proof_verdict")) or "not available",
             }
         )
     return summary
+
+
+def latest_product_proof(events: list[dict[str, Any]]) -> dict[str, Any]:
+    for event in reversed(events):
+        substance = event.get("substance")
+        if isinstance(substance, dict) and (
+            substance.get("primary_workflow_surfaces")
+            or substance.get("supporting_logic_paths")
+            or substance.get("failure_reasons")
+            or substance.get("template_residue_blockers")
+            or substance.get("template_residue_warnings")
+        ):
+            return substance
+    return {}
 
 
 def summarize_action_required(current_stage: str, current_status: str, current_outcome: str, blocked_reason: str, evidence_path: str, github: dict[str, Any], vercel: dict[str, Any], protected_change: dict[str, Any], justification: dict[str, Any]) -> list[str]:
@@ -142,6 +171,7 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
     latest_blocked = record.get("latest_blocked_prerequisite", {}) if isinstance(record.get("latest_blocked_prerequisite"), dict) else {}
     protected_change = record.get("protected_change", {}) if isinstance(record.get("protected_change"), dict) else {}
     justification = record.get("platform_justification", {}) if isinstance(record.get("platform_justification"), dict) else {}
+    contract_drift = record.get("contract_drift", {}) if isinstance(record.get("contract_drift"), dict) else {}
     final_handoff = record.get("final_handoff", {}) if isinstance(record.get("final_handoff"), dict) else {}
 
     current_stage = first_nonempty(pipeline.get("stage"), latest.get("stage")) or "not available"
@@ -168,6 +198,26 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
         latest_blocked_event.get("evidence_path"),
         pipeline.get("evidence_path"),
     )
+    blocked_gate = first_nonempty(
+        latest_blocked.get("gate"),
+        get_nested(latest_blocked_event, "gate", "name"),
+        get_nested(pipeline, "latest_governance", "gate"),
+    )
+    blocked_repair_action = first_nonempty(
+        latest_blocked.get("repair_action"),
+        get_nested(latest_blocked_event, "recovery", "repair_action"),
+        get_nested(pipeline, "latest_governance", "repair_action"),
+    )
+    blocked_run_id = first_nonempty(
+        latest_blocked.get("run_id"),
+        get_nested(latest_blocked_event, "recovery", "run_id"),
+        first_nonempty(pipeline.get("delivery_run_id")),
+    )
+    blocked_detail = first_nonempty(
+        latest_blocked.get("detail"),
+        get_nested(pipeline, "latest_governance", "detail"),
+        str(contract_drift.get("reason", "")).strip(),
+    )
 
     history_lines = []
     for event in events:
@@ -183,8 +233,17 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
         )
 
     action_required_lines = summarize_action_required(current_stage, current_status, current_outcome, blocked_reason, blocked_evidence, github, vercel, protected_change, justification)
+    if str(contract_drift.get("status", "")).strip().lower() in {"pending_reopen", "blocked", "pending"}:
+        field_name = str(contract_drift.get("field", "")).strip() or "unknown_field"
+        action_required_lines.append(f"- Resolve locked contract drift for `{field_name}` through governed reopen before continuing delivery.")
+    product_proof = latest_product_proof(events)
+    failure_reason_labels = [
+        FAILURE_REASON_MESSAGES.get(reason, reason)
+        for reason in list(product_proof.get("failure_reasons", []))
+        if str(reason).strip()
+    ]
     specialist_stage_lines = [
-        f"- {item['stage']}: status=`{item['status']}` artifact=`{item['artifact']}` evidence=`{item['evidence']}`"
+        f"- {item['stage']}: status=`{item['status']}` artifact=`{item['artifact']}` evidence=`{item['evidence']}` template_only=`{item['template_only']}` proof_verdict=`{item['proof_verdict']}`"
         for item in summarize_specialist_stages(events, record)
     ]
 
@@ -216,13 +275,29 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
             f"- Approval Summary: `{get_nested(approval, 'evidence', 'summary') or 'not available'}`",
             "",
             "## Blocked Prerequisites",
+            f"- Blocked Stage: `{first_nonempty(latest_blocked.get('stage'), latest_blocked_event.get('stage')) or 'not available'}`",
             f"- Block Reason: `{blocked_reason or 'not available'}`",
+            f"- Failed Gate: `{blocked_gate or 'not available'}`",
             f"- Blocked Prerequisite Evidence: `{blocked_evidence or 'not available'}`",
+            f"- Repair Action: `{blocked_repair_action or 'not available'}`",
+            f"- Blocked Run ID: `{blocked_run_id or 'not available'}`",
+            f"- Blocked History Status: `{first_nonempty(latest_blocked.get('status')) or ('blocked' if blocked_reason else 'not available')}`",
             f"- Resume From Stage: `{first_nonempty(latest.get('resume_from_stage'), pipeline.get('resume_from_stage')) or 'not available'}`",
+            f"- Recovery Detail: `{blocked_detail or 'not available'}`",
             f"- Blocked State Visible: `{normalize_flag(bool(blocked_reason or blocked_evidence))}`",
             "",
             "## Specialist Delivery Stages",
             *specialist_stage_lines,
+            "",
+            "## Product Proof",
+            f"- Proof Verdict: `{first_nonempty(product_proof.get('proof_verdict')) or 'not available'}`",
+            f"- Primary Workflow Surfaces: `{', '.join(product_proof.get('primary_workflow_surfaces', [])) or 'not available'}`",
+            f"- Supporting Logic Evidence: `{', '.join(product_proof.get('supporting_logic_paths', [])) or 'not available'}`",
+            f"- Excluded Proof Paths: `{', '.join(product_proof.get('excluded_proof_paths', [])) or 'not available'}`",
+            f"- Excluded Proof Reasons: `{'; '.join(product_proof.get('excluded_proof_reasons', [])) or 'not available'}`",
+            f"- Template Residue Blockers: `{', '.join(product_proof.get('template_residue_blockers', [])) or 'none'}`",
+            f"- Template Residue Warnings: `{', '.join(product_proof.get('template_residue_warnings', [])) or 'none'}`",
+            f"- Failure Reasons: `{'; '.join(failure_reason_labels) or 'none'}`",
             "",
             "## Credentialed Delivery Actions",
             f"- GitHub Repository Mode: `{github.get('repository_mode', 'not available')}`",
@@ -253,6 +328,15 @@ def build_status_markdown(events: list[dict[str, Any]], record: dict[str, Any], 
             f"- Platform Justification Status: `{justification.get('status', 'not available')}`",
             f"- Platform Justification Artifact: `{justification.get('artifact_path', 'not available')}`",
             f"- Governance Action: `{justification.get('governance_action_id', 'not available')}`",
+            "",
+            "## Locked Contract Drift",
+            f"- Drift Status: `{contract_drift.get('status', 'not available')}`",
+            f"- Drift Field: `{contract_drift.get('field', 'not available')}`",
+            f"- Approved Value: `{format_contract_value(contract_drift.get('approved_value'))}`",
+            f"- Proposed Value: `{format_contract_value(contract_drift.get('proposed_value'))}`",
+            f"- Drift Reason: `{contract_drift.get('reason', 'not available')}`",
+            f"- Drift Evidence: `{contract_drift.get('evidence_path', 'not available')}`",
+            f"- Drift Governance Action: `{contract_drift.get('governance_action_id', 'not available')}`",
             "",
             "## Deployment Outcome",
             f"- Latest Stage Outcome: `{first_nonempty(latest.get('outcome')) or 'not available'}`",

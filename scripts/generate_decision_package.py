@@ -18,6 +18,7 @@ CEO_RANKING_PATH = SHARED_DIR / "CEO_RANKING.md"
 DECISION_PACKAGES_DIR = SHARED_DIR / "decision_packages"
 DECISION_HISTORY_DIR = DECISION_PACKAGES_DIR / "history"
 TRACE_DIR = SHARED_DIR / "trace"
+QUALIFICATION_BUNDLE_PATH = SHARED_DIR / "qualification" / "latest" / "qualification_bundle.json"
 OPERATING_DECISION_PACKAGE_PATH = DECISION_PACKAGES_DIR / "OPERATING_DECISION_PACKAGE.md"
 OPERATING_DECISION_HISTORY_TEMPLATE = "{date}-operating-decision-package.md"
 DECISION_TRACE_PATH = TRACE_DIR / "decision_package_trace.json"
@@ -118,6 +119,49 @@ def load_prioritized(path: Path) -> list[dict[str, Any]]:
 
     validated.sort(key=lambda item: (item.get("rank", 999), -float(item.get("total_score", 0))), reverse=False)
     return validated
+
+
+def load_qualification_bundle(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise DecisionPackageError(f"qualification bundle not found: {path}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise DecisionPackageError(f"invalid qualification bundle JSON: {path}") from exc
+    if not isinstance(payload, dict):
+        raise DecisionPackageError("qualification bundle must be a JSON object")
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        raise DecisionPackageError("qualification bundle must include non-empty candidates")
+    return payload
+
+
+def qualification_index(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    candidates = bundle.get("candidates", [])
+    return {
+        str(item.get("idea_id", "")).strip(): item
+        for item in candidates
+        if isinstance(item, dict) and str(item.get("idea_id", "")).strip()
+    }
+
+
+def filter_qualified_prioritized(prioritized: list[dict[str, Any]], bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    index = qualification_index(bundle)
+    qualified: list[dict[str, Any]] = []
+    for record in prioritized:
+        idea_id = str(record.get("idea_id", "")).strip()
+        verdict = index.get(idea_id)
+        if verdict is None:
+            raise DecisionPackageError(f"missing qualification verdict for {idea_id}")
+        if str(verdict.get("verdict", "")).strip() != "passed":
+            reasons = ", ".join(verdict.get("reason_codes", [])) or "unknown"
+            raise DecisionPackageError(f"candidate {idea_id} is not qualified: {reasons}")
+        enriched = dict(record)
+        enriched["qualification"] = verdict
+        qualified.append(enriched)
+    if not qualified:
+        raise DecisionPackageError("no qualified candidates available for decision package generation")
+    return qualified
 
 
 def load_markdown(path: Path, label: str) -> str:
@@ -423,6 +467,8 @@ def main() -> int:
         run_id = build_run_id(date_value)
 
         prioritized = load_prioritized(TRIAGE_PATH)
+        qualification_bundle = load_qualification_bundle(QUALIFICATION_BUNDLE_PATH)
+        prioritized = filter_qualified_prioritized(prioritized, qualification_bundle)
         pain_points = load_markdown(PAIN_POINTS_PATH, "pain points")
         market_plan = load_markdown(MARKET_PLAN_PATH, "market plan")
         tech_spec = load_markdown(TECH_SPEC_PATH, "tech spec")

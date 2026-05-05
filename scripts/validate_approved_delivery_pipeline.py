@@ -10,6 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.product_proof_contract import FAILURE_REASON_MESSAGES
 from scripts.validate_delivery_handoff import require_in_order
 
 
@@ -40,6 +41,7 @@ SPECIALIST_STAGE_ORDER = [
     "git_versioning",
     "release_readiness",
 ]
+UI_STAGE_ORDER = {"design", "development"}
 
 
 class ApprovedDeliveryPipelineValidationError(Exception):
@@ -265,6 +267,27 @@ def validate_specialist_stage_visibility(record: dict[str, Any], events: list[di
                     raise ApprovedDeliveryPipelineValidationError(f"status view missing specialist stage artifact linkage: {artifact_path.name}")
             elif first_nonempty(get_nested(record, "pipeline", "status")) != "completed":
                 raise ApprovedDeliveryPipelineValidationError(f"specialist stage artifact not found: {artifact_path.as_posix()}")
+            structured_evidence_path = first_nonempty(get_nested(event, "evidence", "primary_path"), event.get("evidence_path"))
+            if not structured_evidence_path:
+                raise ApprovedDeliveryPipelineValidationError(f"specialist stage missing structured evidence path: {stage}")
+            structured_evidence_file = Path(structured_evidence_path)
+            if not structured_evidence_file.is_absolute():
+                structured_evidence_file = workspace / structured_evidence_path
+            if not structured_evidence_file.exists():
+                if first_nonempty(get_nested(record, "pipeline", "status")) != "completed":
+                    raise ApprovedDeliveryPipelineValidationError(f"specialist structured evidence not found: {structured_evidence_file.as_posix()}")
+                continue
+            payload = load_json(structured_evidence_file, f"{stage} structured evidence")
+            if str(payload.get("handoff_path", "")).strip() != artifact_path.as_posix():
+                raise ApprovedDeliveryPipelineValidationError(f"structured evidence handoff mismatch for stage: {stage}")
+            if not str(payload.get("workspace_change_inventory_path", "")).strip():
+                raise ApprovedDeliveryPipelineValidationError(f"structured evidence missing workspace inventory path: {stage}")
+            if stage in UI_STAGE_ORDER:
+                for key in ("ui_artifact_path", "ui_artifact_summary_path"):
+                    if not str(payload.get(key, "")).strip():
+                        raise ApprovedDeliveryPipelineValidationError(f"structured evidence missing {key}: {stage}")
+            if stage == "testing" and not isinstance(payload.get("verification_evidence"), list):
+                raise ApprovedDeliveryPipelineValidationError("testing structured evidence missing verification evidence list")
 
 
 def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: list[dict[str, Any]], status_text: str) -> None:
@@ -282,6 +305,14 @@ def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: lis
         get_nested(record, "pipeline", "evidence_path"),
         get_nested(record, "latest_blocked_prerequisite", "path"),
     )
+    failed_gate = first_nonempty(
+        get_nested(record, "latest_blocked_prerequisite", "gate"),
+        get_nested(latest_blocked, "gate", "name"),
+    )
+    repair_action = first_nonempty(
+        get_nested(record, "latest_blocked_prerequisite", "repair_action"),
+        get_nested(latest_blocked, "recovery", "repair_action"),
+    )
     lowered = status_text.lower()
     if not block_reason:
         raise ApprovedDeliveryPipelineValidationError("blocked pipeline state missing persisted block reason")
@@ -291,6 +322,10 @@ def validate_blocked_prerequisite_visibility(record: dict[str, Any], events: lis
         raise ApprovedDeliveryPipelineValidationError("status view missing blocked-state summary")
     if Path(evidence_path).name.lower() not in lowered and evidence_path.lower() not in lowered:
         raise ApprovedDeliveryPipelineValidationError("status view missing blocked prerequisite evidence link")
+    if failed_gate and failed_gate.lower() not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing failed gate linkage")
+    if repair_action and repair_action.lower() not in lowered:
+        raise ApprovedDeliveryPipelineValidationError("status view missing repair action guidance")
 
 
 def validate_github_linkage(record: dict[str, Any], status_text: str) -> None:
@@ -373,13 +408,89 @@ def validate_vercel_linkage(record: dict[str, Any], status_text: str) -> None:
             raise ApprovedDeliveryPipelineValidationError("status view missing Vercel deploy evidence linkage")
 
 
+def validate_template_substance(record: dict[str, Any], events: list[dict[str, Any]], status_text: str, final_review_text: str) -> None:
+    combined = (status_text + "\n" + final_review_text).lower()
+    specialist_events = [
+        event for event in events if str(event.get("stage", "")).strip() in SPECIALIST_STAGE_ORDER
+    ]
+    for event in specialist_events:
+        substance = event.get("substance") if isinstance(event.get("substance"), dict) else {}
+        template_only = bool(substance.get("template_only", False))
+        issues = substance.get("issues", []) if isinstance(substance.get("issues"), list) else []
+        if template_only:
+            raise ApprovedDeliveryPipelineValidationError(
+                "template-only specialist output cannot pass approved delivery: " + "; ".join(str(item) for item in issues if str(item).strip())
+            )
+    if "a starter that already knows how to do auth, payments, and shared backend boundaries." in combined:
+        raise ApprovedDeliveryPipelineValidationError("status/review still reference generic template starter messaging")
+
+
+def validate_product_proof_visibility(events: list[dict[str, Any]], status_text: str, final_review_text: str) -> None:
+    lowered_status = status_text.lower()
+    lowered_review = final_review_text.lower()
+    latest_substance: dict[str, Any] = {}
+    for event in reversed(events):
+        substance = event.get("substance")
+        if isinstance(substance, dict) and (
+            substance.get("primary_workflow_surfaces")
+            or substance.get("supporting_logic_paths")
+            or substance.get("failure_reasons")
+            or substance.get("template_residue_blockers")
+            or substance.get("template_residue_warnings")
+        ):
+            latest_substance = substance
+            break
+    has_proof_tokens = "product proof" in lowered_status and "product proof" in lowered_review
+    if not latest_substance and not has_proof_tokens:
+        return
+
+    for token in (
+        "product proof",
+        "primary workflow surfaces",
+        "supporting logic evidence",
+        "excluded proof",
+        "proof verdict",
+    ):
+        if token not in lowered_status:
+            raise ApprovedDeliveryPipelineValidationError(f"status view missing product proof section token: {token}")
+        if token not in lowered_review:
+            raise ApprovedDeliveryPipelineValidationError(f"final operator review missing product proof section token: {token}")
+
+    combined = (status_text + "\n" + final_review_text).lower()
+    for path in latest_substance.get("primary_workflow_surfaces", []):
+        if str(path).strip() and str(path).strip().lower() not in combined:
+            raise ApprovedDeliveryPipelineValidationError(f"product proof surface missing from rendered review: {path}")
+    for path in latest_substance.get("supporting_logic_paths", []):
+        if str(path).strip() and str(path).strip().lower() not in combined:
+            raise ApprovedDeliveryPipelineValidationError(f"product proof logic missing from rendered review: {path}")
+    for reason in latest_substance.get("excluded_proof_reasons", []):
+        if str(reason).strip() and str(reason).strip().lower() not in combined:
+            raise ApprovedDeliveryPipelineValidationError(f"excluded proof reason missing from rendered review: {reason}")
+    for path in latest_substance.get("template_residue_warnings", []):
+        if str(path).strip() and str(path).strip().lower() not in combined:
+            raise ApprovedDeliveryPipelineValidationError(f"template residue warning missing from rendered review: {path}")
+    for reason in latest_substance.get("failure_reasons", []):
+        rendered_reason = FAILURE_REASON_MESSAGES.get(str(reason).strip(), str(reason).strip())
+        if rendered_reason.lower() not in combined:
+            raise ApprovedDeliveryPipelineValidationError(f"proof failure reason missing from rendered review: {reason}")
+
+
 def validate_current_state_precedence(record: dict[str, Any], events: list[dict[str, Any]], status_text: str, final_review_text: str) -> None:
     pipeline = get_nested(record, "pipeline") if isinstance(get_nested(record, "pipeline"), dict) else {}
+    latest_blocked = (
+        get_nested(record, "latest_blocked_prerequisite")
+        if isinstance(get_nested(record, "latest_blocked_prerequisite"), dict)
+        else {}
+    )
     status = first_nonempty(get_nested(pipeline, "status"))
     stage = first_nonempty(get_nested(pipeline, "stage"))
     combined = (status_text + "\n" + final_review_text).lower()
 
     if status == "completed":
+        if first_nonempty(get_nested(pipeline, "block_reason")):
+            raise ApprovedDeliveryPipelineValidationError("completed pipeline still carries blocked current-state fields in authority")
+        if first_nonempty(get_nested(latest_blocked, "status")) == "blocked":
+            raise ApprovedDeliveryPipelineValidationError("completed pipeline still marks latest_blocked_prerequisite as an active block")
         if "pipeline status" in combined and "blocked" in combined.split("pipeline status", 1)[1][:40]:
             raise ApprovedDeliveryPipelineValidationError("status view still presents blocked current state after recovered completion")
         if "handoff status" in combined and "completed" not in combined.split("handoff status", 1)[1][:40]:
@@ -489,6 +600,8 @@ def validate_approved_delivery_pipeline(approved_project_path: Path) -> dict[str
     validate_status_markdown(status_text, workspace, final_handoff_path)
     validate_specialist_stage_visibility(record, events, status_text + "\n" + final_review_text, workspace)
     validate_final_review(record, final_review_path, final_review_text)
+    validate_template_substance(record, events, status_text, final_review_text)
+    validate_product_proof_visibility(events, status_text, final_review_text)
     validate_current_state_precedence(record, events, status_text, final_review_text)
     validate_github_linkage(record, status_text + "\n" + final_review_text)
     validate_vercel_linkage(record, status_text + "\n" + final_review_text)

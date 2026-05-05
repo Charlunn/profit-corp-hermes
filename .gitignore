@@ -5,6 +5,7 @@ __pycache__/
 
 # Claude / local operator state
 .claude/
+.hermes/
 
 # Generated local workspaces and temp snippets
 generated-workspaces/

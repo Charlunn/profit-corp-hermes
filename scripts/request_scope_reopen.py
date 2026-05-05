@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,8 @@ def workspace_name_for(workspace: Path) -> str:
 
 def action_type_for(target_artifact: str) -> str:
     normalized = target_artifact.strip().replace("\\", "/")
+    if normalized.startswith("approved_contract:"):
+        return "delivery.scope_reopen.contract_drift"
     if normalized in PROTECTED_PATHS:
         return "delivery.scope_reopen.protected_path"
     return "delivery.scope_reopen.scope_expansion"
@@ -78,6 +81,12 @@ def build_delivery_event(*, workspace: Path, run_id: str, role: str, stage: str,
         "scope_status": SCOPE_REOPEN_SCOPE_STATUS,
         "reason": reason,
     }
+
+
+def encode_contract_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
 def next_delivery_timestamp(workspace: Path, fallback_timestamp: str) -> str:
@@ -127,6 +136,53 @@ def request_scope_reopen(
         "delivery_event": delivery_event,
         "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
     }
+
+
+def request_contract_drift_reopen(
+    workspace: Path,
+    *,
+    run_id: str,
+    stage: str,
+    role: str,
+    drift_field: str,
+    approved_value: Any,
+    proposed_value: Any,
+    reason: str,
+) -> dict[str, Any]:
+    normalized_field = str(drift_field).strip()
+    if not normalized_field:
+        raise ScopeReopenError("drift_field is required")
+    target_artifact = f"approved_contract:{normalized_field}"
+    approved_text = encode_contract_value(approved_value)
+    proposed_text = encode_contract_value(proposed_value)
+    drift_reason = (
+        f"Locked contract drift for {normalized_field}: approved={approved_text}; "
+        f"proposed={proposed_text}. {reason.strip()}"
+    ).strip()
+    result = request_scope_reopen(
+        workspace,
+        run_id=run_id,
+        stage=stage,
+        role=role,
+        target_artifact=target_artifact,
+        reason=drift_reason,
+    )
+    delivery_events_path = Path(workspace) / ".hermes" / "delivery-events.jsonl"
+    events = load_events(delivery_events_path)
+    if not events:
+        raise ScopeReopenError("delivery reopen event was not recorded")
+    latest = dict(events[-1])
+    latest["contract_drift_field"] = normalized_field
+    latest["approved_value"] = approved_text
+    latest["proposed_value"] = proposed_text
+    events[-1] = latest
+    delivery_events_path.write_text(
+        "\n".join(json.dumps(event, ensure_ascii=False) for event in events) + "\n",
+        encoding="utf-8",
+    )
+    render_delivery_status(workspace)
+    result["delivery_event"] = latest
+    return result
 
 
 def main() -> int:

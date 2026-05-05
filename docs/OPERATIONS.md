@@ -50,7 +50,8 @@
 ### C) Profile config drift
 - Resync profiles from templates:
   ```bash
-  SETUP_PROFILES=1 SETUP_CRON=0 RUN_SMOKE_TEST=0 bash scripts/bootstrap_hermes_noninteractive.sh
+  python scripts/configure_hermes_cloud.py
+  bash scripts/bootstrap_hermes.sh --skip-cron --skip-smoke
   ```
 - Validate after resync:
   ```bash
@@ -141,26 +142,31 @@ Skill-level policy:
 ## Approved project delivery pipeline
 
 ### Recommended end-to-end operator path
-1. Bootstrap Hermes on the operator machine:
+1. Configure local cloud delivery settings on the operator machine:
    ```bash
-   bash scripts/bootstrap_hermes_noninteractive.sh
+   python scripts/configure_hermes_cloud.py
    ```
-2. Run signal intake and role artifacts:
+   This writes provider/model values and deployment env into local ignored/operator config only.
+2. Bootstrap Hermes runtime:
+   ```bash
+   bash scripts/bootstrap_hermes.sh
+   ```
+3. Run signal intake and role artifacts:
    ```bash
    bash scripts/run_external_intelligence.sh
    bash scripts/run_signal_analysis_loop.sh --window-hours 48 --limit 3
    ```
-3. Confirm the current role artifacts and decision package exist:
+4. Confirm the current role artifacts and decision package exist:
    - `assets/shared/PAIN_POINTS.md`
    - `assets/shared/MARKET_PLAN.md`
    - `assets/shared/TECH_SPEC.md`
    - `assets/shared/CEO_RANKING.md`
    - `assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md`
-4. Generate a new approved-project bundle from the current decision package when you want to turn the top-ranked real pain point into a delivery candidate:
+5. Generate a new approved-project bundle from the current decision package when you want to turn the top-ranked real pain point into a delivery candidate:
    ```bash
    python scripts/start_approved_project_delivery.py --approval-mode decision-package --decision-package-path assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md
    ```
-5. Then drive that approved project through the governed delivery commands below.
+6. Then drive that approved project through the governed delivery commands below.
 
 ### Start an approved delivery run
 - Start from the approved-project authority bundle, not ad-hoc workspace commands:
@@ -201,7 +207,9 @@ Skill-level policy:
 - Do not create a second workspace or rerun manual bootstrap steps unless the authority record explicitly tells you the original workspace path is invalid.
 
 ### Runtime credential expectations
+- Use `python scripts/configure_hermes_cloud.py` as the canonical shortcut for Hermes, Claude Code relay, Supabase, GitHub, and Vercel local settings.
 - Keep GitHub / Vercel / PayPal / Supabase secrets in local environment or local Claude/Hermes settings only.
+- `.claude/settings.local.json`, `~/.hermes/config.yaml`, and `~/.hermes/profiles/<role>/config.yaml` are the intended local secret stores.
 - Do **not** write secrets into repo files, approved-project bundles, or `.env.example`.
 - For real PayPal validation, set `PAYPAL_ENVIRONMENT=live` only in local/private operator config.
 

@@ -196,6 +196,21 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertEqual(metadata["app_url"], "https://lead.example.com")
         self.assertEqual(metadata["template_source_path"], TEMPLATE_SOURCE.as_posix())
         self.assertEqual(metadata["canonical_contract_path"], CONTRACT_PATH.as_posix())
+        self.assertEqual(
+            metadata["product_requirements"],
+            {
+                "pain_point": "Users need a product-specific workflow in Lead Capture instead of a generic template shell.",
+                "monetization": [
+                    "Charge for paid access to Lead Capture workflows that resolve the approved pain point.",
+                    "Expose a clear upgrade surface tied to the product's primary action and outcome.",
+                ],
+                "required_languages": ["en", "zh", "es", "ar", "pt", "fr", "hi", "ja", "ru"],
+                "ui_artifact_contract": [
+                    "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                    "Document screen inventory, monetization surface, and multilingual behavior.",
+                ],
+            },
+        )
 
         guardrails = json.loads(guardrails_path.read_text(encoding="utf-8"))
         self.assertEqual(guardrails["backend_model"], "shared-supabase")
@@ -211,6 +226,8 @@ class InstantiateTemplateProjectCliTests(unittest.TestCase):
         self.assertIn("shared-backend-guardrails.json", brief_text)
         self.assertIn("standalone-saas-template-contract.md", brief_text)
         self.assertIn("Lead Capture", brief_text)
+        self.assertIn("Reference /ui-ux-pro-max output before frontend implementation.", brief_text)
+        self.assertIn("en, zh, es, ar, pt, fr, hi, ja, ru", brief_text)
 
     def test_dry_run_reports_plan_without_writing_workspace(self) -> None:
         temp_dir, workspace_root, registry_path = self.create_fixture()

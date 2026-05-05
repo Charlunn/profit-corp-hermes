@@ -31,6 +31,10 @@ REQUIRED_EVENT_FIELDS = (
 )
 OPTIONAL_OBJECT_FIELDS = (
     "shipping",
+    "gate",
+    "evidence",
+    "handoff",
+    "recovery",
 )
 ALLOWED_STAGES = {
     "approval",
@@ -93,6 +97,10 @@ def validate_event(event: dict[str, Any]) -> None:
 
     for field in REQUIRED_EVENT_FIELDS:
         value = event.get(field)
+        if field == "outcome":
+            if not isinstance(value, (str, dict)):
+                raise ApprovedDeliveryEventError("approved delivery event field must be a string or object: outcome")
+            continue
         if not isinstance(value, str):
             raise ApprovedDeliveryEventError(f"approved delivery event field must be a string: {field}")
 
@@ -104,8 +112,9 @@ def validate_event(event: dict[str, Any]) -> None:
         raise ApprovedDeliveryEventError(f"unsupported approved delivery stage: {event['stage']}")
     if event["status"] not in ALLOWED_STATUSES:
         raise ApprovedDeliveryEventError(f"unsupported approved delivery status: {event['status']}")
-    if event["outcome"] not in ALLOWED_OUTCOMES:
-        raise ApprovedDeliveryEventError(f"unsupported approved delivery outcome: {event['outcome']}")
+    outcome_value = event["outcome"]["result"] if isinstance(event["outcome"], dict) else event["outcome"]
+    if outcome_value not in ALLOWED_OUTCOMES:
+        raise ApprovedDeliveryEventError(f"unsupported approved delivery outcome: {outcome_value}")
     if not event["project_slug"].strip():
         raise ApprovedDeliveryEventError("project_slug must not be blank")
     if not event["timestamp"].strip():

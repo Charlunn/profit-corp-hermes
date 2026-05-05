@@ -1,8 +1,8 @@
 model:
   default: "gpt-5.4"
   provider: "custom"
-  base_url: "http://209.97.166.232:3000/v1"
-  api_key: "sk-kqoh35f5qXht8cEPlPtLREam2AmvDpSJf7sZ4kLo9609fcvI"
+  base_url: "${HERMES_BASE_URL}"
+  api_key: "${HERMES_API_KEY}"
 
 terminal:
   backend: "local"

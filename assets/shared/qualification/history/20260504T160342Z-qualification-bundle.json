@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-05-04T16:03:42Z",
+  "qualification_source": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/external_intelligence/triage/prioritized_signals.json",
+  "signals_source": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/external_intelligence/history/signals.jsonl",
+  "candidates": [
+    {
+      "idea_id": "IDEA-001",
+      "title": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12",
+      "verdict": "blocked",
+      "reason_codes": [
+        "stale_required_evidence",
+        "pain_not_user_facing",
+        "pain_not_narrow_enough",
+        "missing_market_pricing_proof"
+      ],
+      "evidence_checks": [
+        {
+          "signal_id": "b5daeebec557dfff",
+          "observed_at": "2026-05-01T12:30:17Z",
+          "passes_72h": false,
+          "url": "https://news.ycombinator.com/"
+        }
+      ],
+      "target_user": "Developers and technical operators",
+      "problem_summary": "Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12y hide . Softmax, can you derive the Jacobian?",
+      "market_pricing_proof": {},
+      "feasibility": {},
+      "generated_from": {
+        "history_path": "assets/shared/external_intelligence/history/signals.jsonl",
+        "cluster_path": "assets/shared/external_intelligence/triage/clusters.json",
+        "representative_url": "https://news.ycombinator.com/"
+      }
+    },
+    {
+      "idea_id": "IDEA-002",
+      "title": "org Functional Programmers need to take a look at Zig haskell zig pure-systems",
+      "verdict": "blocked",
+      "reason_codes": [
+        "stale_required_evidence",
+        "pain_not_user_facing",
+        "pain_not_narrow_enough",
+        "missing_market_pricing_proof"
+      ],
+      "evidence_checks": [
+        {
+          "signal_id": "39309a0c71aaf54f",
+          "observed_at": "2026-05-01T12:30:16Z",
+          "passes_72h": false,
+          "url": "https://lobste.rs/"
+        }
+      ],
+      "target_user": "Developers and technical operators",
+      "problem_summary": "org Functional Programmers need to take a look at Zig haskell zig pure-systems",
+      "market_pricing_proof": {},
+      "feasibility": {},
+      "generated_from": {
+        "history_path": "assets/shared/external_intelligence/history/signals.jsonl",
+        "cluster_path": "assets/shared/external_intelligence/triage/clusters.json",
+        "representative_url": "https://lobste.rs/"
+      }
+    }
+  ]
+}

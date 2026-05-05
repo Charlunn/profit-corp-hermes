@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import shutil
 import tempfile
@@ -46,6 +47,94 @@ def load_module(module_name: str, script_path: Path):
 class ApprovedDeliveryBootstrapTests(unittest.TestCase):
     maxDiff = None
 
+    def _write_json_fixture(self, path: Path, payload: dict) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return path.as_posix()
+
+    def _fake_materialize_product_surface(self, _workspace: Path, _record: dict) -> list[str]:
+        return ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"]
+
+    def _make_dispatch_result(self, workspace: Path, *, transcript_name: str = "design-claude-code.txt", skills: list[str] | None = None, hermes_profile: str = "arch") -> dict:
+        transcript_path = workspace / ".hermes" / transcript_name
+        transcript_path.parent.mkdir(parents=True, exist_ok=True)
+        transcript_path.write_text("specialist transcript evidence\n", encoding="utf-8")
+        return {
+            "ok": True,
+            "transcript_path": transcript_path.as_posix(),
+            "stdout": "ok",
+            "stderr": "",
+            "skills": skills or [],
+            "hermes_profile": hermes_profile,
+            "command": ["hermes", "-p", hermes_profile, "chat", "-q", "stage prompt", "-Q"],
+        }
+
+    def _write_stage_handoff_fixture(self, workspace: Path, artifact: str, content: str) -> str:
+        path = workspace / artifact
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return path.as_posix()
+
+    def _write_ui_artifact_fixture(self, workspace: Path, record: dict, stage: str) -> str:
+        artifact_path = workspace / ".hermes" / "ui-ux-design-system.md"
+        summary_path = workspace / ".hermes" / "ui-ux-design-system.summary.json"
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("# UI / UX Design System\n\n## Screens\n- dashboard\n", encoding="utf-8")
+        if "product_requirements" in record:
+            contract = dict(record["product_requirements"])
+        else:
+            contract = {
+                "pain_point": record.get("pain_point", "Inbound leads stall because operators lack a focused qualification workflow."),
+                "monetization": list(record.get("monetization", ["Charge for priority scoring and automated follow-up workflows."])),
+                "required_languages": list(record.get("required_languages", ["en", "zh"])),
+            }
+        summary_payload = {
+            "coverage": {
+                "screen_inventory": ["capture inbound lead notes", "score urgency and intent", "show daily follow-up queue"],
+                "primary_workflow": [
+                    f"User opens the product and immediately sees a workflow focused on: {contract['pain_point']}",
+                    "User completes at least one concrete task that proves the app can score urgency and intent",
+                    "User receives a visible result, output, or paid next action rather than generic template copy",
+                ],
+                "monetization_surface": list(contract["monetization"]),
+                "multilingual_coverage": list(contract["required_languages"]),
+                "responsive_rules": ["mobile"],
+                "accessibility_rules": ["focus states"],
+                "states": ["empty", "loading", "error", "success"],
+            },
+            "brief_contract": {
+                "pain_point": contract["pain_point"],
+                "core_workflow": [
+                    f"User opens the product and immediately sees a workflow focused on: {contract['pain_point']}",
+                    "User completes at least one concrete task that proves the app can score urgency and intent",
+                    "User receives a visible result, output, or paid next action rather than generic template copy",
+                ],
+                "monetization": list(contract["monetization"]),
+                "required_languages": list(contract["required_languages"]),
+                "screen_inventory": ["capture inbound lead notes", "score urgency and intent", "show daily follow-up queue"],
+            },
+            "summary_hash": hashlib.sha256(
+                json.dumps(
+                    {
+                        "pain_point": contract["pain_point"],
+                        "core_workflow": [
+                            f"User opens the product and immediately sees a workflow focused on: {contract['pain_point']}",
+                            "User completes at least one concrete task that proves the app can score urgency and intent",
+                            "User receives a visible result, output, or paid next action rather than generic template copy",
+                        ],
+                        "monetization": list(contract["monetization"]),
+                        "required_languages": list(contract["required_languages"]),
+                        "screen_inventory": ["capture inbound lead notes", "score urgency and intent", "show daily follow-up queue"],
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest(),
+            "stage": stage,
+        }
+        summary_path.write_text(json.dumps(summary_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return artifact_path.as_posix()
+
     def addCleanupPath(self, path: Path) -> None:
         self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
 
@@ -87,6 +176,24 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             ],
             "target_user": "Solo operators who need to qualify inbound leads quickly.",
             "mvp_framing": "Turn incoming lead notes into ranked follow-up actions.",
+            "pain_point": "Inbound leads stall because operators lack a focused qualification workflow.",
+            "monetization": [
+                "Charge for priority scoring and automated follow-up workflows.",
+            ],
+            "required_languages": ["en", "zh"],
+            "ui_artifact_contract": [
+                "Reference `/ui-ux-pro-max` output before frontend implementation.",
+            ],
+            "product_requirements": {
+                "pain_point": "Inbound leads stall because operators lack a focused qualification workflow.",
+                "monetization": [
+                    "Charge for priority scoring and automated follow-up workflows.",
+                ],
+                "required_languages": ["en", "zh"],
+                "ui_artifact_contract": [
+                    "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                ],
+            },
             "constraints": [
                 "reuse shared Supabase auth and payments",
                 "keep delivery scope approved-brief-only",
@@ -174,6 +281,32 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             "# Hermes Project Brief Entrypoint\n\n- Workspace: `lead-capture-copilot`\n",
             encoding="utf-8",
         )
+        (hermes_dir / "ui-ux-design-system.md").write_text("# UI UX Design System\n", encoding="utf-8")
+        (hermes_dir / "ui-ux-design-system.summary.json").write_text(
+            json.dumps(
+                {
+                    "generated_by": "/ui-ux-pro-max",
+                    "artifact_path": (hermes_dir / "ui-ux-design-system.md").as_posix(),
+                    "stage": "design",
+                    "role": "design-specialist",
+                    "app_name": "Lead Capture Copilot",
+                    "target_user": "Solo operators who need to qualify inbound leads quickly.",
+                    "coverage": {
+                        "screen_inventory": ["landing", "dashboard"],
+                        "primary_workflow": ["capture inbound lead notes", "score urgency", "show follow-up queue"],
+                        "monetization_surface": ["upgrade CTA"],
+                        "multilingual_coverage": ["en", "zh"],
+                        "responsive_rules": ["desktop", "mobile"],
+                        "accessibility_rules": ["focus-visible", "labels"],
+                        "states": ["empty", "loading", "error", "success"],
+                    },
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         if include_downstream_prereq_evidence:
             (hermes_dir / "deployment-prerequisites.md").write_text(
                 "# Deployment prerequisites\n\n- Missing Vercel credential evidence.\n",
@@ -208,6 +341,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             "project_url": "https://lead-capture.example.com",
             "target_user": "Solo operators who need to qualify inbound leads quickly.",
             "mvp_framing": "Turn incoming lead notes into ranked follow-up actions.",
+            "pain_point": "Inbound leads stall because operators lack a focused qualification workflow.",
             "approved_scope": [
                 "capture inbound lead notes",
                 "score urgency and intent",
@@ -221,8 +355,17 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                 "brief generated",
                 "workspace bootstrap ready",
             ],
+            "monetization": [
+                "Charge for priority scoring and automated follow-up workflows.",
+            ],
+            "required_languages": ["en", "zh"],
+            "ui_artifact_contract": [
+                "Reference `/ui-ux-pro-max` output before frontend implementation.",
+            ],
             "template_contract_path": CONTRACT_PATH.as_posix(),
             "gsd_constraints_path": PLAN_09_01_PATH.as_posix(),
+            "qualification_bundle_path": start_module.DEFAULT_QUALIFICATION_BUNDLE_PATH,
+            "qualified_idea_id": "IDEA-001",
         }
         bundle = start_module.write_approved_project_bundle(payload, approved_projects_root=approved_root)
         authority_path = Path(bundle["authority_record_path"])
@@ -257,11 +400,18 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
             self.assertIn(".vercel", ignored)
             workspace.mkdir(parents=True, exist_ok=True)
             (workspace / "src").mkdir(parents=True, exist_ok=True)
+            (workspace / "src" / "app").mkdir(parents=True, exist_ok=True)
+            (workspace / "src" / "app" / "dashboard").mkdir(parents=True, exist_ok=True)
+            (workspace / "src" / "app" / "demo").mkdir(parents=True, exist_ok=True)
             (workspace / "README.md").write_text("# demo\n", encoding="utf-8")
             (workspace / ".env").write_text("APP_KEY=demo\n", encoding="utf-8")
             (workspace / "vercel.json").write_text("{}\n", encoding="utf-8")
+            (workspace / "src" / "app" / "page.tsx").write_text("export default function Page(){return null}\n", encoding="utf-8")
+            (workspace / "src" / "app" / "dashboard" / "page.tsx").write_text("export default function Dashboard(){return null}\n", encoding="utf-8")
+            (workspace / "src" / "app" / "demo" / "page.tsx").write_text("export default function Demo(){return null}\n", encoding="utf-8")
             (workspace / "src" / "lib").mkdir(parents=True, exist_ok=True)
             (workspace / "src" / "lib" / "app-definition.ts").write_text("export const appDefinition = {} as const;\n", encoding="utf-8")
+
 
         with mock.patch.object(start_module, "ROOT_DIR", root), \
              mock.patch.object(start_module, "workspace_instantiation_artifacts_ready", return_value=True), \
@@ -281,13 +431,20 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "prepare_auth_source": "gh_cli",
                  "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
-             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", side_effect=lambda _workspace, _record, _stage: self._write_ui_artifact_fixture(workspace, _record, _stage)), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: self._write_stage_handoff_fixture(workspace, artifact, _content)), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -319,14 +476,62 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertEqual(updated["shipping"]["github"]["prepare_auth_source_details"]["login"], "profit-corp")
         events = self.read_events(project_dir)
         self.assert_event_stages(events, PIPELINE_STAGES[:-2])
-        specialist_event = next(event for event in events if event["stage"] == "design")
+        specialist_event = next(event for event in events if event["stage"] == "development")
         self.assertEqual(specialist_event["action"], "specialist_stage_completed")
-        self.assertTrue(
-            specialist_event["evidence_path"].endswith("design-claude-code.txt")
-            or specialist_event["evidence_path"].endswith("ui-ux-design-system.md")
-        )
+        self.assertEqual(specialist_event["substance"]["template_only"], False)
+        self.assertIn("src/app/page.tsx", specialist_event["substance"]["touched_paths"])
+        self.assertEqual(specialist_event["gate"]["decision"], "pass")
+        self.assertEqual(specialist_event["outcome"]["status"], "ready")
+        self.assertTrue(specialist_event["evidence"]["primary_path"].endswith("02-development.json"))
+        self.assertEqual(specialist_event["handoff"]["artifact_path"], (workspace / ".hermes" / "stage-handoffs" / "02-development.md").as_posix())
+        self.assertTrue(specialist_event["evidence_path"].endswith("02-development.json"))
 
-    def test_bootstrap_recovery_from_blocked_github_sync_rewrites_authority_to_current_success_truth(self) -> None:
+    def test_development_stage_blocks_when_workspace_inventory_is_template_only(self) -> None:
+        start_module = load_module("start_approved_project_delivery_template_only", START_SCRIPT_PATH)
+        root, project_dir, authority_path, workspace_root = self.create_project_fixture()
+        workspace = self.seed_workspace_outputs(workspace_root)
+        (workspace / "src" / "app").mkdir(parents=True, exist_ok=True)
+        (workspace / "src" / "app" / "dashboard").mkdir(parents=True, exist_ok=True)
+        (workspace / "src" / "app" / "demo").mkdir(parents=True, exist_ok=True)
+        (workspace / "src" / "app" / "page.tsx").write_text(
+            "A starter that already knows how to do auth, payments, and shared backend boundaries.\n",
+            encoding="utf-8",
+        )
+        (workspace / "src" / "app" / "dashboard" / "page.tsx").write_text("export default function Dashboard(){return null}\n", encoding="utf-8")
+        (workspace / "src" / "app" / "demo" / "page.tsx").write_text("export default function Demo(){return null}\n", encoding="utf-8")
+        (workspace / "src" / "lib").mkdir(parents=True, exist_ok=True)
+        (workspace / "src" / "lib" / "app-definition.ts").write_text("export const appDefinition = {} as const;\n", encoding="utf-8")
+        record = self.read_json(authority_path)
+        record["pipeline"].update(
+            {
+                "stage": "development",
+                "status": "ready",
+                "resume_from_stage": "development",
+                "workspace_path": workspace.as_posix(),
+                "delivery_run_id": "delivery-lead-capture-copilot-001",
+            }
+        )
+        authority_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace, transcript_name="development-claude-code.txt")), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", side_effect=lambda _workspace, _record, _stage: self._write_ui_artifact_fixture(workspace, _record, _stage)), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
+             mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts"],
+                 "product_proof_paths": ["src/app/page.tsx"],
+                 "template_only": True,
+                 "template_only_issues": ["workspace changes only touched src/lib/app-definition.ts", "template marker still present in src/app/page.tsx: A starter that already knows how to do auth, payments, and shared backend boundaries."],
+             })):
+            result = start_module.run_pipeline_from_stage(authority_path, self.read_json(authority_path), start_stage="development", workspace_root=workspace_root)
+
+        self.assertFalse(result["ok"], msg=result)
+        self.assertEqual(result["block_reason"], "workspace_change_inventory_incomplete")
+        self.assertIn("template-only", result["error"])
+
         start_module = load_module("start_approved_project_delivery", START_SCRIPT_PATH)
         root, project_dir, authority_path, workspace_root = self.create_project_fixture()
         workspace = self.seed_workspace_outputs(workspace_root)
@@ -342,12 +547,18 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "status_path": (workspace / ".hermes" / "DELIVERY_STATUS.md").as_posix(),
                  "run_id": "delivery-lead-capture-copilot-001",
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
-             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", side_effect=lambda _workspace, _record, _stage: self._write_ui_artifact_fixture(workspace, _record, _stage)), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: self._write_stage_handoff_fixture(workspace, artifact, _content)), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -360,6 +571,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
 
         self.assertFalse(blocked_result["ok"], msg=blocked_result)
         self.assertEqual(blocked_result["stage"], "github_sync")
+        (workspace / ".hermes" / "github-sync-blocked.json").write_text('{"ok": false}\n', encoding="utf-8")
 
         blocked_events = self.read_events(project_dir)
         blocked_events[-1]["timestamp"] = "2026-04-27T08:35:30Z"
@@ -464,13 +676,20 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "prepare_auth_source": "gh_cli",
                  "prepare_auth_source_details": {"login": "profit-corp"},
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
-             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", side_effect=lambda _workspace, _record, _stage: self._write_ui_artifact_fixture(workspace, _record, _stage)), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: self._write_stage_handoff_fixture(workspace, artifact, _content)), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -675,7 +894,7 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                     self.assertEqual(updated["conformance_evidence_path"], expected_evidence)
 
                 events = self.read_events(project_dir)
-                self.assertEqual(events[-1]["outcome"], "blocked")
+                self.assertEqual(events[-1]["outcome"]["status"], "blocked")
                 self.assertEqual(events[-1]["stage"], case["expected_stage"])
                 self.assertEqual(events[-1]["block_reason"], case["expected_reason"])
                 self.assertEqual(events[-1]["evidence_path"], expected_evidence)
@@ -915,13 +1134,20 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
                  "remote_name": "origin",
                  "prepare_evidence_path": (workspace / ".hermes" / "github-repository-prepare.json").as_posix(),
              }), \
-             mock.patch.object(start_module, "dispatch_specialist_agent", return_value={"ok": True, "transcript_path": (workspace / ".hermes" / "design-claude-code.txt").as_posix(), "stdout": "ok", "stderr": ""}), \
+             mock.patch.object(start_module, "dispatch_specialist_agent", return_value=self._make_dispatch_result(workspace)), \
              mock.patch.object(start_module, "build_specialist_dispatch_prompt", return_value="stage prompt"), \
-             mock.patch.object(start_module, "ensure_claude_code_available", return_value="claude"), \
-             mock.patch.object(start_module, "ensure_ui_ux_preflight", return_value=(workspace / ".hermes" / "ui-ux-design-system.md").as_posix()), \
+             mock.patch.object(start_module, "ensure_ui_ux_preflight", side_effect=lambda _workspace, _record, _stage: self._write_ui_artifact_fixture(workspace, _record, _stage)), \
+             mock.patch.object(start_module, "materialize_product_surface", side_effect=self._fake_materialize_product_surface), \
              mock.patch.object(start_module, "update_app_definition_for_delivery", return_value=(workspace / "src" / "lib" / "app-definition.ts").as_posix()), \
-             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: (workspace / ".hermes" / "workspace-changes.json").as_posix()), \
-             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: (workspace / artifact).as_posix()), \
+             mock.patch.object(start_module, "write_workspace_change_inventory", side_effect=lambda *args, **kwargs: self._write_json_fixture(workspace / ".hermes" / "workspace-changes.json", {
+                 "stage": kwargs.get("stage", "development"),
+                 "role": kwargs.get("role", "development-specialist"),
+                 "touched_paths": ["src/lib/app-definition.ts", "src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx"],
+                 "product_proof_paths": ["src/app/page.tsx", "src/app/dashboard/page.tsx", "src/app/demo/page.tsx", "src/lib/app-definition.ts"],
+                 "template_only": False,
+                 "template_only_issues": [],
+             })), \
+             mock.patch.object(start_module, "write_stage_handoff", side_effect=lambda _workspace, artifact, _content: self._write_stage_handoff_fixture(workspace, artifact, _content)), \
              mock.patch.object(start_module, "write_final_delivery_summary", return_value=(workspace / ".hermes" / "FINAL_DELIVERY.md").as_posix()), \
              mock.patch.object(start_module, "inspect_workspace_changes", return_value={"classification": "product_only", "evidence_path": (workspace / ".hermes" / "protected-surface-classification-testing.json").as_posix()}), \
              mock.patch.object(start_module, "run_github_sync", return_value={
@@ -962,5 +1188,66 @@ class ApprovedDeliveryBootstrapTests(unittest.TestCase):
         self.assertTrue((project_dir / "FINAL_DELIVERY.md").exists(), "authority-level final handoff snapshot should remain")
 
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_dispatch_specialist_agent_uses_hermes_profile_and_ui_skill(self) -> None:
+        start_module = load_module("start_approved_project_delivery_dispatch", START_SCRIPT_PATH)
+        root, _project_dir, authority_path, workspace_root = self.create_project_fixture()
+        workspace = self.seed_workspace_outputs(workspace_root)
+        (workspace / ".hermes").mkdir(parents=True, exist_ok=True)
+        profile_skill_dir = Path.home() / "AppData" / "Local" / "hermes" / "profiles" / "arch" / "skills" / "ui-ux-pro-max"
+        profile_skill_dir.mkdir(parents=True, exist_ok=True)
+
+        config = dict(start_module.SPECIALIST_STAGE_BY_PIPELINE["design"])
+        calls: list[list[str]] = []
+
+        class Result:
+            def __init__(self, returncode=0, stdout="ok", stderr=""):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[0:4] == ["/mock/hermes", "-p", "arch", "chat"] and "Reply with exactly OK." in command:
+                return Result(returncode=0, stdout="OK", stderr="")
+            return Result()
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module.shutil, "which", side_effect=lambda name: f"/mock/{name}" if name in {"hermes", "claude"} else None), \
+             mock.patch.object(start_module.subprocess, "run", side_effect=fake_run):
+            result = start_module.dispatch_specialist_agent(
+                start_module.load_json(authority_path),
+                workspace,
+                config,
+                "",
+                (workspace / ".hermes" / "ui-ux-design-system.md").as_posix(),
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["hermes_profile"], "arch")
+        self.assertEqual(result["skills"], ["ui-ux-pro-max"])
+        self.assertEqual(calls[0][0:5], ["/mock/hermes", "-p", "arch", "chat", "-q"])
+        self.assertIn("Reply with exactly OK.", calls[0])
+        self.assertIn("-s", calls[0])
+        self.assertIn("ui-ux-pro-max", calls[0])
+        self.assertIn("--yolo", calls[1])
+
+    def test_dispatch_specialist_agent_requires_ui_skill_for_frontend_stage(self) -> None:
+        start_module = load_module("start_approved_project_delivery_missing_skill", START_SCRIPT_PATH)
+        root, _project_dir, authority_path, workspace_root = self.create_project_fixture()
+        workspace = self.seed_workspace_outputs(workspace_root)
+        profile_skill_dir = Path.home() / "AppData" / "Local" / "hermes" / "profiles" / "arch" / "skills" / "ui-ux-pro-max"
+        if profile_skill_dir.exists():
+            shutil.rmtree(profile_skill_dir)
+        config = dict(start_module.SPECIALIST_STAGE_BY_PIPELINE["design"])
+
+        with mock.patch.object(start_module, "ROOT_DIR", root), \
+             mock.patch.object(start_module.shutil, "which", side_effect=lambda name: f"/mock/{name}" if name in {"hermes", "claude"} else None):
+            with self.assertRaises(start_module.ApprovedProjectDeliveryError):
+                start_module.dispatch_specialist_agent(
+                    start_module.load_json(authority_path),
+                    workspace,
+                    config,
+                    "",
+                    (workspace / ".hermes" / "ui-ux-design-system.md").as_posix(),
+                )
+

@@ -1,45 +1,75 @@
 # Profit-Corp Hermes
 
+## Current Milestone
+
+- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (shipped 2026-05-05)
+
 ## Milestones
 
-- ✅ **v1.1.1 Delivery Pipeline Reliability Fixes** — Phases 14-17 (shipped 2026-04-30)
-- ✅ **v1.1 SaaS Delivery Factory** — Phases 7-13 (shipped 2026-04-28)
-- ✅ **v1.0 milestone** — Phases 1-6 (shipped 2026-04-26)
+- **v1.3 Hermes-First Autonomous Company Interface** - Phases 26-29 (shipped 2026-05-05)
+- **v1.2 Autonomous Project Launch Loop** - Phases 22-25 (shipped 2026-05-05)
+- **v1.1.2 Real-SaaS Delivery Governance Hardening** - Phases 18-21 (shipped 2026-05-04)
+- **v1.1.1 Delivery Pipeline Reliability Fixes** - Phases 14-17 (shipped 2026-04-30)
+- **v1.1 SaaS Delivery Factory** - Phases 7-13 (shipped 2026-04-28)
+- **v1.0 milestone** - Phases 1-6 (shipped 2026-04-26)
 
-## Phases
+## Proposed Roadmap
 
-<details>
-<summary>✅ v1.1.1 Delivery Pipeline Reliability Fixes (Phases 14-17) — SHIPPED 2026-04-30</summary>
+**4 phases** | **12 requirements mapped** | All covered
 
-- [x] Phase 14: GitHub Auth and Repo Target Reliability (2/2 plans) — completed 2026-04-29
-- [x] Phase 15: GitHub Sync Reliability on Real Workspaces (3/3 plans) — completed 2026-04-29
-- [x] Phase 16: Vercel Auth and Deploy Reliability (3/3 plans) — completed 2026-04-29
-- [x] Phase 17: Authority and Status Convergence (3/3 plans) — completed 2026-04-29
+| # | Phase | Goal | Requirements | Success Criteria |
+|---|-------|------|--------------|------------------|
+| 26 | Hermes Intent Gateway and Unified Project Start | Turn "start a new project" into one Hermes-native entrypoint that hides pipeline internals | HERMES-01, HERMES-02, HERMES-03 | Complete (2026-05-05) |
+| 27 | Hermes Internal Role Routing and Delivery Handoff | Make Hermes orchestrate company roles and delivery specialists internally | ROLE-01, ROLE-02, ROLE-03 | Complete (2026-05-05) |
+| 28 | Hermes Proposal and Approval Surface | Make proposal presentation and approval feel like one Hermes conversation instead of a bundle of subsystems | PROP-01, PROP-02, PROP-03 | Complete (2026-05-05) |
+| 29 | Hermes Final Delivery Experience and Blocked Recovery | Return the final URL or blocked recovery context as the natural result of the same Hermes workflow | AUTO-01, AUTO-02, AUTO-03 | Complete (2026-05-05) |
 
-</details>
+## Phase Details
 
-## Progress
+### Phase 26: Hermes Intent Gateway and Unified Project Start
 
-| Milestone | Phases | Plans Complete | Status | Shipped |
-|-----------|--------|----------------|--------|---------|
-| v1.1.1 | 14-17 | 10/10 | Shipped | 2026-04-30 |
-| v1.1 | 7-13 | 20/20 | Shipped | 2026-04-28 |
-| v1.0 | 1-6 | 18/18 | Shipped | 2026-04-26 |
+**Goal:** Let the owner tell Hermes to start a project without selecting scripts, phases, or transport-specific entrypoints.
 
-## Milestone Summary
+**Requirements:** `HERMES-01`, `HERMES-02`, `HERMES-03`
 
-**Key Decisions:**
-- Treat the live Hermes instance test as authoritative evidence for v1.1.1 scope instead of reopening broad product-factory exploration
-- Keep the approved-project delivery architecture and repair its broken auth, sync, deploy, and status boundaries in place
-- Prioritize real operator-environment compatibility over idealized token-only automation assumptions
+**Success criteria:**
+1. Hermes exposes one top-level "start project" capability that becomes the canonical launch path.
+2. That capability creates one authoritative run using the shipped 22-25 governed machinery instead of inventing a second state model.
+3. Healthy-path operator output speaks in Hermes terms rather than script or phase names.
+4. Internal launch details remain inspectable for governance but are not required for normal operator use.
 
-**Issues Targeted:**
-- `missing_github_auth` despite valid `gh` login
-- GitHub owner fallback to project slug
-- Windows long-path / dependency snapshot failures during `github_sync`
-- HTTPS push assumptions that fail while SSH is healthy
-- Vercel token-only gating that ignores a valid local CLI login path
-- Authority/status artifacts remaining blocked after a successful recovered live deploy
+### Phase 27: Hermes Internal Role Routing and Delivery Handoff
 
-**Deferred:**
-- DNS/domain automation
+**Goal:** Keep all company and delivery roles behind Hermes so the owner talks to one system while Hermes coordinates the specialists.
+
+**Requirements:** `ROLE-01`, `ROLE-02`, `ROLE-03`
+
+**Success criteria:**
+1. Hermes invokes `ceo`, `scout`, `cmo`, and `arch` internally as part of project discovery and qualification.
+2. Hermes hands approved work to delivery specialists without requiring the owner to run stage-specific commands.
+3. Hermes role configuration remains profile-and-skill driven instead of ad hoc runtime glue.
+4. Operator-facing messages can explain which internal role is acting without forcing the owner to control that role directly.
+
+### Phase 28: Hermes Proposal and Approval Surface
+
+**Goal:** Present one proposal and one approval loop as a clean Hermes conversation surface while preserving the locked contract underneath.
+
+**Requirements:** `PROP-01`, `PROP-02`, `PROP-03`
+
+**Success criteria:**
+1. Hermes renders one concise evidence-backed proposal with pain, target user, feasibility, pricing proof, and launch framing.
+2. The owner can approve or reject the proposal by replying to Hermes instead of thinking about pipeline artifacts.
+3. Approval still persists the same locked delivery contract already enforced by the shipped governance backbone.
+4. Missing freshness, feasibility, pricing proof, or approval linkage still blocks hard rather than being smoothed over in the interface.
+
+### Phase 29: Hermes Final Delivery Experience and Blocked Recovery
+
+**Goal:** Make final success and blocked recovery feel like normal Hermes outputs from the same start-to-finish workflow.
+
+**Requirements:** `AUTO-01`, `AUTO-02`, `AUTO-03`
+
+**Success criteria:**
+1. Hermes continues approved work through design, development, testing, GitHub, Vercel, and final handoff without healthy-path manual resumes.
+2. Final success returns the live URL and concise ship summary as the natural result of the original Hermes request.
+3. Blocked outcomes return failed stage, reason, and recovery context in owner-facing language.
+4. Success and blocked replies still derive from authoritative persisted truth rather than transient process memory.

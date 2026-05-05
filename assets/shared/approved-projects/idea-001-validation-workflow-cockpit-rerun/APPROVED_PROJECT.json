@@ -1,0 +1,180 @@
+{
+  "approval": {
+    "approval_id": "APR-2026-05-02-VALIDATION-02",
+    "approved_at": "2026-05-02T20:15:00Z",
+    "approver": "ceo",
+    "evidence": {
+      "decision_record": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/decision_packages/OPERATING_DECISION_PACKAGE.md",
+      "summary": "Validation rerun after GitHub owner auto-resolution fix."
+    }
+  },
+  "project_identity": {
+    "project_slug": "idea-001-validation-workflow-cockpit-rerun",
+    "app_key": "idea_001_validation_workflow_cockpit_rerun",
+    "app_name": "IDEA 001 Validation Workflow Cockpit Rerun",
+    "app_url": "https://idea-001-validation-workflow-cockpit-rerun.example.com"
+  },
+  "approved_scope": [
+    "address validated pain point IDEA-001",
+    "ship one narrow operator workflow based on the top ranked opportunity",
+    "prove Hermes role-based frontend and backend delivery end to end"
+  ],
+  "target_user": "Developers and technical operators",
+  "mvp_framing": "Deliver one markdown-first operator workflow that proves the IDEA-001 pain point is turned into real product behavior.",
+  "constraints": [
+    "reuse shared Supabase auth and payments",
+    "keep delivery scope approved-brief-only",
+    "frontend specialists must load official ui-ux-pro-max via Hermes profile skills"
+  ],
+  "acceptance_gates": [
+    "brief generated",
+    "workspace bootstrap ready",
+    "production deployment reachable",
+    "specialist transcripts show Hermes role execution"
+  ],
+  "pipeline": {
+    "stage": "handoff",
+    "status": "completed",
+    "block_reason": null,
+    "resume_from_stage": "",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun",
+    "delivery_run_id": "delivery-idea-001-validation-workflow-cockpit-rerun-001",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-deploy.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/FINAL_DELIVERY.md"
+  },
+  "artifacts": {
+    "project_directory": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun",
+    "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/APPROVED_PROJECT.json",
+    "delivery_brief_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/PROJECT_BRIEF.md",
+    "template_contract_path": "docs/platform/standalone-saas-template-contract.md",
+    "project_metadata_path": ".hermes/project-metadata.json",
+    "shared_backend_guardrails_path": ".hermes/shared-backend-guardrails.json",
+    "approved_brief_entrypoint_path": ".hermes/PROJECT_BRIEF_ENTRYPOINT.md",
+    "final_review_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/FINAL_OPERATOR_REVIEW.md",
+    "gsd_constraints_path": ".planning/phases/09-claude-code-delivery-team-orchestration/09-01-PLAN.md",
+    "events_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/approved-delivery-events.jsonl",
+    "status_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/DELIVERY_PIPELINE_STATUS.md",
+    "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun",
+    "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/conformance-report.md",
+    "delivery_manifest_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/delivery-run-manifest.json",
+    "final_handoff_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/FINAL_DELIVERY.md"
+  },
+  "shipping": {
+    "github": {
+      "repository_mode": "create",
+      "repository_owner": "Charlunn",
+      "repository_repo": "pc-idea-001-validation-workflow-cockpit-rerun",
+      "repository_name": "Charlunn/pc-idea-001-validation-workflow-cockpit-rerun",
+      "repository_url": "https://github.com/Charlunn/pc-idea-001-validation-workflow-cockpit-rerun.git",
+      "default_branch": "main",
+      "remote_name": "origin",
+      "last_sync_status": "completed",
+      "naming_rule": "pc-<project-slug>",
+      "delivery_run_id": "delivery-idea-001-validation-workflow-cockpit-rerun-001",
+      "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun",
+      "authority_record_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/APPROVED_PROJECT.json",
+      "prepare_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/github-repository-prepare.json",
+      "prepare_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/credential-audit-github-repository-prepare.json",
+      "prepare_auth_source": "gh_cli",
+      "prepare_auth_source_details": {
+        "command": "gh auth status",
+        "login": ""
+      },
+      "synced_commit": "b6dbfd4",
+      "sync_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/github-sync.json",
+      "remote_action": "unchanged",
+      "push_transport": "https",
+      "push_attempts": [
+        {
+          "transport": "https",
+          "remote_url": "https://github.com/Charlunn/pc-idea-001-validation-workflow-cockpit-rerun.git",
+          "status": "ok",
+          "stderr_summary": "Everything up-to-date"
+        }
+      ]
+    },
+    "vercel": {
+      "project_id": "",
+      "project_name": "idea-001-validation-workflow-cockpit-rerun-prod",
+      "project_url": "https://vercel.com/charlunns-projects/idea-001-validation-workflow-cockpit-rerun-prod",
+      "team_scope": "charlunns-projects",
+      "linked": true,
+      "auth_source": "vercel_cli_session",
+      "auth_source_details": {
+        "username": "charlunn"
+      },
+      "link_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-linkage.json",
+      "link_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/credential-audit-vercel-project-link.json",
+      "env_contract": {
+        "platform_managed": [
+          "NEXT_PUBLIC_SUPABASE_URL",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
+          "PAYPAL_CLIENT_SECRET",
+          "PAYPAL_ENVIRONMENT"
+        ],
+        "platform_values": {
+          "NEXT_PUBLIC_SUPABASE_URL": "https://kkjdbgpaveerbxlbnxty.supabase.co",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtramRiZ3BhdmVlcmJ4bGJueHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MDY4MTUsImV4cCI6MjA5MjQ4MjgxNX0.pC-mjCcGOB6XgxwW4lxLHNTJCO7Sp1IIVr2KK2VMeSI",
+          "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtramRiZ3BhdmVlcmJ4bGJueHR5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjkwNjgxNSwiZXhwIjoyMDkyNDgyODE1fQ.K2w_uIj9aTLWrgJDj5cudCEcOuD8he09MmcnItHcYxQ",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID": "AY7pEyQt2mENOFeGhVz3DdEvo6UF-LnaT-J3rjSZvpqK19gwyyH08K78m1yJQiryPPTVkaN4Uc17fJE3",
+          "PAYPAL_CLIENT_SECRET": "EJ1DGWNa0NnvwJtAEWtHsou9RR6I2QcwHD8EZL3OKRsd4fpHJoDJMViCuuEugLD2lR-IV0yF9sI4U1Ix",
+          "PAYPAL_ENVIRONMENT": "live"
+        },
+        "identity_derived": {
+          "APP_KEY": "idea_001_validation_workflow_cockpit_rerun",
+          "APP_NAME": "IDEA 001 Validation Workflow Cockpit Rerun",
+          "APP_URL": "https://idea-001-validation-workflow-cockpit-rerun.example.com",
+          "PAYPAL_BRAND_NAME": "IDEA 001 Validation Workflow Cockpit Rerun"
+        },
+        "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-env-contract.json"
+      },
+      "env_contract_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-env-contract.json",
+      "env_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/credential-audit-vercel-env-apply.json",
+      "required_env": {
+        "platform_managed": [
+          "NEXT_PUBLIC_SUPABASE_URL",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "NEXT_PUBLIC_PAYPAL_CLIENT_ID",
+          "PAYPAL_CLIENT_SECRET",
+          "PAYPAL_ENVIRONMENT"
+        ],
+        "identity_derived": {
+          "APP_KEY": "idea_001_validation_workflow_cockpit_rerun",
+          "APP_NAME": "IDEA 001 Validation Workflow Cockpit Rerun",
+          "APP_URL": "https://idea-001-validation-workflow-cockpit-rerun.example.com",
+          "PAYPAL_BRAND_NAME": "IDEA 001 Validation Workflow Cockpit Rerun"
+        }
+      },
+      "deploy_url": "https://idea-001-validation-workflow-cockpit-rerun-prod-j0r29cuh5.vercel.app",
+      "deploy_status": "ready",
+      "deploy_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-deploy.json",
+      "deploy_audit_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/credential-audit-vercel-deploy.json",
+      "deployment_url": "https://idea-001-validation-workflow-cockpit-rerun-prod-j0r29cuh5.vercel.app",
+      "deployment_status": "ready",
+      "deployment_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-deploy.json",
+      "deploy_inspector_url": "",
+      "deployment_api_url": "",
+      "deploy_target": "",
+      "deploy_id": ""
+    }
+  },
+  "final_handoff": {
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/FINAL_DELIVERY.md",
+    "link": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/FINAL_DELIVERY.md"
+  },
+  "workspace_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun",
+  "conformance_evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-hermes/assets/shared/approved-projects/idea-001-validation-workflow-cockpit-rerun/conformance-report.md",
+  "protected_change": {
+    "classification": "product_only",
+    "status": "approved",
+    "evidence_path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/protected-surface-classification-testing.json"
+  },
+  "latest_blocked_prerequisite": {
+    "status": "resolved",
+    "reason": "vercel_deploy_completed",
+    "path": "C:/Users/42236/Desktop/dev/profit-corp-projects/idea-001-validation-workflow-cockpit-rerun/.hermes/vercel-deploy.json"
+  }
+}

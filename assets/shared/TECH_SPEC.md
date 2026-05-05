@@ -1,4 +1,4 @@
-# Technical Specification: . Intel Arc Pro B70 Review ( pugetsystems.com ) points by zdw hide . Who owns th
+# Technical Specification: Found in the PyTorch Lightning AI Training Library ( semgrep.dev ) points by j12
 - **Stack**: Hermes prompts + Python triage/read-model pipeline + markdown shared-state artifacts
 - **File Tree**:
   ```
@@ -12,6 +12,6 @@
   assets/shared/CEO_RANKING.md
   ```
 - **MVP Features**: deterministic triage, shared shortlist generation, role-specific markdown handoffs, CEO ranking over the same shortlist
-- **Build Time**: 10
+- **Build Time**: 22
 - **Shared Shortlist Source**: `assets/shared/external_intelligence/triage/prioritized_signals.json`
 - **Chosen Idea ID**: IDEA-001

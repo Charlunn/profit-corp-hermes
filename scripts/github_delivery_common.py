@@ -696,7 +696,23 @@ def sync_workspace_to_github(
                     **snapshot_evidence,
                 )
 
-            if str(getattr(status_result, "stdout", "")).strip() or not has_existing_commit:
+            staged_result = run_git("git", "diff", "--cached", "--name-only")
+            if int(getattr(staged_result, "returncode", 1)) != 0:
+                return _blocked(
+                    workspace,
+                    "github-sync.json",
+                    "github_sync_failed",
+                    "Failed to inspect staged snapshot changes.",
+                    failed_step="staged_status",
+                    attempted_command="git diff --cached --name-only",
+                    stderr_summary=_safe_summary(getattr(staged_result, "stderr", "")),
+                    remote_branch_found=checkout_target is not None,
+                    **remote_evidence,
+                    **snapshot_evidence,
+                )
+
+            has_staged_changes = bool(str(getattr(staged_result, "stdout", "")).strip())
+            if has_staged_changes or not has_existing_commit:
                 commit_result = _commit_workspace_snapshot(workspace, run_git)
                 if int(getattr(commit_result, "returncode", 1)) != 0:
                     return _blocked(
@@ -708,6 +724,8 @@ def sync_workspace_to_github(
                         attempted_command="git commit -m",
                         stderr_summary=_safe_summary(getattr(commit_result, "stderr", "")),
                         remote_branch_found=checkout_target is not None,
+                        status_summary=_safe_summary(getattr(status_result, "stdout", "")),
+                        staged_summary=_safe_summary(getattr(staged_result, "stdout", "")),
                         **remote_evidence,
                         **snapshot_evidence,
                     )

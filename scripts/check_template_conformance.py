@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ from typing import Any
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+from scripts.product_proof_contract import classify_template_residue
 from scripts.template_contract_common import DEFAULT_REGISTRY_PATH, TemplateContractError, load_registry, require_asset, relative
 
 
@@ -65,13 +67,30 @@ VERIFIED_PATHS = (
     "src/app/api/auth/session/route.ts",
     "src/app/api/paypal/checkout/route.ts",
     "src/app/api/paypal/capture/route.ts",
-    "src/app/demo/page.tsx",
+    "src/lib/app-definition.ts",
     "supabase/migrations/20260423112500_create_shared_public_tables.sql",
 )
 REQUIRED_IDENTITY_KEYS = ("APP_KEY", "APP_NAME", "APP_URL")
 ALLOWED_SHARED_TABLES = {"users", "orders", "payments", "subscriptions"}
 MUTATION_METHODS = ("insert", "update", "upsert", "delete")
 CLIENT_SCAN_DIRS = ("src/app", "src/components")
+TEMPLATE_MARKERS = (
+    "Standalone SaaS Template",
+    "template starter",
+    "starter template",
+    "generic starter",
+)
+REQUIRED_PRODUCT_REQUIREMENT_KEYS = (
+    "pain_point",
+    "monetization",
+    "required_languages",
+    "ui_artifact_contract",
+)
+TEMPLATE_SCAN_DIRS = ("src/app", "src/components")
+PRODUCT_SOURCE_DIRS = ("src/app", "src/components", "src/lib")
+LANGUAGE_EVIDENCE_FILES = (".hermes/PROJECT_BRIEF_ENTRYPOINT.md",)
+LANGUAGE_CODE_PATTERN = re.compile(r"(?<![a-z0-9])(en|zh)(?![a-z0-9])")
+LANGUAGE_EVIDENCE_SUFFIXES = (".ts", ".tsx", ".js", ".jsx", ".json", ".md")
 
 
 class TemplateConformanceError(Exception):
@@ -261,18 +280,80 @@ def require_protected_fingerprints(workspace_root: Path, template_root: Path, pr
     return fingerprint_checks
 
 
-def require_shared_invariants(workspace_root: Path) -> None:
+def require_product_requirements(metadata: dict[str, Any]) -> list[str]:
+    product_requirements = metadata.get("product_requirements")
+    if not isinstance(product_requirements, dict):
+        raise BlockingViolationError([".hermes/project-metadata.json missing product_requirements object"])
     violations: list[str] = []
-    demo_path = workspace_root / "src" / "app" / "demo" / "page.tsx"
-    if not demo_path.exists():
-        violations.append("missing shared invariant path: src/app/demo/page.tsx")
+    for key in REQUIRED_PRODUCT_REQUIREMENT_KEYS:
+        value = product_requirements.get(key)
+        if key == "required_languages":
+            normalized = [str(item).strip().lower() for item in list(value or []) if str(item).strip()]
+            if not normalized:
+                violations.append(f".hermes/project-metadata.json missing product_requirements.{key}")
+                continue
+            if "en" not in normalized or "zh" not in normalized:
+                violations.append(".hermes/project-metadata.json product_requirements.required_languages must include en and zh")
+            continue
+        if isinstance(value, list):
+            if not [str(item).strip() for item in value if str(item).strip()]:
+                violations.append(f".hermes/project-metadata.json missing product_requirements.{key}")
+            continue
+        if not str(value or "").strip():
+            violations.append(f".hermes/project-metadata.json missing product_requirements.{key}")
+    if violations:
+        raise BlockingViolationError(violations)
+    return [str(item).strip().lower() for item in list(product_requirements.get("required_languages", [])) if str(item).strip()]
+
+
+def require_shared_invariants(workspace_root: Path, required_languages: list[str]) -> None:
+    violations: list[str] = []
     app_definition_path = workspace_root / "src" / "lib" / "app-definition.ts"
     if not app_definition_path.exists():
         violations.append("missing shared invariant path: src/lib/app-definition.ts")
-    else:
-        app_definition_text = app_definition_path.read_text(encoding="utf-8")
-        if "_default_offer" not in app_definition_text:
-            violations.append("src/lib/app-definition.ts missing materialized ${APP_KEY}_default_offer invariant")
+
+    product_pages = [
+        path
+        for path in sorted((workspace_root / "src" / "app").rglob("page.tsx"))
+        if path.is_file() and "api" not in path.relative_to(workspace_root / "src" / "app").parts
+    ] if (workspace_root / "src" / "app").exists() else []
+    if not product_pages:
+        violations.append("workspace missing product-facing page implementation under src/app/*")
+
+    primary_marker_paths, _secondary_marker_paths = classify_template_residue(workspace_root, TEMPLATE_MARKERS)
+    if primary_marker_paths:
+        violations.append(
+            "template marker residue detected on primary product surfaces: " + ", ".join(primary_marker_paths)
+        )
+
+    language_hits = {code: False for code in required_languages}
+    for source_dir in PRODUCT_SOURCE_DIRS:
+        root = workspace_root / source_dir
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in LANGUAGE_EVIDENCE_SUFFIXES:
+                continue
+            text = path.read_text(encoding="utf-8").lower()
+            matches = set(LANGUAGE_CODE_PATTERN.findall(text))
+            for code in required_languages:
+                if code in matches:
+                    language_hits[code] = True
+    for relative_path in LANGUAGE_EVIDENCE_FILES:
+        evidence_path = workspace_root / relative_path
+        if not evidence_path.exists():
+            continue
+        text = evidence_path.read_text(encoding="utf-8").lower()
+        matches = set(LANGUAGE_CODE_PATTERN.findall(text))
+        for code in required_languages:
+            if code in matches:
+                language_hits[code] = True
+    missing_languages = [code for code, found in language_hits.items() if not found]
+    if missing_languages:
+        violations.append(
+            "workspace missing multilingual evidence for required languages: " + ", ".join(missing_languages)
+        )
+
     if violations:
         raise BlockingViolationError(violations)
 
@@ -336,6 +417,7 @@ def build_report_lines(
     *,
     status: str,
     violations: list[str],
+    warnings: list[str],
     verified_paths: list[str],
     fingerprint_checks: list[dict[str, str]],
     workspace_path: Path,
@@ -355,6 +437,11 @@ def build_report_lines(
     ]
     if violations:
         lines.extend(f"- {violation}" for violation in violations)
+    else:
+        lines.append("None.")
+    lines.extend(["", "## Proof Warnings"])
+    if warnings:
+        lines.extend(f"- {warning}" for warning in warnings)
     else:
         lines.append("None.")
     lines.extend(["", "## Verified Paths"])
@@ -401,6 +488,7 @@ def main() -> int:
         env_text = load_text(workspace_path / ".env", "workspace .env")
         require_workspace_identity(env_text, metadata)
         require_shared_backend_metadata(guardrails, metadata)
+        required_languages = require_product_requirements(metadata)
 
         protected_manifest = build_protected_manifest(asset, metadata)
         require_protected_paths_present(workspace_path, protected_manifest)
@@ -412,7 +500,13 @@ def main() -> int:
         if not template_root.exists():
             raise TemplateConformanceError(f"template source path not found: {template_root}")
 
-        require_shared_invariants(workspace_path)
+        require_shared_invariants(workspace_path, required_languages)
+        _, secondary_marker_paths = classify_template_residue(workspace_path, TEMPLATE_MARKERS)
+        warnings = (
+            ["template marker residue remains on secondary surfaces: " + ", ".join(secondary_marker_paths)]
+            if secondary_marker_paths
+            else []
+        )
         require_table_boundaries(workspace_path, str(metadata.get("app_key", "")).strip())
         require_no_forbidden_client_writes(workspace_path)
         fingerprint_checks = require_protected_fingerprints(workspace_path, template_root, protected_manifest)
@@ -420,6 +514,7 @@ def main() -> int:
             build_report_lines(
                 status="PASS",
                 violations=[],
+                warnings=warnings,
                 verified_paths=list(VERIFIED_PATHS),
                 fingerprint_checks=fingerprint_checks,
                 workspace_path=workspace_path,
@@ -443,6 +538,7 @@ def main() -> int:
             build_report_lines(
                 status="FAIL",
                 violations=exc.violations,
+                warnings=[],
                 verified_paths=list(VERIFIED_PATHS),
                 fingerprint_checks=exc.fingerprint_checks,
                 workspace_path=workspace_path,

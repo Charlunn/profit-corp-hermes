@@ -88,6 +88,18 @@ class StartDeliveryRunTests(unittest.TestCase):
             "app_url": "https://lead.example.com",
             "template_source_path": "C:/Users/42236/Desktop/standalone-saas-template",
             "canonical_contract_path": CONTRACT_PATH.as_posix(),
+            "product_requirements": {
+                "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
+                "monetization": [
+                    "Charge for priority scoring and follow-up workflow automation.",
+                    "Expose a paid upgrade path inside the main operator workflow.",
+                ],
+                "required_languages": ["en", "zh", "es", "ar"],
+                "ui_artifact_contract": [
+                    "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                    "Document screen inventory, monetization surface, and multilingual behavior.",
+                ],
+            },
         }
         (hermes_dir / "project-metadata.json").write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
@@ -172,6 +184,21 @@ class StartDeliveryRunTests(unittest.TestCase):
         self.assertEqual(manifest["orchestrator_role"], "delivery-orchestrator")
         self.assertEqual(manifest["workspace_name"], "lead-capture")
         self.assertEqual(manifest["scope_status"], "approved-brief-only")
+        self.assertEqual(
+            manifest["product_contract"],
+            {
+                "pain_point": "Operators lose revenue because inbound leads sit unqualified for too long.",
+                "monetization": [
+                    "Charge for priority scoring and follow-up workflow automation.",
+                    "Expose a paid upgrade path inside the main operator workflow.",
+                ],
+                "required_languages": ["en", "zh", "es", "ar"],
+                "ui_artifact_contract": [
+                    "Reference `/ui-ux-pro-max` output before frontend implementation.",
+                    "Document screen inventory, monetization surface, and multilingual behavior.",
+                ],
+            },
+        )
         self.assertEqual(manifest["stage_order"], STAGE_ORDER)
         self.assertEqual([stage["role"] for stage in manifest["stages"]], ROLE_ORDER)
         self.assertEqual(sorted(manifest["required_inputs"].keys()), sorted(REQUIRED_INPUT_KEYS))
